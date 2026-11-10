@@ -6,7 +6,12 @@
     "price": 150,
     "image": "/images/blanc-royal.jpg?v=2",
     "labelColor": "#efe3c8",
-    "labelInk": "#8a6a2f"
+    "labelInk": "#b8924a",
+    "theme": {
+      "bgDark": "#1a120a",
+      "glow": "#c9a25a",
+      "smoke": "#f0d9a8"
+    }
   },
   {
     "id": "reve-paradoxe",
@@ -15,7 +20,12 @@
     "price": 150,
     "image": "/images/reve-paradoxe.jpg?v=2",
     "labelColor": "#0f4a2e",
-    "labelInk": "#d9b96a"
+    "labelInk": "#d9b96a",
+    "theme": {
+      "bgDark": "#04140c",
+      "glow": "#1d6b45",
+      "smoke": "#8fc7a8"
+    }
   },
   {
     "id": "noir-prestige",
@@ -24,7 +34,12 @@
     "price": 150,
     "image": "/images/noir-prestige.jpg?v=2",
     "labelColor": "#0b0b0b",
-    "labelInk": "#d9b96a"
+    "labelInk": "#d9b96a",
+    "theme": {
+      "bgDark": "#060807",
+      "glow": "#4a3416",
+      "smoke": "#a08a62"
+    }
   },
   {
     "id": "rouge-absolu",
@@ -33,7 +48,12 @@
     "price": 150,
     "image": "/images/rouge-absolu.jpg?v=2",
     "labelColor": "#6b0f1c",
-    "labelInk": "#d9b96a"
+    "labelInk": "#d9b96a",
+    "theme": {
+      "bgDark": "#1a0408",
+      "glow": "#a3162b",
+      "smoke": "#e89a9f"
+    }
   },
   {
     "id": "bleu-eternel",
@@ -42,6 +62,11 @@
     "price": 150,
     "image": "/images/bleu-eternel.jpg?v=2",
     "labelColor": "#0c2150",
-    "labelInk": "#d9b96a"
+    "labelInk": "#d9b96a",
+    "theme": {
+      "bgDark": "#040a1c",
+      "glow": "#1d3f8f",
+      "smoke": "#8fa8e0"
+    }
   }
 ]
