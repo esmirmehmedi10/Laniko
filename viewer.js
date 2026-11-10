@@ -393,69 +393,6 @@ function stepDust(points, dt, time) {
   points.geometry.attributes.position.needsUpdate = true;
 }
 
-// ================================================================ animated photo background
-
-const PLATE_VERT = `
-varying vec2 vUv;
-void main() {
-  vUv = uv;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}`;
-
-// The photo, with a slow smoke-like flow warp and shimmering highlights. The header (logo + name)
-// is excluded so that it stays perfectly sharp and still.
-const PLATE_FRAG = `
-uniform sampler2D map;
-uniform float uTime;
-uniform float uOpacity;
-uniform float uAmp;
-uniform vec4 uProt;
-varying vec2 vUv;
-
-float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-float noise(vec2 p) {
-  vec2 i = floor(p);
-  vec2 f = fract(p);
-  f = f * f * (3.0 - 2.0 * f);
-  return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
-             mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
-}
-float fbm(vec2 p) {
-  float v = 0.0;
-  float a = 0.5;
-  for (int i = 0; i < 4; i++) {
-    v += a * noise(p);
-    p = p * 2.03 + vec2(1.7, 9.2);
-    a *= 0.5;
-  }
-  return v;
-}
-
-void main() {
-  vec2 p = vUv;
-  float t = uTime;
-  vec2 c0 = (uProt.xy + uProt.zw) * 0.5;
-  vec2 hs = (uProt.zw - uProt.xy) * 0.5;
-  vec2 q = abs(p - c0) - hs;
-  float dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
-  float prot = smoothstep(0.0, 0.07, dist);
-
-  vec2 sp = p * vec2(2.4, 3.2);
-  vec2 flow = vec2(
-    fbm(sp + vec2(0.0, -t * 0.05)),
-    fbm(sp + vec2(5.2, 1.3) + vec2(t * 0.035, -t * 0.045))
-  );
-  vec2 uv = p + (flow - 0.5) * uAmp * prot;
-  vec3 col = texture2D(map, uv).rgb;
-
-  float l = dot(col, vec3(0.299, 0.587, 0.114));
-  float pulse = 0.5 + 0.5 * sin(t * 0.85 + fbm(p * 4.0 + 3.0) * 6.2831);
-  col *= 1.0 + 0.18 * smoothstep(0.22, 0.8, l) * pulse * prot;
-
-  gl_FragColor = vec4(col, uOpacity);
-  #include <colorspace_fragment>
-}`;
-
 // ================================================================ viewer
 
 function el(tag, cls, parent) {
@@ -468,73 +405,66 @@ function el(tag, cls, parent) {
 export function createBottleViewer(container, product) {
   if (!product.plate || !product.bottle) throw new Error("no photo plate for this product");
   const theme = { ...DEFAULT_THEME, ...(product.theme || {}) };
-  const B = product.bottle; // { ar, cx, bw, bottom } as fractions of the photo
+  const B = product.bottle; // { ar, cx, bw, bottom, photoFrac }: where the bottle is in the plate
   const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let disposed = false;
+  let disposed = false, failed = false;
 
-  // --- DOM layers: blurred fill, the photo (instant, already cached), the plate, then the WebGL canvas
+  // --- DOM layers (the picture is plain HTML, so it is always there):
+  //   blurred fill, the original photo (shown instantly), the plate (same photo, bottle taken out and
+  //   extended downwards so the bottle sits in the centre), light effects, then the WebGL canvas.
   container.classList.add("vp");
+  container.style.setProperty("--v-glow", theme.glow);
+  container.style.setProperty("--v-smoke", theme.smoke);
   const fillImg = el("img", "vp-fill", container);
   const photoImg = el("img", "vp-photo", container);
   const plateImg = el("img", "vp-plate", container);
-  fillImg.alt = ""; photoImg.alt = product.name; plateImg.alt = "";
+  const glow = el("div", "vp-glow", container);
+  const sweep = el("div", "vp-sweep", container);
+  fillImg.alt = ""; plateImg.alt = ""; photoImg.alt = product.name;
+  photoImg.style.height = B.photoFrac * 100 + "%";
   photoImg.src = product.image;
   plateImg.decoding = "async";
   plateImg.src = product.plate;
   fillImg.src = product.plate;
-  plateImg.style.opacity = "0";
+  plateImg.style.visibility = "hidden";
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 3));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
-  renderer.autoClear = false;
+  renderer.setClearColor(0x000000, 0);
   renderer.domElement.className = "vp-canvas";
   container.appendChild(renderer.domElement);
 
-  // --- background pass: the plate in pixel space
-  const plateScene = new THREE.Scene();
-  const plateCam = new THREE.OrthographicCamera(-1, 1, 1, -1, -10, 10);
-  const plateMat = new THREE.ShaderMaterial({
-    vertexShader: PLATE_VERT,
-    fragmentShader: PLATE_FRAG,
-    transparent: true,
-    depthTest: false,
-    depthWrite: false,
-    uniforms: {
-      map: { value: null },
-      uTime: { value: 0 },
-      uOpacity: { value: 0 },
-      uAmp: { value: reduceMotion ? 0 : 0.011 },
-      uProt: { value: new THREE.Vector4(0.17, 0.70, 0.83, 0.985) },
-    },
-  });
-  const plateMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), plateMat);
-  plateMesh.visible = false;
-  plateScene.add(plateMesh);
-
-  // --- bottle pass
+  // --- the bottle (the only 3D thing)
   const camera = new THREE.PerspectiveCamera(20, 1, 1, 200);
   const D = 30;           // camera distance; far enough that perspective is gentle
   const FRONT = 0.55;     // front face of the bottle body
   const scene = new THREE.Scene();
-  const anchor = new THREE.Group(); // sits at the base of the photographed bottle
+  const anchor = new THREE.Group(); // sits at the base of the bottle
   scene.add(anchor);
   const rig = new THREE.Group();    // yaw / pitch
   anchor.add(rig);
-  let smoke = null, dust = null, bokeh = null, shadowBlob = null;
+  let smoke = null, dust = null, bokeh = null;
   let envTexture = null, pmrem = null, envScene = null;
-  let built = false, plateReady = false, tStart = -1;
+  let built = false, plateReady = false, started = false, shown = false;
   let W = 1, H = 1, kPx = 100;
+
+  const fail = (err) => {
+    if (failed) return;
+    failed = true;
+    console.error("3D viewer failed", err);
+    renderer.setAnimationLoop(null);
+    renderer.domElement.style.display = "none";
+    plateImg.style.visibility = "hidden";
+    photoImg.style.visibility = "visible"; // the plain photo still works
+  };
 
   const layout = () => {
     W = container.clientWidth || 1;
     H = container.clientHeight || 1;
     renderer.setSize(W, H, false);
     const plateH = H, plateW = H * B.ar;
-    plateCam.left = -W / 2; plateCam.right = W / 2; plateCam.top = H / 2; plateCam.bottom = -H / 2;
-    plateCam.updateProjectionMatrix();
-    plateMesh.scale.set(plateW, plateH, 1);
     // pixels per world unit, measured on the front face of the bottle body (1.5 units wide)
     kPx = (B.bw * plateW) / 1.5;
     camera.fov = (2 * Math.atan(H / (2 * kPx * (D - FRONT))) * 180) / Math.PI;
@@ -552,84 +482,72 @@ export function createBottleViewer(container, product) {
   ro.observe(container);
   layout();
 
-  // --- the plate: wait until it is decoded, then swap it in for the photo
+  // --- wait until the plate is decoded
   const loadPlate = async () => {
     try {
       if (plateImg.decode) await plateImg.decode();
       else await new Promise((res, rej) => { plateImg.onload = res; plateImg.onerror = rej; });
-    } catch { /* fall through: show what we have */ }
-    if (disposed || !plateImg.naturalWidth) return;
-    const tex = new THREE.Texture(plateImg);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
-    tex.generateMipmaps = true;
-    tex.minFilter = THREE.LinearMipmapLinearFilter;
-    tex.needsUpdate = true;
-    plateMat.uniforms.map.value = tex;
-    plateReady = true;
-    tryStart();
+    } catch { /* fall through */ }
+    if (disposed) return;
+    plateReady = !!plateImg.naturalWidth;
+    if (!plateReady) fail(new Error("plate image missing"));
   };
 
   // --- build the bottle scene
   const build = () => {
-    if (disposed) return;
-    pmrem = new THREE.PMREMGenerator(renderer);
-    envScene = makeStudioEnvironment();
-    envTexture = pmrem.fromScene(envScene, 0.03).texture;
-    scene.environment = envTexture;
+    if (disposed || failed) return;
+    try {
+      pmrem = new THREE.PMREMGenerator(renderer);
+      envScene = makeStudioEnvironment();
+      envTexture = pmrem.fromScene(envScene, 0.03).texture;
+      scene.environment = envTexture;
 
-    const key = new THREE.DirectionalLight(0xfff1d6, 1.4);
-    key.position.set(-3, 5, 7);
-    const rim = new THREE.DirectionalLight(new THREE.Color(theme.smoke), 1.1);
-    rim.position.set(5, 3, -4);
-    scene.add(key, rim, new THREE.AmbientLight(0xffffff, 0.25));
+      const key = new THREE.DirectionalLight(0xfff1d6, 1.4);
+      key.position.set(-3, 5, 7);
+      const rim = new THREE.DirectionalLight(new THREE.Color(theme.smoke), 1.1);
+      rim.position.set(5, 3, -4);
+      scene.add(key, rim, new THREE.AmbientLight(0xffffff, 0.25));
 
-    const maps = makeLabelMaps(product, renderer.capabilities.getMaxAnisotropy());
-    rig.add(buildBottle(maps));
+      const maps = makeLabelMaps(product, renderer.capabilities.getMaxAnisotropy());
+      rig.add(buildBottle(maps));
 
-    // soft contact shadow at the foot of the bottle
-    const blobTex = radialTexture([[0, "rgba(0,0,0,0.7)"], [0.5, "rgba(0,0,0,0.32)"], [1, "rgba(0,0,0,0)"]]);
-    shadowBlob = new THREE.Mesh(
-      new THREE.PlaneGeometry(2.4, 0.5),
-      new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false })
-    );
-    shadowBlob.position.set(0, 0.02, -0.7);
-    shadowBlob.renderOrder = 4;
-    anchor.add(shadowBlob);
+      // soft contact shadow behind the foot of the bottle
+      const blobTex = radialTexture([[0, "rgba(0,0,0,0.7)"], [0.5, "rgba(0,0,0,0.32)"], [1, "rgba(0,0,0,0)"]]);
+      const blob = new THREE.Mesh(
+        new THREE.PlaneGeometry(2.6, 0.55),
+        new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false })
+      );
+      blob.position.set(0, 0.02, -0.7);
+      blob.renderOrder = 4;
+      anchor.add(blob);
 
-    // light smoke curling up beside and behind the bottle
-    smoke = createSmoke(
-      [[-1.9, 0.2, -0.8, 1.1], [1.9, 0.2, -0.8, 1.1], [-1.0, 0.1, -1.0, 0.9], [1.0, 0.1, -1.0, 0.9]],
-      new THREE.Color(theme.smoke).lerp(new THREE.Color(0xffffff), 0.35),
-      makeSmokeTexture()
-    );
-    anchor.add(smoke.group);
+      // light smoke curling up at both sides of the picture
+      const half = Math.min(W, H * B.ar) / (2 * kPx);
+      const sx = half * 0.8;
+      smoke = createSmoke(
+        [[-sx, 0.3, -1.0, 1.4], [sx, 0.3, -1.0, 1.4], [-sx * 0.55, 0.1, -1.2, 1.1], [sx * 0.55, 0.1, -1.2, 1.1], [-sx * 1.05, 1.2, -1.2, 1.2], [sx * 1.05, 1.2, -1.2, 1.2]],
+        new THREE.Color(theme.smoke).lerp(new THREE.Color(0xffffff), 0.35),
+        makeSmokeTexture()
+      );
+      anchor.add(smoke.group);
 
-    // golden dust and soft bokeh floating up the whole picture
-    const sprite = radialTexture([[0, "rgba(255,255,255,1)"], [0.4, "rgba(255,255,255,0.35)"], [1, "rgba(255,255,255,0)"]], 64);
-    const ex = W / (2 * kPx) + 1, ey = H / (2 * kPx) + 1;
-    dust = makeDust(90, 0.08, 0.8, new THREE.Color(theme.smoke), sprite, ex, ey);
-    bokeh = makeDust(14, 0.5, 0.14, new THREE.Color(theme.glow).lerp(new THREE.Color(0xffd98a), 0.5), sprite, ex, ey);
-    scene.add(dust, bokeh);
-
-    built = true;
-    layout();
-    tryStart();
-  };
-
-  const tryStart = () => {
-    if (tStart >= 0 || !built || !plateReady) return;
-    tStart = time;
-    // swap: the plate (no bottle) goes in, and the 3D bottle takes its place in the same frame
-    plateImg.style.opacity = "1";
-    photoImg.style.visibility = "hidden";
-    plateMesh.visible = true;
+      // golden dust and soft bokeh drifting up the whole picture
+      const sprite = radialTexture([[0, "rgba(255,255,255,1)"], [0.4, "rgba(255,255,255,0.35)"], [1, "rgba(255,255,255,0)"]], 64);
+      const ex = W / (2 * kPx) + 1, ey = H / (2 * kPx) + 1;
+      dust = makeDust(90, 0.08, 0.8, new THREE.Color(theme.smoke), sprite, ex, ey);
+      bokeh = makeDust(14, 0.5, 0.14, new THREE.Color(theme.glow).lerp(new THREE.Color(0xffd98a), 0.5), sprite, ex, ey);
+      scene.add(dust, bokeh);
+      built = true;
+      layout();
+    } catch (err) {
+      fail(err);
+    }
   };
 
   // --- interaction
   let interacted = false;
   let yawFree = 0, yawVel = 0, pitch = 0, zoom = 1, zoomTarget = 1;
+  let swayYaw = 0;
   const ptrs = new Map();
   let pinchD = 0;
   const dom = renderer.domElement;
@@ -665,49 +583,64 @@ export function createBottleViewer(container, product) {
   }, { passive: false });
 
   // --- animation
-  let time = 0, frames = 0;
-  let swayYaw = 0;
+  let time = 0, frames = 0, tStart = 0;
   const clock = new THREE.Clock();
+  const fontReady = document.fonts && document.fonts.load
+    ? Promise.race([document.fonts.load('600 100px "Cormorant Garamond"').catch(() => {}), new Promise((r) => setTimeout(r, 600))])
+    : Promise.resolve();
+
   renderer.setAnimationLoop(() => {
+    if (failed) return;
     const dt = Math.min(clock.getDelta(), 0.05);
     time += dt;
     frames++;
     if (frames === 2) setTimeout(() => { fontReady.then(build); }, 0);
-
-    renderer.clear();
-    if (tStart < 0) return; // the DOM photo is showing; nothing to draw yet
+    if (!built || !plateReady) return; // the photo is showing meanwhile
+    if (!started) { started = true; tStart = time; }
     const tb = time - tStart;
 
-    plateMat.uniforms.uTime.value = time;
-    plateMat.uniforms.uOpacity.value = easeOut(clamp01(tb / 0.9));
-    renderer.render(plateScene, plateCam);
+    try {
+      // bottle: one full turn at the start, then a gentle sway until the user takes over
+      const spin = reduceMotion ? 0 : easeInOut(clamp01(tb / 1.4)) * TAU;
+      swayYaw = reduceMotion ? 0 : 0.55 * Math.sin(Math.max(0, tb - 1.4) * 0.8) * clamp01((tb - 1.4) / 0.8);
+      if (interacted) {
+        yawFree += yawVel * dt;
+        yawVel *= Math.exp(-2.6 * dt);
+      }
+      rig.rotation.y = (interacted ? yawFree : swayYaw) + (interacted ? 0 : spin);
+      rig.rotation.x = interacted ? pitch : 0;
+      zoom += (zoomTarget - zoom) * Math.min(1, dt * 8);
+      anchor.scale.setScalar(zoom);
 
-    // bottle: one full turn at the start, then a gentle sway until the user takes over
-    const spin = reduceMotion ? 0 : easeInOut(clamp01(tb / 1.4)) * TAU;
-    swayYaw = reduceMotion ? 0 : 0.55 * Math.sin(Math.max(0, tb - 1.4) * 0.8) * clamp01((tb - 1.4) / 0.8);
-    if (interacted) {
-      yawFree += yawVel * dt;
-      yawVel *= Math.exp(-2.6 * dt);
+      const fade = clamp01(tb / 1.2);
+      dust.material.opacity = dust.userData.baseOpacity * fade;
+      bokeh.material.opacity = bokeh.userData.baseOpacity * fade;
+      stepDust(dust, dt, time);
+      stepDust(bokeh, dt * 0.6, time);
+      smoke.update(dt, time, reduceMotion ? 0.5 : easeInOut(clamp01((tb - 0.1) / 1.0)));
+
+      renderer.clear();
+      renderer.render(scene, camera);
+    } catch (err) {
+      fail(err);
+      return;
     }
-    rig.rotation.y = (interacted ? yawFree : swayYaw) + (interacted ? 0 : spin);
-    rig.rotation.x = interacted ? pitch : 0;
-    zoom += (zoomTarget - zoom) * Math.min(1, dt * 8);
-    anchor.scale.setScalar(zoom);
 
-    dust.material.opacity = dust.userData.baseOpacity * clamp01(tb / 1.2);
-    bokeh.material.opacity = bokeh.userData.baseOpacity * clamp01(tb / 1.2);
-    stepDust(dust, dt, time);
-    stepDust(bokeh, dt * 0.6, time);
-    smoke.update(dt, time, reduceMotion ? 0.5 : easeInOut(clamp01((tb - 0.2) / 1.2)));
-
-    renderer.clearDepth();
-    renderer.render(scene, camera);
+    if (!shown) {
+      // the bottle has really been drawn: swap the photo for the plate (original bottle taken out)
+      shown = true;
+      plateImg.style.visibility = "visible";
+      photoImg.style.visibility = "hidden";
+      container.classList.add("vp-live");
+    }
+    if (!reduceMotion) {
+      // the picture breathes: a slow zoom and drift about the centre of the frame
+      const z = 1 + 0.022 * (0.5 - 0.5 * Math.cos(tb * 0.28));
+      const dx = Math.sin(tb * 0.17) * 7, dy = Math.cos(tb * 0.13) * 4;
+      plateImg.style.transform = `translateX(-50%) translate(${dx}px, ${dy}px) scale(${z})`;
+    }
   });
 
-  // fonts (for the label text) then plate; never wait long
-  const fontReady = document.fonts && document.fonts.load
-    ? Promise.race([document.fonts.load('600 100px "Cormorant Garamond"').catch(() => {}), new Promise((r) => setTimeout(r, 600))])
-    : Promise.resolve();
   loadPlate();
 
   return {
@@ -721,17 +654,15 @@ export function createBottleViewer(container, product) {
         const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
         mats.forEach((m) => {
           texKeys.forEach((k) => { if (m[k]) m[k].dispose(); });
-          if (m.uniforms && m.uniforms.map && m.uniforms.map.value) m.uniforms.map.value.dispose();
           m.dispose();
         });
       };
       scene.traverse(disposeObject);
-      plateScene.traverse(disposeObject);
       if (envScene) envScene.traverse(disposeObject);
       if (envTexture) envTexture.dispose();
       if (pmrem) pmrem.dispose();
       renderer.dispose();
-      container.classList.remove("vp");
+      container.classList.remove("vp", "vp-live");
       container.innerHTML = "";
     },
   };

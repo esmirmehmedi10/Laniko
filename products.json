@@ -13,12 +13,13 @@
       "smoke": "#f0d9a8"
     },
     "rank": 1,
-    "plate": "/images/blanc-royal-bg.jpg?v=1",
+    "plate": "/images/blanc-royal-bg.jpg?v=2",
     "bottle": {
-      "ar": 0.751,
+      "ar": 0.5956,
       "cx": 0.5197,
       "bw": 0.4711,
-      "bottom": 0.9486
+      "bottom": 0.7524,
+      "photoFrac": 0.7931
     }
   },
   {
@@ -34,12 +35,13 @@
       "glow": "#1d6b45",
       "smoke": "#8fc7a8"
     },
-    "plate": "/images/reve-paradoxe-bg.jpg?v=1",
+    "plate": "/images/reve-paradoxe-bg.jpg?v=2",
     "bottle": {
-      "ar": 0.8,
+      "ar": 0.6154,
       "cx": 0.5025,
       "bw": 0.44,
-      "bottom": 0.976
+      "bottom": 0.7508,
+      "photoFrac": 0.7692
     }
   },
   {
@@ -56,12 +58,13 @@
       "smoke": "#a08a62"
     },
     "rank": 2,
-    "plate": "/images/noir-prestige-bg.jpg?v=1",
+    "plate": "/images/noir-prestige-bg.jpg?v=2",
     "bottle": {
-      "ar": 0.749,
+      "ar": 0.5969,
       "cx": 0.4908,
       "bw": 0.4644,
-      "bottom": 0.9427
+      "bottom": 0.7512,
+      "photoFrac": 0.7969
     }
   },
   {
@@ -78,12 +81,13 @@
       "smoke": "#e89a9f"
     },
     "rank": 3,
-    "plate": "/images/rouge-absolu-bg.jpg?v=1",
+    "plate": "/images/rouge-absolu-bg.jpg?v=2",
     "bottle": {
-      "ar": 0.751,
+      "ar": 0.5763,
       "cx": 0.4987,
       "bw": 0.4572,
-      "bottom": 0.9779
+      "bottom": 0.7504,
+      "photoFrac": 0.7673
     }
   },
   {
@@ -99,12 +103,13 @@
       "glow": "#1d3f8f",
       "smoke": "#8fa8e0"
     },
-    "plate": "/images/bleu-eternel-bg.jpg?v=1",
+    "plate": "/images/bleu-eternel-bg.jpg?v=2",
     "bottle": {
-      "ar": 0.7515,
+      "ar": 0.5769,
       "cx": 0.4933,
       "bw": 0.464,
-      "bottom": 0.978
+      "bottom": 0.7508,
+      "photoFrac": 0.7677
     }
   }
 ]
