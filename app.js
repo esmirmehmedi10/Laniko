@@ -150,7 +150,13 @@
     $("viewer-hint").textContent = "Drag to rotate · pinch to zoom";
     const stage = $("viewer-stage");
     stage.innerHTML = "";
-    $("viewer").hidden = false;
+    // the themed background is plain CSS, so it is on screen in the very first frame
+    const th = p.theme || {};
+    const v = $("viewer");
+    v.style.setProperty("--v-dark", th.bgDark || "#0d0c0a");
+    v.style.setProperty("--v-glow", th.glow || "#8a6a2f");
+    v.style.setProperty("--v-smoke", th.smoke || "#d9b96a");
+    v.hidden = false;
     document.body.style.overflow = "hidden";
     try {
       const mod = await import("/viewer.js");
@@ -260,6 +266,13 @@
     window.scrollTo(0, 0);
   });
 
+  // fetch the 3D code in the background once the page is idle, so opening a viewer is instant
+  function warmViewer() {
+    const go = () => import("/viewer.js").catch(() => {});
+    if ("requestIdleCallback" in window) requestIdleCallback(go, { timeout: 4000 });
+    else setTimeout(go, 2000);
+  }
+
   async function init() {
     const params = new URLSearchParams(location.search);
     if (params.get("canceled")) showStatus("Checkout canceled. Your cart is still here.", true);
@@ -273,6 +286,7 @@
       saveJSON(WISH_KEY, wish);
       updateWishUI();
       renderPage();
+      warmViewer();
     } catch {
       $("products").textContent = "Could not load products.";
     }
