@@ -16,7 +16,7 @@ jobs:
       - name: Collect static files
         run: |
           mkdir dist
-          cp index.html success.html style.css app.js viewer.js products.json logo.svg favicon.svg dist/
+          cp index.html success.html style.css app.js viewer.js smoke-bg.js products.json logo.svg favicon.svg dist/
           [ -d images ] && cp -r images dist/images || true
 
       - name: Create Pages project (first run only)

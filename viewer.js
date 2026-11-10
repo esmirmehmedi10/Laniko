@@ -1,14 +1,15 @@
 // 3D viewer (Three.js, loaded from a CDN through the import map in index.html).
 //
-// The product photo is the background (a copy with the original bottle taken out, "plate"), gently
-// animated: drifting smoke, shimmering highlights, floating gold dust. Only the bottle is 3D. It is
-// placed exactly where the bottle stood in the photo, so opening the viewer looks like the photo
-// coming alive: the bottle turns once, then sways gently. Drag to rotate, pinch / wheel to zoom.
+// The product photo is the background. It is a copy of the photo with the original bottle taken out
+// (a "plate", extended downwards so the bottle sits in the middle of the screen). The smoke that is
+// already in the photo is animated by smoke-bg.js; nothing is added to the picture. Only the bottle
+// is 3D: it turns once, then sways gently; drag to rotate, pinch / wheel to zoom.
 //
 // The bottle is generated in code (no model file): opal glass body, lathe-turned polished gold cap,
 // vector foil label with the Laniko logo.
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+import { createSmokeBackground } from "./smoke-bg.js";
 
 const TAU = Math.PI * 2;
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
@@ -283,116 +284,6 @@ function buildBottle(maps) {
 }
 
 
-// ================================================================ light smoke
-
-function makeSmokeTexture() {
-  const S = 128;
-  const c = document.createElement("canvas");
-  c.width = c.height = S;
-  const g = c.getContext("2d");
-  const img = g.createImageData(S, S);
-  const vn = (x, y) => {
-    const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy;
-    const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
-    const a = hash3(ix, iy, 1.3), b = hash3(ix + 1, iy, 1.3), c2 = hash3(ix, iy + 1, 1.3), d = hash3(ix + 1, iy + 1, 1.3);
-    return a + (b - a) * sx + (c2 - a) * sy + (a - b - c2 + d) * sx * sy;
-  };
-  for (let y = 0; y < S; y++) {
-    for (let x = 0; x < S; x++) {
-      const dx = (x / S - 0.5) * 2, dy = (y / S - 0.5) * 2;
-      const fall = Math.max(0, 1 - Math.hypot(dx, dy));
-      const f = fall * fall * (3 - 2 * fall);
-      const n = 0.55 * vn(x * 0.07, y * 0.07) + 0.3 * vn(x * 0.16, y * 0.16) + 0.15 * vn(x * 0.33, y * 0.33);
-      const a = Math.min(1, f * (0.35 + 1.1 * n));
-      const i = (y * S + x) * 4;
-      img.data[i] = img.data[i + 1] = img.data[i + 2] = 255;
-      img.data[i + 3] = a * 255;
-    }
-  }
-  g.putImageData(img, 0, 0);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
-}
-
-function createSmoke(emitters, color, tex) {
-  const group = new THREE.Group();
-  const parts = [];
-  emitters.forEach(([ex, ey, ez, scale]) => {
-    for (let i = 0; i < 11; i++) {
-      const mat = new THREE.SpriteMaterial({ map: tex, color, transparent: true, depthWrite: false, opacity: 0 });
-      const s = new THREE.Sprite(mat);
-      s.renderOrder = 5;
-      group.add(s);
-      parts.push({
-        s, mat, ex, ey, ez, scale: scale || 1,
-        life: 3.2 + Math.random() * 2.2, age: Math.random() * 5,
-        phase: Math.random() * TAU, drift: (Math.random() - 0.5) * 0.5,
-        ox: (Math.random() - 0.5) * 0.12, oz: (Math.random() - 0.5) * 0.12,
-      });
-    }
-  });
-  return {
-    group,
-    update(dt, time, fade) {
-      for (const p of parts) {
-        p.age += dt;
-        if (p.age > p.life) p.age -= p.life;
-        const u = p.age / p.life;
-        const rise = 2.3 * (u + 0.25 * u * u);
-        const curl = Math.sin(u * 5.5 + p.phase) * 0.14 * (0.3 + u) + Math.sin(time * 0.35 + p.phase) * 0.04;
-        p.s.position.set(
-          p.ex + p.ox + curl + p.drift * u * u,
-          p.ey + rise,
-          p.ez + p.oz + Math.cos(u * 4.1 + p.phase) * 0.1 * u
-        );
-        const sc = p.scale * (0.35 + 1.7 * u);
-        p.s.scale.set(sc, sc, 1);
-        p.mat.rotation = p.phase + u * 0.9;
-        p.mat.opacity = 0.2 * fade * Math.pow(Math.sin(Math.PI * u), 1.4);
-      }
-    },
-  };
-}
-
-
-// ================================================================ dust
-
-function makeDust(count, size, opacity, color, sprite, ex, ey) {
-  const positions = new Float32Array(count * 3);
-  const speed = new Float32Array(count);
-  const phase = new Float32Array(count);
-  for (let i = 0; i < count; i++) {
-    positions[i * 3] = (Math.random() - 0.5) * 2 * ex;
-    positions[i * 3 + 1] = (Math.random() - 0.5) * 2 * ey;
-    positions[i * 3 + 2] = -1.5 + Math.random() * 3;
-    speed[i] = 0.05 + Math.random() * 0.16;
-    phase[i] = Math.random() * TAU;
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  const mat = new THREE.PointsMaterial({
-    size, map: sprite, color, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending,
-  });
-  const points = new THREE.Points(geo, mat);
-  points.frustumCulled = false;
-  points.userData = { positions, speed, phase, baseOpacity: opacity, ex, ey };
-  return points;
-}
-
-function stepDust(points, dt, time) {
-  const { positions, speed, phase, ex, ey } = points.userData;
-  for (let i = 0; i < speed.length; i++) {
-    positions[i * 3 + 1] += speed[i] * dt;
-    positions[i * 3] += Math.sin(time * 0.4 + phase[i]) * 0.003;
-    if (positions[i * 3 + 1] > ey) {
-      positions[i * 3 + 1] = -ey;
-      positions[i * 3] = (Math.random() - 0.5) * 2 * ex;
-    }
-  }
-  points.geometry.attributes.position.needsUpdate = true;
-}
-
 // ================================================================ viewer
 
 function el(tag, cls, parent) {
@@ -418,9 +309,12 @@ export function createBottleViewer(container, product) {
   const fillImg = el("img", "vp-fill", container);
   const photoImg = el("img", "vp-photo", container);
   const plateImg = el("img", "vp-plate", container);
-  const glow = el("div", "vp-glow", container);
-  const sweep = el("div", "vp-sweep", container);
+  const bgCanvas = el("canvas", "vp-bg", container);
+  bgCanvas.style.visibility = "hidden";
+  const maskImg = new Image();
+  maskImg.src = product.smokeMask || "";
   fillImg.alt = ""; plateImg.alt = ""; photoImg.alt = product.name;
+  let bg = null;
   photoImg.style.height = B.photoFrac * 100 + "%";
   photoImg.src = product.image;
   plateImg.decoding = "async";
@@ -445,7 +339,6 @@ export function createBottleViewer(container, product) {
   scene.add(anchor);
   const rig = new THREE.Group();    // yaw / pitch
   anchor.add(rig);
-  let smoke = null, dust = null, bokeh = null;
   let envTexture = null, pmrem = null, envScene = null;
   let built = false, plateReady = false, started = false, shown = false;
   let W = 1, H = 1, kPx = 100;
@@ -456,6 +349,8 @@ export function createBottleViewer(container, product) {
     console.error("3D viewer failed", err);
     renderer.setAnimationLoop(null);
     renderer.domElement.style.display = "none";
+    if (bg) bg.stop();
+    bgCanvas.style.visibility = "hidden";
     plateImg.style.visibility = "hidden";
     photoImg.style.visibility = "visible"; // the plain photo still works
   };
@@ -475,8 +370,7 @@ export function createBottleViewer(container, product) {
     const cxPx = (W - plateW) / 2 + B.cx * plateW;
     const bottomPx = B.bottom * plateH;
     anchor.position.set((cxPx - W / 2) / kPx, (H / 2 - bottomPx) / kPx, 0);
-    if (dust) { dust.userData.ex = W / (2 * kPx) + 1; dust.userData.ey = H / (2 * kPx) + 1; }
-    if (bokeh) { bokeh.userData.ex = W / (2 * kPx) + 1; bokeh.userData.ey = H / (2 * kPx) + 1; }
+    if (bg) bg.resize(H, B.ar, Math.min(window.devicePixelRatio || 1, 2));
   };
   const ro = new ResizeObserver(layout);
   ro.observe(container);
@@ -490,7 +384,15 @@ export function createBottleViewer(container, product) {
     } catch { /* fall through */ }
     if (disposed) return;
     plateReady = !!plateImg.naturalWidth;
-    if (!plateReady) fail(new Error("plate image missing"));
+    if (!plateReady) { fail(new Error("plate image missing")); return; }
+    try {
+      if (maskImg.decode) await maskImg.decode();
+      if (maskImg.naturalWidth && !disposed) {
+        bg = createSmokeBackground(bgCanvas, plateImg, maskImg);
+        if (bg && !bg.ok) { bg.dispose(); bg = null; }
+        if (bg) bg.resize(H, B.ar, Math.min(window.devicePixelRatio || 1, 2));
+      }
+    } catch (err) { console.warn("smoke animation unavailable", err); bg = null; } // the still photo is used
   };
 
   // --- build the bottle scene
@@ -521,22 +423,6 @@ export function createBottleViewer(container, product) {
       blob.renderOrder = 4;
       anchor.add(blob);
 
-      // light smoke curling up at both sides of the picture
-      const half = Math.min(W, H * B.ar) / (2 * kPx);
-      const sx = half * 0.8;
-      smoke = createSmoke(
-        [[-sx, 0.3, -1.0, 1.4], [sx, 0.3, -1.0, 1.4], [-sx * 0.55, 0.1, -1.2, 1.1], [sx * 0.55, 0.1, -1.2, 1.1], [-sx * 1.05, 1.2, -1.2, 1.2], [sx * 1.05, 1.2, -1.2, 1.2]],
-        new THREE.Color(theme.smoke).lerp(new THREE.Color(0xffffff), 0.35),
-        makeSmokeTexture()
-      );
-      anchor.add(smoke.group);
-
-      // golden dust and soft bokeh drifting up the whole picture
-      const sprite = radialTexture([[0, "rgba(255,255,255,1)"], [0.4, "rgba(255,255,255,0.35)"], [1, "rgba(255,255,255,0)"]], 64);
-      const ex = W / (2 * kPx) + 1, ey = H / (2 * kPx) + 1;
-      dust = makeDust(90, 0.08, 0.8, new THREE.Color(theme.smoke), sprite, ex, ey);
-      bokeh = makeDust(14, 0.5, 0.14, new THREE.Color(theme.glow).lerp(new THREE.Color(0xffd98a), 0.5), sprite, ex, ey);
-      scene.add(dust, bokeh);
       built = true;
       layout();
     } catch (err) {
@@ -612,13 +498,6 @@ export function createBottleViewer(container, product) {
       zoom += (zoomTarget - zoom) * Math.min(1, dt * 8);
       anchor.scale.setScalar(zoom);
 
-      const fade = clamp01(tb / 1.2);
-      dust.material.opacity = dust.userData.baseOpacity * fade;
-      bokeh.material.opacity = bokeh.userData.baseOpacity * fade;
-      stepDust(dust, dt, time);
-      stepDust(bokeh, dt * 0.6, time);
-      smoke.update(dt, time, reduceMotion ? 0.5 : easeInOut(clamp01((tb - 0.1) / 1.0)));
-
       renderer.clear();
       renderer.render(scene, camera);
     } catch (err) {
@@ -631,13 +510,11 @@ export function createBottleViewer(container, product) {
       shown = true;
       plateImg.style.visibility = "visible";
       photoImg.style.visibility = "hidden";
-      container.classList.add("vp-live");
-    }
-    if (!reduceMotion) {
-      // the picture breathes: a slow zoom and drift about the centre of the frame
-      const z = 1 + 0.022 * (0.5 - 0.5 * Math.cos(tb * 0.28));
-      const dx = Math.sin(tb * 0.17) * 7, dy = Math.cos(tb * 0.13) * 4;
-      plateImg.style.transform = `translateX(-50%) translate(${dx}px, ${dy}px) scale(${z})`;
+      if (bg) {
+        bg.draw(0);
+        bgCanvas.style.visibility = "visible";
+        if (!reduceMotion) bg.start();
+      }
     }
   });
 
@@ -648,6 +525,7 @@ export function createBottleViewer(container, product) {
       disposed = true;
       renderer.setAnimationLoop(null);
       ro.disconnect();
+      if (bg) bg.dispose();
       const texKeys = ["map", "alphaMap", "metalnessMap", "roughnessMap", "emissiveMap"];
       const disposeObject = (o) => {
         if (o.geometry) o.geometry.dispose();
@@ -662,7 +540,7 @@ export function createBottleViewer(container, product) {
       if (envTexture) envTexture.dispose();
       if (pmrem) pmrem.dispose();
       renderer.dispose();
-      container.classList.remove("vp", "vp-live");
+      container.classList.remove("vp");
       container.innerHTML = "";
     },
   };

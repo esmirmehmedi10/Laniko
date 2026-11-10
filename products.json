@@ -20,7 +20,8 @@
       "bw": 0.4711,
       "bottom": 0.7524,
       "photoFrac": 0.7931
-    }
+    },
+    "smokeMask": "/images/blanc-royal-smoke.png?v=1"
   },
   {
     "id": "reve-paradoxe",
@@ -42,7 +43,8 @@
       "bw": 0.44,
       "bottom": 0.7508,
       "photoFrac": 0.7692
-    }
+    },
+    "smokeMask": "/images/reve-paradoxe-smoke.png?v=1"
   },
   {
     "id": "noir-prestige",
@@ -65,7 +67,8 @@
       "bw": 0.4644,
       "bottom": 0.7512,
       "photoFrac": 0.7969
-    }
+    },
+    "smokeMask": "/images/noir-prestige-smoke.png?v=1"
   },
   {
     "id": "rouge-absolu",
@@ -88,7 +91,8 @@
       "bw": 0.4572,
       "bottom": 0.7504,
       "photoFrac": 0.7673
-    }
+    },
+    "smokeMask": "/images/rouge-absolu-smoke.png?v=1"
   },
   {
     "id": "bleu-eternel",
@@ -110,6 +114,7 @@
       "bw": 0.464,
       "bottom": 0.7508,
       "photoFrac": 0.7677
-    }
+    },
+    "smokeMask": "/images/bleu-eternel-smoke.png?v=1"
   }
 ]
