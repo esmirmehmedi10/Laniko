@@ -1,23 +1,37 @@
 [
   {
-    "id": "mug-classic",
-    "name": "Classic Ceramic Mug",
-    "description": "350 ml handmade-look ceramic mug, dishwasher safe.",
-    "price": 14.9,
-    "image": "https://placehold.co/600x600/f3ede4/5a4a3a?text=Mug"
+    "id": "blanc-royal",
+    "name": "Blanc Royal",
+    "description": "Extrait de Parfum, 50 ml. Creamy white rose and orchid resting on warm Bourbon vanilla and golden resin. Soft, luminous and quietly regal.",
+    "price": 150,
+    "image": "/images/blanc-royal.jpg"
   },
   {
-    "id": "tote-canvas",
-    "name": "Canvas Tote Bag",
-    "description": "Sturdy organic cotton tote with an inner pocket.",
-    "price": 19.0,
-    "image": "https://placehold.co/600x600/e4ecf3/3a4a5a?text=Tote"
+    "id": "reve-paradoxe",
+    "name": "Rêve Paradoxé",
+    "description": "Extrait de Parfum, 50 ml. Sparkling red grapefruit meets velvety rose and a thread of saffron. Fresh and dark at once, a dream that contradicts itself.",
+    "price": 150,
+    "image": "/images/reve-paradoxe.jpg"
   },
   {
-    "id": "notebook-a5",
-    "name": "A5 Notebook",
-    "description": "120 pages of recycled paper, dotted grid.",
-    "price": 9.5,
-    "image": "https://placehold.co/600x600/ecf3e4/4a5a3a?text=Notebook"
+    "id": "noir-prestige",
+    "name": "Noir Prestige",
+    "description": "Extrait de Parfum, 50 ml. Smoked sandalwood, black pepper and dark vanilla over glowing amber. Deep, confident and made for the evening.",
+    "price": 150,
+    "image": "/images/noir-prestige.jpg"
+  },
+  {
+    "id": "rouge-absolu",
+    "name": "Rouge Absolu",
+    "description": "Extrait de Parfum, 50 ml. Crimson rose and ripe raspberry wrapped in precious woods and amber. Bold, velvety and unapologetically passionate.",
+    "price": 150,
+    "image": "/images/rouge-absolu.jpg"
+  },
+  {
+    "id": "bleu-eternel",
+    "name": "Bleu Éternel",
+    "description": "Extrait de Parfum, 50 ml. Lavender and white jasmine with a hint of dark berries, settling into smooth wood and amber. Calm, deep and timeless.",
+    "price": 150,
+    "image": "/images/bleu-eternel.jpg"
   }
 ]

@@ -63,8 +63,11 @@ export async function onRequestPost({ request, env }) {
     if (product.description) {
       params.set(`${p}[price_data][product_data][description]`, product.description);
     }
-    if (product.image && product.image.startsWith("https://")) {
-      params.set(`${p}[price_data][product_data][images][0]`, product.image);
+    if (product.image) {
+      const imageUrl = product.image.startsWith("/") ? origin + product.image : product.image;
+      if (imageUrl.startsWith("https://")) {
+        params.set(`${p}[price_data][product_data][images][0]`, imageUrl);
+      }
     }
     n++;
   }
