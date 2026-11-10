@@ -171,14 +171,15 @@ function makeStudioEnvironment() {
   // Polished metal only looks like metal when it reflects dark areas next to bright, sharp-edged
   // lights. So: a dark studio with tall strip lights. Seen on a cylinder (the cap), the dark front
   // becomes a dark vertical band with bright bands on each side, like in the product photos.
-  panel(2.2, 11, new THREE.Color(12, 11, 9), [5.2, 2, 7]);      // front-right strip (wide, bright)
-  panel(1.2, 11, new THREE.Color(9, 9.4, 10.5), [-4.6, 2, 7.4]); // front-left strip (narrow, cool)
-  panel(1.6, 11, new THREE.Color(7, 6.4, 5.4), [-9, 2, 2.5]);   // left side strip
-  panel(1.6, 11, new THREE.Color(8, 7.2, 6), [9, 2, 2.5]);      // right side strip
+  panel(2.2, 11, new THREE.Color(7, 6.4, 4.8), [5.2, 2, 7]);      // front-right strip (wide, bright)
+  panel(1.2, 11, new THREE.Color(5.5, 5.4, 5.4), [-4.6, 2, 7.4]); // front-left strip (narrow, cool)
+  panel(1.6, 11, new THREE.Color(4.5, 4, 3.2), [-9, 2, 2.5]);   // left side strip
+  panel(1.6, 11, new THREE.Color(5, 4.4, 3.4), [9, 2, 2.5]);      // right side strip
   panel(2, 11, new THREE.Color(9, 8, 6.6), [7.5, 3, -4]);       // rim strip, right-back
   panel(2, 11, new THREE.Color(8, 7.4, 6.6), [-5, 3, -8]);      // rim strip, left-back
   panel(11, 5, new THREE.Color(6, 5.7, 5.2), [0, 9, 1]);        // overhead softbox (top faces)
-  panel(1.4, 1.4, new THREE.Color(20, 19, 17), [4.5, 6, 6]);    // small hot spot for sparkle
+  panel(1.4, 1.4, new THREE.Color(14, 12.5, 10), [4.5, 6, 6]);
+  panel(18, 9, new THREE.Color(0.55, 0.38, 0.17), [0, 1.5, 9.5]);  // broad warm fill: keeps the gold a rich mid-tone    // small hot spot for sparkle
   return env;
 }
 
@@ -230,18 +231,18 @@ function detailedCapProfile() {
 }
 
 // Bottle stands on y = 0 and is about 2.74 units tall.
-function buildBottle(maps) {
+function buildBottle(maps, product) {
   const g = new THREE.Group();
 
   const glass = new THREE.MeshPhysicalMaterial({
-    color: 0xf1e8d4,
+    color: new THREE.Color(product.bodyColor || "#f1e8d4"),
     roughness: 0.22,
     metalness: 0,
     clearcoat: 1,
     clearcoatRoughness: 0.03,
     ior: 1.5,
-    sheen: 0.35,
-    sheenColor: new THREE.Color(0xfff3dc),
+    sheen: 0.12,
+    sheenColor: new THREE.Color(0xf3d6b8),
     sheenRoughness: 0.45,
   });
   const body = new THREE.Mesh(new RoundedBoxGeometry(1.5, 1.9, 1.1, 16, 0.13), glass);
@@ -250,7 +251,8 @@ function buildBottle(maps) {
 
   const label = new THREE.Mesh(
     new THREE.PlaneGeometry(1.1, 1.6),
-    new THREE.MeshStandardMaterial({
+    new THREE.MeshPhysicalMaterial({
+      specularIntensity: 0.25, // paper is matt: keeps dark labels properly dark
       map: maps.map,
       metalnessMap: maps.orm,
       roughnessMap: maps.orm,
@@ -268,12 +270,12 @@ function buildBottle(maps) {
   g.add(label);
 
   const gold = new THREE.MeshStandardMaterial({
-    color: 0xf2c870,
+    color: 0xe39a2c,
     metalness: 1,
     roughness: 0.075, // mirror-polished
-    envMapIntensity: 1.8,
+    envMapIntensity: 1.6,
   });
-  const goldSoft = new THREE.MeshStandardMaterial({ color: 0xd9b25e, metalness: 1, roughness: 0.2, envMapIntensity: 1.5 });
+  const goldSoft = new THREE.MeshStandardMaterial({ color: 0xc88a2a, metalness: 1, roughness: 0.2, envMapIntensity: 1.2 });
   const black = new THREE.MeshStandardMaterial({ color: 0x0b0a09, roughness: 0.55, metalness: 0 });
 
   const collar = new THREE.Mesh(new THREE.LatheGeometry(capProfile(0.38, 0.15, 0.02, 4), 128), goldSoft);
@@ -284,6 +286,34 @@ function buildBottle(maps) {
   cap.position.y = 2.09;
   g.add(collar, gap, cap);
   return g;
+}
+
+// Mirror image of the bottle for the glossy floor. Same meshes, mirrored below the floor line, each
+// material fading out with distance from the floor so it dissolves like a reflection on polished marble.
+function makeReflection(bottle, U) {
+  const mirror = new THREE.Group();
+  mirror.scale.y = -1;
+  const clone = bottle.clone(true);
+  clone.traverse((o) => {
+    if (!o.isMesh) return;
+    const m = o.material.clone();
+    m.transparent = true;
+    m.depthWrite = false;
+    m.onBeforeCompile = (sh) => {
+      Object.assign(sh.uniforms, U);
+      sh.vertexShader = sh.vertexShader
+        .replace("void main() {", "varying float vRefH;\nvoid main() {")
+        .replace("#include <begin_vertex>", "#include <begin_vertex>\n  vRefH = (modelMatrix * vec4(transformed, 1.0)).y;");
+      sh.fragmentShader = sh.fragmentShader
+        .replace("void main() {", "uniform float uStrength;\nuniform float uReach;\nuniform float uFloorY;\nuniform float uZoom;\nvarying float vRefH;\nvoid main() {")
+        .replace("#include <dithering_fragment>", "float rf = smoothstep(uReach, 0.0, (uFloorY - vRefH) / uZoom);\n  gl_FragColor.a *= uStrength * rf * rf;\n  #include <dithering_fragment>");
+    };
+    m.customProgramCacheKey = () => "reflect";
+    o.material = m;
+    o.renderOrder = 1;
+  });
+  mirror.add(clone);
+  return mirror;
 }
 
 
@@ -342,6 +372,7 @@ export function createBottleViewer(container, product) {
   scene.add(anchor);
   const rig = new THREE.Group();    // yaw / pitch
   anchor.add(rig);
+  const reflU = { uStrength: { value: 0.5 }, uReach: { value: 1.35 }, uFloorY: { value: 0 }, uZoom: { value: 1 } };
   let envTexture = null, pmrem = null, envScene = null;
   let built = false, plateReady = false, started = false, shown = false;
   let W = 1, H = 1, kPx = 100;
@@ -414,7 +445,9 @@ export function createBottleViewer(container, product) {
       scene.add(key, rim, new THREE.AmbientLight(0xffffff, 0.5));
 
       const maps = makeLabelMaps(product, renderer.capabilities.getMaxAnisotropy(), renderer.capabilities.maxTextureSize);
-      rig.add(buildBottle(maps));
+      const bottleModel = buildBottle(maps, product);
+      rig.add(bottleModel);
+      rig.add(makeReflection(bottleModel, reflU));
 
       // soft contact shadow behind the foot of the bottle
       const blobTex = radialTexture([[0, "rgba(0,0,0,0.7)"], [0.5, "rgba(0,0,0,0.32)"], [1, "rgba(0,0,0,0)"]]);
@@ -500,6 +533,8 @@ export function createBottleViewer(container, product) {
       rig.rotation.x = interacted ? pitch : 0;
       zoom += (zoomTarget - zoom) * Math.min(1, dt * 8);
       anchor.scale.setScalar(zoom);
+      reflU.uFloorY.value = anchor.position.y;
+      reflU.uZoom.value = zoom;
 
       renderer.clear();
       renderer.render(scene, camera);
