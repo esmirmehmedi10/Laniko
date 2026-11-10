@@ -1,17 +1,19 @@
 (() => {
   const CART_KEY = "shop-cart-v1";
+  const WISH_KEY = "shop-wishlist-v1";
   const fmt = (n) => new Intl.NumberFormat("en-LU", { style: "currency", currency: "EUR" }).format(n);
   const $ = (id) => document.getElementById(id);
 
-  let products = [];
-  let cart = load(); // { [productId]: quantity }
+  const loadJSON = (key, fallback) => {
+    try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch { return fallback; }
+  };
+  const saveJSON = (key, value) => {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+  };
 
-  function load() {
-    try { return JSON.parse(localStorage.getItem(CART_KEY)) || {}; } catch { return {}; }
-  }
-  function save() {
-    try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch {}
-  }
+  let products = [];
+  let cart = loadJSON(CART_KEY, {}); // { [productId]: quantity }
+  let wish = loadJSON(WISH_KEY, []); // [productId, ...]
   const byId = (id) => products.find((p) => p.id === id);
 
   function esc(s) {
@@ -31,21 +33,108 @@
     });
   }
 
-  function renderProducts() {
-    $("products").innerHTML = products.map((p) => `
+  // ---- toast ----
+  let toastTimer;
+  function toast(msg) {
+    const el = $("toast");
+    el.textContent = msg;
+    el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.hidden = true; }, 1800);
+  }
+
+  // ---- pages (hash routing: #/perfumes, #/top-sellers, #/wishlist) ----
+  const ROUTES = {
+    "perfumes": {
+      title: "The Collection",
+      sub: "Extrait de Parfum · 50 ml",
+      list: () => products,
+      empty: "No perfumes to show yet.",
+    },
+    "top-sellers": {
+      title: "Top sellers",
+      sub: "The fragrances our customers come back for.",
+      list: () => products.filter((p) => p.rank).sort((a, b) => a.rank - b.rank),
+      empty: "Our top sellers will appear here soon.",
+    },
+    "wishlist": {
+      title: "Your wishlist",
+      sub: "Saved on this device.",
+      list: () => wish.map(byId).filter(Boolean),
+      empty: "Nothing saved yet. Tap the heart on any perfume to keep it here.",
+    },
+  };
+
+  function currentRoute() {
+    const m = location.hash.match(/^#\/([\w-]+)/);
+    return m && ROUTES[m[1]] ? m[1] : "perfumes";
+  }
+
+  const HEART = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>';
+
+  function cardHTML(p, route) {
+    const liked = wish.includes(p.id);
+    const rank = route === "top-sellers" && p.rank ? `<span class="rank" aria-label="Number ${p.rank}">${p.rank}</span>` : "";
+    return `
       <article class="card">
-        <button class="imgbtn" data-view="${esc(p.id)}" aria-label="View ${esc(p.name)} in 3D">
-          <img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy">
-          <span class="badge3d">3D</span>
-        </button>
+        <div class="media">
+          <button class="imgbtn" data-view="${esc(p.id)}" aria-label="View ${esc(p.name)} in 3D">
+            <img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy">
+            <span class="badge3d">3D</span>
+          </button>
+          <button class="heart${liked ? " on" : ""}" data-wish="${esc(p.id)}" aria-pressed="${liked}" aria-label="Save ${esc(p.name)} to wishlist">${HEART}</button>
+          ${rank}
+        </div>
         <div class="body">
           <h3>${esc(p.name)}</h3>
           <p>${esc(p.description)}</p>
           <span class="price">${fmt(p.price)}</span>
-          <button data-add="${esc(p.id)}">Add to cart</button>
+          <button class="add" data-add="${esc(p.id)}">Add to cart</button>
         </div>
-      </article>`).join("");
+      </article>`;
+  }
+
+  function renderPage() {
+    const route = currentRoute();
+    const cfg = ROUTES[route];
+    document.querySelectorAll(".tabs a").forEach((a) => {
+      if (a.dataset.route === route) a.setAttribute("aria-current", "page");
+      else a.removeAttribute("aria-current");
+    });
+    $("page-title").textContent = cfg.title;
+    $("page-sub").textContent = cfg.sub;
+    const list = cfg.list();
+    if (!list.length) {
+      const cta = route === "wishlist" ? '<p><a class="link-btn" href="#/perfumes">Browse the collection</a></p>' : "";
+      $("products").innerHTML = `<div class="empty"><p>${esc(cfg.empty)}</p>${cta}</div>`;
+      return;
+    }
+    $("products").innerHTML = list.map((p) => cardHTML(p, route)).join("");
     watchImages($("products"));
+  }
+
+  // ---- wishlist ----
+  function updateWishUI() {
+    const el = $("tab-wish-count");
+    el.textContent = wish.length;
+    el.hidden = wish.length === 0;
+  }
+
+  function toggleWish(id) {
+    const i = wish.indexOf(id);
+    if (i >= 0) { wish.splice(i, 1); toast("Removed from wishlist"); }
+    else { wish.push(id); toast("Saved to wishlist"); }
+    saveJSON(WISH_KEY, wish);
+    updateWishUI();
+    if (currentRoute() === "wishlist") {
+      renderPage();
+    } else {
+      document.querySelectorAll("[data-wish]").forEach((b) => {
+        const on = wish.includes(b.dataset.wish);
+        b.classList.toggle("on", on);
+        b.setAttribute("aria-pressed", String(on));
+      });
+    }
   }
 
   // ---- 3D viewer ----
@@ -82,6 +171,7 @@
     document.body.style.overflow = "";
   }
 
+  // ---- cart ----
   function renderCart() {
     // Drop items that no longer exist in the catalog
     Object.keys(cart).forEach((id) => { if (!byId(id)) delete cart[id]; });
@@ -107,7 +197,7 @@
         }).join("")
       : "<p class='small'>Your cart is empty.</p>";
     watchImages($("cart-items"));
-    save();
+    saveJSON(CART_KEY, cart);
   }
 
   function change(id, delta) {
@@ -144,10 +234,12 @@
     el.hidden = false;
   }
 
+  // ---- events ----
   document.addEventListener("click", (e) => {
     const t = e.target.closest("button");
     if (!t) return;
     if (t.dataset.view) openViewer(t.dataset.view);
+    else if (t.dataset.wish) toggleWish(t.dataset.wish);
     else if (t.dataset.add) { change(t.dataset.add, 1); $("cart").hidden = false; }
     else if (t.dataset.inc) change(t.dataset.inc, 1);
     else if (t.dataset.dec) change(t.dataset.dec, -1);
@@ -162,14 +254,25 @@
     $("cart").hidden = false;
   });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("viewer").hidden) closeViewer(); });
+  window.addEventListener("hashchange", () => {
+    $("cart").hidden = true;
+    renderPage();
+    window.scrollTo(0, 0);
+  });
 
   async function init() {
     const params = new URLSearchParams(location.search);
     if (params.get("canceled")) showStatus("Checkout canceled. Your cart is still here.", true);
+    updateWishUI();
+    $("page-title").textContent = ROUTES[currentRoute()].title;
     try {
       const res = await fetch("/products.json", { cache: "no-cache" });
       products = await res.json();
-      renderProducts();
+      // forget wishlist entries for products that no longer exist
+      wish = wish.filter((id) => byId(id));
+      saveJSON(WISH_KEY, wish);
+      updateWishUI();
+      renderPage();
     } catch {
       $("products").textContent = "Could not load products.";
     }

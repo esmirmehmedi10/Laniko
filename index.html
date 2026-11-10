@@ -3,7 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>My Shop</title>
+  <title>Laniko | Extrait de Parfum</title>
+  <meta name="description" content="Laniko extraits de parfum, 50 ml. Discover the collection, our top sellers, and save your favourites.">
+  <meta name="theme-color" content="#fafaf8">
+  <meta property="og:title" content="Laniko | Extrait de Parfum">
+  <meta property="og:description" content="Five extraits de parfum, 50 ml.">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&display=swap">
   <link rel="stylesheet" href="/style.css">
   <script type="importmap">
   {
@@ -15,14 +23,27 @@
   </script>
 </head>
 <body>
-  <header class="top">
-    <h1>My Shop</h1>
-    <button id="cart-btn" class="cart-btn" aria-label="Open cart">
-      Cart <span id="cart-count">0</span>
-    </button>
-  </header>
+  <div class="chrome">
+    <header class="top">
+      <a href="#/perfumes" class="brand" aria-label="Laniko, home">
+        <img src="/logo.svg" alt="Laniko" width="21" height="52">
+      </a>
+      <button id="cart-btn" class="cart-btn" aria-label="Open cart">
+        Cart <span id="cart-count">0</span>
+      </button>
+    </header>
+    <nav class="tabs" aria-label="Pages">
+      <a href="#/perfumes" data-route="perfumes">Perfumes</a>
+      <a href="#/top-sellers" data-route="top-sellers">Top sellers</a>
+      <a href="#/wishlist" data-route="wishlist">Wishlist<span id="tab-wish-count" class="tab-count" hidden></span></a>
+    </nav>
+  </div>
 
   <main>
+    <section class="page-head">
+      <h2 id="page-title"></h2>
+      <p id="page-sub"></p>
+    </section>
     <p id="status" class="notice" hidden></p>
     <section id="products" class="grid" aria-live="polite">Loading…</section>
   </main>
@@ -53,7 +74,12 @@
     </div>
   </div>
 
-  <footer class="foot">© My Shop</footer>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <footer class="foot">
+    <img src="/logo.svg" alt="" width="14" height="35" class="foot-logo">
+    <p>© Laniko · Extrait de Parfum</p>
+  </footer>
   <script src="/app.js"></script>
 </body>
 </html>
