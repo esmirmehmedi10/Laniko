@@ -29,7 +29,7 @@ const LOGO_PATH = "M7.62 674L66 671.27L103.11 585L100 582L9 582L5.57 579C5.56 57
 const LOGO_W = 631, LOGO_H = 1595;
 let logoPath2D = null;
 
-// Label texture: 1600 x 2327 (same proportions as the printed label).
+// Label texture: 2400 x 3491 on devices that allow it (else 1600 x 2327) (same proportions as the printed label).
 const LABEL_W = 1600, LABEL_H = 2327;
 
 // mode "color": the visible label.
@@ -107,13 +107,14 @@ function drawLabel(product, mode, scale = 1) {
   return c;
 }
 
-function makeLabelMaps(product, anisotropy) {
-  const map = new THREE.CanvasTexture(drawLabel(product, "color"));
+function makeLabelMaps(product, anisotropy, maxTex = 4096) {
+  const big = maxTex >= 4096 ? 1.5 : 1;
+  const map = new THREE.CanvasTexture(drawLabel(product, "color", big));
   map.colorSpace = THREE.SRGBColorSpace;
   map.anisotropy = anisotropy;
-  const orm = new THREE.CanvasTexture(drawLabel(product, "orm", 0.5));
+  const orm = new THREE.CanvasTexture(drawLabel(product, "orm", 0.5 * big));
   orm.anisotropy = anisotropy;
-  const emit = new THREE.CanvasTexture(drawLabel(product, "emit", 0.5));
+  const emit = new THREE.CanvasTexture(drawLabel(product, "emit", 0.5 * big));
   emit.colorSpace = THREE.SRGBColorSpace;
   emit.anisotropy = anisotropy;
   return { map, orm, emit };
@@ -243,7 +244,7 @@ function buildBottle(maps) {
     sheenColor: new THREE.Color(0xfff3dc),
     sheenRoughness: 0.45,
   });
-  const body = new THREE.Mesh(new RoundedBoxGeometry(1.5, 1.9, 1.1, 12, 0.13), glass);
+  const body = new THREE.Mesh(new RoundedBoxGeometry(1.5, 1.9, 1.1, 16, 0.13), glass);
   body.position.y = 0.95;
   g.add(body);
 
@@ -275,11 +276,11 @@ function buildBottle(maps) {
   const goldSoft = new THREE.MeshStandardMaterial({ color: 0xd9b25e, metalness: 1, roughness: 0.2, envMapIntensity: 1.5 });
   const black = new THREE.MeshStandardMaterial({ color: 0x0b0a09, roughness: 0.55, metalness: 0 });
 
-  const collar = new THREE.Mesh(new THREE.LatheGeometry(capProfile(0.38, 0.15, 0.02, 4), 64), goldSoft);
+  const collar = new THREE.Mesh(new THREE.LatheGeometry(capProfile(0.38, 0.15, 0.02, 4), 128), goldSoft);
   collar.position.y = 1.9;
   const gap = new THREE.Mesh(new THREE.CylinderGeometry(0.47, 0.47, 0.035, 64), black);
   gap.position.y = 2.0725;
-  const cap = new THREE.Mesh(new THREE.LatheGeometry(detailedCapProfile(), 160), gold);
+  const cap = new THREE.Mesh(new THREE.LatheGeometry(detailedCapProfile(), 256), gold);
   cap.position.y = 2.09;
   g.add(collar, gap, cap);
   return g;
@@ -412,7 +413,7 @@ export function createBottleViewer(container, product) {
       rim.position.set(5, 3, -4);
       scene.add(key, rim, new THREE.AmbientLight(0xffffff, 0.5));
 
-      const maps = makeLabelMaps(product, renderer.capabilities.getMaxAnisotropy());
+      const maps = makeLabelMaps(product, renderer.capabilities.getMaxAnisotropy(), renderer.capabilities.maxTextureSize);
       rig.add(buildBottle(maps));
 
       // soft contact shadow behind the foot of the bottle
@@ -515,7 +516,7 @@ export function createBottleViewer(container, product) {
       if (bg) {
         bg.draw(0);
         bgCanvas.style.visibility = "visible";
-        if (!reduceMotion) bg.start();
+        bg.start(); // the smoke is the point of this view; it is slow and gentle, so it always runs
       }
     }
   });

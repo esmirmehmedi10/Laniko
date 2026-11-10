@@ -30,17 +30,22 @@ void main() {
   vec2 uv = vUv;
   float m = texture(uMask, uv).r;
   // slowly wandering direction field: mostly upwards, swirling a little sideways
-  vec2 n1 = texture(uNoise, uv * vec2(1.4, 2.0) + vec2(uTime * 0.006, uTime * 0.010)).rg - 0.5;
-  vec2 n2 = texture(uNoise, uv * vec2(3.1, 4.3) + vec2(uTime * -0.015, uTime * 0.021)).rg - 0.5;
-  vec2 flow = vec2(n1.x * 2.0 + n2.x * 0.8, 0.45 + n1.y * 1.0 + n2.y * 0.5) * uAmp * m;
+  vec2 n1 = texture(uNoise, uv * vec2(1.4, 2.0) + vec2(uTime * 0.012, uTime * 0.020)).rg - 0.5;
+  vec2 n2 = texture(uNoise, uv * vec2(3.1, 4.3) + vec2(uTime * -0.030, uTime * 0.042)).rg - 0.5;
+  vec2 flow = vec2(n1.x * 2.0 + n2.x * 0.8, 0.55 + n1.y * 1.0 + n2.y * 0.5) * uAmp * m;
+  // continuously evolving curl-like wobble so the wisps visibly twist and billow
+  vec2 w = texture(uNoise, uv * vec2(2.2, 3.0) + vec2(uTime * 0.035, -uTime * 0.05)).rg - 0.5;
+  vec2 w2 = texture(uNoise, uv * vec2(5.0, 6.5) + vec2(-uTime * 0.06, uTime * 0.075)).rg - 0.5;
+  vec2 wob = (w * 0.05 + w2 * 0.018) * m;
   // two phases, cross-faded, so the motion never visibly resets
-  float p1 = fract(uTime * 0.085);
-  float p2 = fract(uTime * 0.085 + 0.5);
+  float sp = 0.14;
+  float p1 = fract(uTime * sp);
+  float p2 = fract(uTime * sp + 0.5);
   float w1 = 1.0 - abs(2.0 * p1 - 1.0);
-  vec3 a = texture(uPlate, uv - flow * p1).rgb;
-  vec3 b = texture(uPlate, uv - flow * p2).rgb;
+  vec3 a = texture(uPlate, uv - flow * p1 + wob).rgb;
+  vec3 b = texture(uPlate, uv - flow * p2 + wob).rgb;
   vec3 c = mix(b, a, w1);
-  c *= 1.0 + 0.06 * m * sin(uTime * 0.7 + n1.x * 9.0);
+  c *= 1.0 + 0.10 * m * sin(uTime * 0.9 + n1.x * 9.0);
   outColor = vec4(c, 1.0);
 }`;
 
@@ -82,7 +87,7 @@ function makeNoise(size = 256) {
   return data;
 }
 
-export function createSmokeBackground(canvas, plateImg, maskImg, { amp = 0.05 } = {}) {
+export function createSmokeBackground(canvas, plateImg, maskImg, { amp = 0.16 } = {}) {
   let gl;
   try {
     gl = canvas.getContext("webgl2", { alpha: false, antialias: false, premultipliedAlpha: false, preserveDrawingBuffer: false });
