@@ -149,7 +149,7 @@ function makeStudioEnvironment() {
   const dome = new THREE.SphereGeometry(14, 48, 24);
   const cols = [];
   const p = dome.attributes.position;
-  const bottom = new THREE.Color(0x0d0906), mid = new THREE.Color(0x2c2218), top = new THREE.Color(0x5a4c3a);
+  const bottom = new THREE.Color(0x060403), mid = new THREE.Color(0x14100b), top = new THREE.Color(0x2a2118);
   for (let i = 0; i < p.count; i++) {
     const t = (p.getY(i) / 14 + 1) / 2; // 0 bottom .. 1 top
     const c = t < 0.5 ? bottom.clone().lerp(mid, t * 2) : mid.clone().lerp(top, (t - 0.5) * 2);
@@ -167,13 +167,17 @@ function makeStudioEnvironment() {
     m.lookAt(0, 0, 0);
     env.add(m);
   };
-  panel(7, 9, new THREE.Color(10, 9, 7.6), [6, 4, 6]);        // big warm key
-  panel(2.2, 10, new THREE.Color(7, 7.4, 8.6), [-6.5, 3, 5]);  // tall cool strip, left
-  panel(2, 10, new THREE.Color(9, 8, 6.6), [7.5, 3, -3]);      // rim strip, right-back
-  panel(2, 10, new THREE.Color(8, 7.4, 6.6), [-5, 3, -7.5]);   // rim strip, left-back
-  panel(10, 4, new THREE.Color(5, 4.8, 4.4), [0, 9, 0]);       // overhead
-  panel(8, 2, new THREE.Color(2.5, 2.3, 2), [0, 0.8, 8]);      // low front fill
-  panel(1.2, 1.2, new THREE.Color(18, 17, 15), [3, 5, 8]);     // hot spot for sparkle
+  // Polished metal only looks like metal when it reflects dark areas next to bright, sharp-edged
+  // lights. So: a dark studio with tall strip lights. Seen on a cylinder (the cap), the dark front
+  // becomes a dark vertical band with bright bands on each side, like in the product photos.
+  panel(2.2, 11, new THREE.Color(12, 11, 9), [5.2, 2, 7]);      // front-right strip (wide, bright)
+  panel(1.2, 11, new THREE.Color(9, 9.4, 10.5), [-4.6, 2, 7.4]); // front-left strip (narrow, cool)
+  panel(1.6, 11, new THREE.Color(7, 6.4, 5.4), [-9, 2, 2.5]);   // left side strip
+  panel(1.6, 11, new THREE.Color(8, 7.2, 6), [9, 2, 2.5]);      // right side strip
+  panel(2, 11, new THREE.Color(9, 8, 6.6), [7.5, 3, -4]);       // rim strip, right-back
+  panel(2, 11, new THREE.Color(8, 7.4, 6.6), [-5, 3, -8]);      // rim strip, left-back
+  panel(11, 5, new THREE.Color(6, 5.7, 5.2), [0, 9, 1]);        // overhead softbox (top faces)
+  panel(1.4, 1.4, new THREE.Color(20, 19, 17), [4.5, 6, 6]);    // small hot spot for sparkle
   return env;
 }
 
@@ -262,15 +266,13 @@ function buildBottle(maps) {
   label.position.set(0, 0.88, 0.554);
   g.add(label);
 
-  const gold = new THREE.MeshPhysicalMaterial({
-    color: 0xf6d27c,
+  const gold = new THREE.MeshStandardMaterial({
+    color: 0xf2c870,
     metalness: 1,
-    roughness: 0.11,
-    clearcoat: 0.25,
-    clearcoatRoughness: 0.08,
-    envMapIntensity: 1.3,
+    roughness: 0.075, // mirror-polished
+    envMapIntensity: 1.8,
   });
-  const goldSoft = new THREE.MeshStandardMaterial({ color: 0xd9b25e, metalness: 1, roughness: 0.28, envMapIntensity: 1.1 });
+  const goldSoft = new THREE.MeshStandardMaterial({ color: 0xd9b25e, metalness: 1, roughness: 0.2, envMapIntensity: 1.5 });
   const black = new THREE.MeshStandardMaterial({ color: 0x0b0a09, roughness: 0.55, metalness: 0 });
 
   const collar = new THREE.Mesh(new THREE.LatheGeometry(capProfile(0.38, 0.15, 0.02, 4), 64), goldSoft);
@@ -404,11 +406,11 @@ export function createBottleViewer(container, product) {
       envTexture = pmrem.fromScene(envScene, 0.03).texture;
       scene.environment = envTexture;
 
-      const key = new THREE.DirectionalLight(0xfff1d6, 1.4);
+      const key = new THREE.DirectionalLight(0xfff1d6, 2.0);
       key.position.set(-3, 5, 7);
       const rim = new THREE.DirectionalLight(new THREE.Color(theme.smoke), 1.1);
       rim.position.set(5, 3, -4);
-      scene.add(key, rim, new THREE.AmbientLight(0xffffff, 0.25));
+      scene.add(key, rim, new THREE.AmbientLight(0xffffff, 0.5));
 
       const maps = makeLabelMaps(product, renderer.capabilities.getMaxAnisotropy());
       rig.add(buildBottle(maps));

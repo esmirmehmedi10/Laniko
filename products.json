@@ -4,7 +4,7 @@
     "name": "Blanc Royal",
     "description": "Extrait de Parfum, 50 ml. Creamy white rose and orchid resting on warm Bourbon vanilla and golden resin. Soft, luminous and quietly regal.",
     "price": 150,
-    "image": "/images/blanc-royal.jpg?v=3",
+    "image": "/images/blanc-royal.jpg?v=4",
     "labelColor": "#efe3c8",
     "labelInk": "#b8924a",
     "theme": {
@@ -13,7 +13,7 @@
       "smoke": "#f0d9a8"
     },
     "rank": 1,
-    "plate": "/images/blanc-royal-bg.jpg?v=2",
+    "plate": "/images/blanc-royal-bg.jpg?v=3",
     "bottle": {
       "ar": 0.5956,
       "cx": 0.5197,
@@ -21,14 +21,14 @@
       "bottom": 0.7524,
       "photoFrac": 0.7931
     },
-    "smokeMask": "/images/blanc-royal-smoke.png?v=1"
+    "smokeMask": "/images/blanc-royal-smoke.png?v=2"
   },
   {
     "id": "reve-paradoxe",
     "name": "Rêve Paradoxé",
     "description": "Extrait de Parfum, 50 ml. Sparkling red grapefruit meets velvety rose and a thread of saffron. Fresh and dark at once, a dream that contradicts itself.",
     "price": 150,
-    "image": "/images/reve-paradoxe.jpg?v=3",
+    "image": "/images/reve-paradoxe.jpg?v=4",
     "labelColor": "#0f4a2e",
     "labelInk": "#d9b96a",
     "theme": {
@@ -36,7 +36,7 @@
       "glow": "#1d6b45",
       "smoke": "#8fc7a8"
     },
-    "plate": "/images/reve-paradoxe-bg.jpg?v=2",
+    "plate": "/images/reve-paradoxe-bg.jpg?v=3",
     "bottle": {
       "ar": 0.6154,
       "cx": 0.5025,
@@ -44,14 +44,14 @@
       "bottom": 0.7508,
       "photoFrac": 0.7692
     },
-    "smokeMask": "/images/reve-paradoxe-smoke.png?v=1"
+    "smokeMask": "/images/reve-paradoxe-smoke.png?v=2"
   },
   {
     "id": "noir-prestige",
     "name": "Noir Prestige",
     "description": "Extrait de Parfum, 50 ml. Smoked sandalwood, black pepper and dark vanilla over glowing amber. Deep, confident and made for the evening.",
     "price": 150,
-    "image": "/images/noir-prestige.jpg?v=3",
+    "image": "/images/noir-prestige.jpg?v=4",
     "labelColor": "#0b0b0b",
     "labelInk": "#d9b96a",
     "theme": {
@@ -60,7 +60,7 @@
       "smoke": "#a08a62"
     },
     "rank": 2,
-    "plate": "/images/noir-prestige-bg.jpg?v=2",
+    "plate": "/images/noir-prestige-bg.jpg?v=3",
     "bottle": {
       "ar": 0.5969,
       "cx": 0.4908,
@@ -68,14 +68,14 @@
       "bottom": 0.7512,
       "photoFrac": 0.7969
     },
-    "smokeMask": "/images/noir-prestige-smoke.png?v=1"
+    "smokeMask": "/images/noir-prestige-smoke.png?v=2"
   },
   {
     "id": "rouge-absolu",
     "name": "Rouge Absolu",
     "description": "Extrait de Parfum, 50 ml. Crimson rose and ripe raspberry wrapped in precious woods and amber. Bold, velvety and unapologetically passionate.",
     "price": 150,
-    "image": "/images/rouge-absolu.jpg?v=3",
+    "image": "/images/rouge-absolu.jpg?v=4",
     "labelColor": "#6b0f1c",
     "labelInk": "#d9b96a",
     "theme": {
@@ -84,7 +84,7 @@
       "smoke": "#e89a9f"
     },
     "rank": 3,
-    "plate": "/images/rouge-absolu-bg.jpg?v=2",
+    "plate": "/images/rouge-absolu-bg.jpg?v=3",
     "bottle": {
       "ar": 0.5763,
       "cx": 0.4987,
@@ -92,14 +92,14 @@
       "bottom": 0.7504,
       "photoFrac": 0.7673
     },
-    "smokeMask": "/images/rouge-absolu-smoke.png?v=1"
+    "smokeMask": "/images/rouge-absolu-smoke.png?v=2"
   },
   {
     "id": "bleu-eternel",
     "name": "Bleu Éternel",
     "description": "Extrait de Parfum, 50 ml. Lavender and white jasmine with a hint of dark berries, settling into smooth wood and amber. Calm, deep and timeless.",
     "price": 150,
-    "image": "/images/bleu-eternel.jpg?v=3",
+    "image": "/images/bleu-eternel.jpg?v=4",
     "labelColor": "#0c2150",
     "labelInk": "#d9b96a",
     "theme": {
@@ -107,7 +107,7 @@
       "glow": "#1d3f8f",
       "smoke": "#8fa8e0"
     },
-    "plate": "/images/bleu-eternel-bg.jpg?v=2",
+    "plate": "/images/bleu-eternel-bg.jpg?v=3",
     "bottle": {
       "ar": 0.5769,
       "cx": 0.4933,
@@ -115,6 +115,6 @@
       "bottom": 0.7508,
       "photoFrac": 0.7677
     },
-    "smokeMask": "/images/bleu-eternel-smoke.png?v=1"
+    "smokeMask": "/images/bleu-eternel-smoke.png?v=2"
   }
 ]
