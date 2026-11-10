@@ -268,10 +268,20 @@
 
   // fetch the 3D code in the background once the page is idle, so opening a viewer is instant
   function warmViewer() {
-    const go = () => import("/viewer.js").catch(() => {});
+    const saver = navigator.connection && navigator.connection.saveData;
+    const go = () => {
+      import("/viewer.js").catch(() => {});
+      if (!saver) products.forEach((p) => { if (p.plate) { const im = new Image(); im.decoding = "async"; im.src = p.plate; } });
+    };
     if ("requestIdleCallback" in window) requestIdleCallback(go, { timeout: 4000 });
     else setTimeout(go, 2000);
   }
+  // start fetching a perfume's background as soon as a finger / pointer lands on its photo
+  document.addEventListener("pointerdown", (e) => {
+    const b = e.target.closest && e.target.closest("[data-view]");
+    const p = b && byId(b.dataset.view);
+    if (p && p.plate) { const im = new Image(); im.src = p.plate; }
+  }, { passive: true });
 
   async function init() {
     const params = new URLSearchParams(location.search);

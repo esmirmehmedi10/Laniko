@@ -1,19 +1,14 @@
 // 3D viewer (Three.js, loaded from a CDN through the import map in index.html).
 //
-// What happens when it opens:
-//   0.0s  the animated background is already there (CSS) and the WebGL background fades in over it
-//   ~0.1s the still life is built: bottle + this perfume's ingredients (roses, wood, fruit, ...)
-//   then  everything rises out of a glossy dark surface while spinning in, and light smoke starts
-//         curling up from the ingredients
-//   ~1.3s drag to rotate, pinch to zoom
+// The product photo is the background (a copy with the original bottle taken out, "plate"), gently
+// animated: drifting smoke, shimmering highlights, floating gold dust. Only the bottle is 3D. It is
+// placed exactly where the bottle stood in the photo, so opening the viewer looks like the photo
+// coming alive: the bottle turns once, then sways gently. Drag to rotate, pinch / wheel to zoom.
 //
-// Everything is generated in code (no model files): opal glass body, lathe-turned polished gold cap,
-// foil label, procedural roses / wood / fruit / berries / lavender / resin, soft shadows and a
-// reflection in the surface.
+// The bottle is generated in code (no model file): opal glass body, lathe-turned polished gold cap,
+// vector foil label with the Laniko logo.
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
-import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 const TAU = Math.PI * 2;
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
@@ -24,13 +19,6 @@ const hash3 = (x, y, z) => {
   const s = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453;
   return s - Math.floor(s);
 };
-function seeded(str) {
-  let h = 2166136261;
-  for (const ch of String(str)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
-  let s = h >>> 0 || 1;
-  return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
-}
-
 const DEFAULT_THEME = { bgDark: "#0b0907", glow: "#8a6a2f", smoke: "#d9b96a" };
 
 // ================================================================ label textures
@@ -47,11 +35,12 @@ const LABEL_W = 1600, LABEL_H = 2327;
 // mode "orm":   roughness (green) + metalness (blue): gold ink is shiny metal, the paper stays matte.
 // mode "emit":  ink only, on black. It lifts the ink a little so the text stays readable even where
 //               the metal would reflect a dark part of the studio.
-function drawLabel(product, mode) {
+function drawLabel(product, mode, scale = 1) {
   const W = LABEL_W, H = LABEL_H;
   const c = document.createElement("canvas");
-  c.width = W; c.height = H;
+  c.width = Math.round(W * scale); c.height = Math.round(H * scale);
   const g = c.getContext("2d");
+  g.scale(scale, scale);
   const serif = '"Cormorant Garamond", "Times New Roman", Georgia, serif';
   const BG = mode === "color" ? product.labelColor || "#efe3c8" : mode === "orm" ? "rgb(0,125,0)" : "#000";
   const INK = mode === "color" ? product.labelInk || "#d9b96a" : mode === "orm" ? "rgb(0,95,205)" : product.labelInk || "#d9b96a";
@@ -121,9 +110,9 @@ function makeLabelMaps(product, anisotropy) {
   const map = new THREE.CanvasTexture(drawLabel(product, "color"));
   map.colorSpace = THREE.SRGBColorSpace;
   map.anisotropy = anisotropy;
-  const orm = new THREE.CanvasTexture(drawLabel(product, "orm"));
+  const orm = new THREE.CanvasTexture(drawLabel(product, "orm", 0.5));
   orm.anisotropy = anisotropy;
-  const emit = new THREE.CanvasTexture(drawLabel(product, "emit"));
+  const emit = new THREE.CanvasTexture(drawLabel(product, "emit", 0.5));
   emit.colorSpace = THREE.SRGBColorSpace;
   emit.anisotropy = anisotropy;
   return { map, orm, emit };
@@ -149,40 +138,6 @@ function radialTexture(stops, size = 256) {
     g.fillRect(0, 0, size, size);
   });
 }
-
-// parametric surface: fn(u, v) -> [x, y, z], u and v in 0..1
-function gridGeo(nu, nv, fn) {
-  const pos = [], idx = [];
-  for (let i = 0; i <= nu; i++) for (let j = 0; j <= nv; j++) pos.push(...fn(i / nu, j / nv));
-  for (let i = 0; i < nu; i++) {
-    for (let j = 0; j < nv; j++) {
-      const a = i * (nv + 1) + j, b = a + 1, c = a + nv + 1, d = c + 1;
-      idx.push(a, c, b, b, c, d);
-    }
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-  g.setIndex(idx);
-  g.computeVertexNormals();
-  return g;
-}
-
-// copy of `base` moved by `matrix`, painted with a vertex colour (so many pieces merge into one mesh)
-function coloredPiece(base, matrix, color) {
-  const g = base.clone();
-  g.applyMatrix4(matrix);
-  const n = g.attributes.position.count;
-  const col = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) { col[i * 3] = color.r; col[i * 3 + 1] = color.g; col[i * 3 + 2] = color.b; }
-  g.setAttribute("color", new THREE.BufferAttribute(col, 3));
-  return g;
-}
-
-const at = (obj, x, z, yaw = 0, y = 0) => {
-  obj.position.set(x, y, z);
-  obj.rotation.y = yaw;
-  return obj;
-};
 
 // ================================================================ lighting environment
 
@@ -283,7 +238,7 @@ function buildBottle(maps) {
     sheenColor: new THREE.Color(0xfff3dc),
     sheenRoughness: 0.45,
   });
-  const body = new THREE.Mesh(new RoundedBoxGeometry(1.5, 1.9, 0.9, 12, 0.13), glass);
+  const body = new THREE.Mesh(new RoundedBoxGeometry(1.5, 1.9, 1.1, 12, 0.13), glass);
   body.position.y = 0.95;
   g.add(body);
 
@@ -303,7 +258,7 @@ function buildBottle(maps) {
       polygonOffsetUnits: -2,
     })
   );
-  label.position.set(0, 0.93, 0.452);
+  label.position.set(0, 0.88, 0.554);
   g.add(label);
 
   const gold = new THREE.MeshPhysicalMaterial({
@@ -317,462 +272,16 @@ function buildBottle(maps) {
   const goldSoft = new THREE.MeshStandardMaterial({ color: 0xd9b25e, metalness: 1, roughness: 0.28, envMapIntensity: 1.1 });
   const black = new THREE.MeshStandardMaterial({ color: 0x0b0a09, roughness: 0.55, metalness: 0 });
 
-  const collar = new THREE.Mesh(new THREE.LatheGeometry(capProfile(0.31, 0.15, 0.02, 4), 64), goldSoft);
+  const collar = new THREE.Mesh(new THREE.LatheGeometry(capProfile(0.38, 0.15, 0.02, 4), 64), goldSoft);
   collar.position.y = 1.9;
-  const gap = new THREE.Mesh(new THREE.CylinderGeometry(0.425, 0.425, 0.035, 64), black);
+  const gap = new THREE.Mesh(new THREE.CylinderGeometry(0.47, 0.47, 0.035, 64), black);
   gap.position.y = 2.0725;
   const cap = new THREE.Mesh(new THREE.LatheGeometry(detailedCapProfile(), 160), gold);
   cap.position.y = 2.09;
-  cap.scale.set(0.87, 1, 0.87); // keeps the cap inside the 0.9-deep body
   g.add(collar, gap, cap);
   return g;
 }
 
-// ================================================================ ingredients (props)
-
-function petalGeo(len, width) {
-  return gridGeo(7, 8, (u, v) => {
-    const s = Math.sin(Math.PI * Math.pow(u, 0.8));
-    const w = width * 0.5 * Math.pow(s, 0.8);
-    const z = (v * 2 - 1) * w;
-    const y = 0.35 * width * Math.pow(v * 2 - 1, 2) * s;
-    return [u * len, y, z];
-  });
-}
-
-function makeStarFlower(rand, { petals = 5, len = 0.3, width = 0.2, color = 0xfdfbf4, pitch = 0.45, center = 0xe8d27a } = {}) {
-  const g = new THREE.Group();
-  const mat = new THREE.MeshPhysicalMaterial({
-    color, roughness: 0.5, sheen: 0.8, sheenRoughness: 0.4, sheenColor: new THREE.Color(0xffffff),
-    side: THREE.DoubleSide, emissive: new THREE.Color(color), emissiveIntensity: 0.05,
-  });
-  for (let i = 0; i < petals; i++) {
-    const pivot = new THREE.Group();
-    pivot.rotation.y = (i / petals) * TAU + (rand() - 0.5) * 0.12;
-    const m = new THREE.Mesh(petalGeo(len, width), mat);
-    m.rotation.z = pitch + (rand() - 0.5) * 0.12;
-    pivot.add(m);
-    g.add(pivot);
-  }
-  const c = new THREE.Mesh(
-    new THREE.SphereGeometry(len * 0.13, 12, 8),
-    new THREE.MeshStandardMaterial({ color: center, roughness: 0.6 })
-  );
-  c.position.y = len * 0.1;
-  g.add(c);
-  return g;
-}
-
-// An open rose made of nested, scalloped petal cups (lathe shells with wavy rims).
-function makeRose(rand, color = 0xf3e7d3, size = 0.85) {
-  const g = new THREE.Group();
-  const mat = new THREE.MeshPhysicalMaterial({
-    color, roughness: 0.55, sheen: 1, sheenRoughness: 0.4,
-    sheenColor: new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.45),
-    side: THREE.DoubleSide, emissive: new THREE.Color(color), emissiveIntensity: 0.06,
-  });
-  const layers = [
-    { R: 0.055, H: 0.3, k: 3, f: 0.0 },
-    { R: 0.085, H: 0.32, k: 3, f: 0.05 },
-    { R: 0.12, H: 0.33, k: 4, f: 0.12 },
-    { R: 0.165, H: 0.32, k: 4, f: 0.25 },
-    { R: 0.215, H: 0.3, k: 5, f: 0.4 },
-    { R: 0.27, H: 0.26, k: 5, f: 0.6 },
-    { R: 0.33, H: 0.2, k: 6, f: 0.85 },
-  ];
-  layers.forEach((L, i) => {
-    const pts = [];
-    const n = 14;
-    for (let j = 0; j <= n; j++) {
-      const t = j / n;
-      const r = L.R * (0.28 + 0.72 * Math.sin((t * Math.PI) / 2)) + L.f * L.R * 0.6 * Math.pow(t, 2.6);
-      pts.push(new THREE.Vector2(r, t * L.H));
-    }
-    const geo = new THREE.LatheGeometry(pts, 56);
-    const pos = geo.attributes.position;
-    const phase = i * 2.399;
-    for (let v = 0; v < pos.count; v++) {
-      const x = pos.getX(v), y = pos.getY(v), z = pos.getZ(v);
-      const t = y / L.H;
-      const lobe = Math.cos(L.k * Math.atan2(z, x) + phase);
-      const s = 1 + 0.16 * t * t * lobe;
-      pos.setXYZ(v, x * s, y - 0.06 * L.H * Math.pow(t, 3) * (1 - lobe), z * s);
-    }
-    geo.computeVertexNormals();
-    const m = new THREE.Mesh(geo, mat);
-    m.position.y = -i * 0.012 + 0.09;
-    m.rotation.y = phase;
-    g.add(m);
-  });
-  g.scale.setScalar(size);
-  g.rotation.x = (rand() - 0.5) * 0.18;
-  g.rotation.z = (rand() - 0.5) * 0.18;
-  return g;
-}
-
-function scatterPetals(rand, count, color, x0, x1, z0, z1) {
-  const g = new THREE.Group();
-  const mat = new THREE.MeshPhysicalMaterial({
-    color, roughness: 0.55, sheen: 1, sheenRoughness: 0.4,
-    sheenColor: new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.4),
-    side: THREE.DoubleSide, emissive: new THREE.Color(color), emissiveIntensity: 0.05,
-  });
-  for (let i = 0; i < count; i++) {
-    const L = 0.22 * (0.8 + rand() * 0.5), W = 0.17 * (0.8 + rand() * 0.4);
-    const geo = gridGeo(8, 8, (u, v) => {
-      const s = Math.sin(Math.PI * u);
-      const w = W * 0.5 * Math.pow(s, 0.7) * (0.6 + 0.4 * Math.sin(Math.PI * Math.min(1, u * 1.3)));
-      return [(u - 0.5) * L, 0.05 * Math.pow(2 * v - 1, 2) * s + 0.02 * (u - 0.5), (v * 2 - 1) * w];
-    });
-    const m = new THREE.Mesh(geo, mat);
-    m.position.set(lerp(x0, x1, rand()), 0.008, lerp(z0, z1, rand()));
-    m.rotation.y = rand() * TAU;
-    m.rotation.z = (rand() - 0.5) * 0.2;
-    g.add(m);
-  }
-  return g;
-}
-
-const podMaterial = () =>
-  new THREE.MeshPhysicalMaterial({ color: 0x2a160b, roughness: 0.42, clearcoat: 0.35, clearcoatRoughness: 0.3 });
-
-function makePodBundle(rand, count = 3, len = 1.1) {
-  const g = new THREE.Group();
-  const mat = podMaterial();
-  const r = 0.028;
-  for (let k = 0; k < count; k++) {
-    const pts = [];
-    const n = 5;
-    const sway = (rand() - 0.5) * 0.3;
-    for (let i = 0; i <= n; i++) {
-      const t = i / n;
-      pts.push(new THREE.Vector3(
-        (t - 0.5) * len * (0.9 + rand() * 0.15),
-        r + 0.004 + Math.sin(t * Math.PI) * 0.012 + (k === 1 ? r * 1.6 : 0) * Math.sin(t * Math.PI),
-        k * 0.07 - 0.07 + Math.sin(t * Math.PI * 1.3 + sway * 6) * 0.1
-      ));
-    }
-    const curve = new THREE.CatmullRomCurve3(pts);
-    g.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 28, r, 8, false), mat));
-    const capGeo = new THREE.SphereGeometry(r, 8, 6);
-    const c1 = new THREE.Mesh(capGeo, mat); c1.position.copy(pts[0]);
-    const c2 = new THREE.Mesh(capGeo, mat); c2.position.copy(pts[n]);
-    g.add(c1, c2);
-  }
-  return g;
-}
-
-function woodTextures(rand, base, dark, light) {
-  const side = canvasTexture(256, 256, (g, w, h) => {
-    g.fillStyle = base; g.fillRect(0, 0, w, h);
-    for (let i = 0; i < 90; i++) {
-      const x = rand() * w;
-      g.strokeStyle = rand() < 0.5 ? dark : light;
-      g.globalAlpha = 0.08 + rand() * 0.22;
-      g.lineWidth = 0.6 + rand() * 2.4;
-      g.beginPath();
-      g.moveTo(x, 0);
-      g.bezierCurveTo(x + rand() * 16 - 8, 80, x + rand() * 16 - 8, 170, x + rand() * 10 - 5, h);
-      g.stroke();
-    }
-    g.globalAlpha = 1;
-  });
-  side.wrapS = side.wrapT = THREE.RepeatWrapping;
-  const cap = canvasTexture(256, 256, (g, w, h) => {
-    g.fillStyle = base; g.fillRect(0, 0, w, h);
-    const cx = w / 2 + (rand() - 0.5) * 18, cy = h / 2 + (rand() - 0.5) * 18;
-    let flip = false;
-    for (let r = 128; r > 3; r -= 5 + rand() * 6) {
-      g.fillStyle = flip ? dark : light;
-      g.globalAlpha = 0.35;
-      g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.fill();
-      flip = !flip;
-    }
-    g.globalAlpha = 1;
-  });
-  return { side, cap };
-}
-
-function makeLog(rand, { len = 1.0, radius = 0.17, base = "#b58a58", dark = "#6b4a2a", light = "#d3aa78" } = {}) {
-  const { side, cap } = woodTextures(rand, base, dark, light);
-  const geo = new THREE.CylinderGeometry(radius, radius * 0.92, len, 10, 6, false);
-  const pos = geo.attributes.position;
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-    const a = Math.atan2(z, x);
-    const j = 1 + 0.1 * Math.sin(3 * a + 1.7) + 0.07 * Math.sin(5 * a + y * 2.3) + 0.05 * Math.sin(2 * a - y * 4.1);
-    pos.setXYZ(i, x * j, y, z * j);
-  }
-  geo.computeVertexNormals();
-  const sideMat = new THREE.MeshStandardMaterial({ map: side, roughness: 0.82 });
-  const capMat = new THREE.MeshStandardMaterial({ map: cap, roughness: 0.9 });
-  const mesh = new THREE.Mesh(geo, [sideMat, capMat, capMat]);
-  mesh.rotation.z = Math.PI / 2;
-  mesh.position.y = radius * 0.95;
-  const g = new THREE.Group();
-  g.add(mesh);
-  return g;
-}
-
-function makeResin(rand, { size = 0.1, color = 0xc8741a, emissive = 0x4a2204 } = {}) {
-  const geo = new THREE.IcosahedronGeometry(size, 1);
-  const pos = geo.attributes.position;
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-    const k = 0.82 + 0.36 * hash3(Math.round(x * 997), Math.round(y * 997), Math.round(z * 997));
-    pos.setXYZ(i, x * k, y * k * 0.8, z * k * 1.1);
-  }
-  geo.computeVertexNormals();
-  const mat = new THREE.MeshPhysicalMaterial({
-    color, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.05,
-    emissive, emissiveIntensity: 0.6, flatShading: true, ior: 1.55,
-  });
-  const m = new THREE.Mesh(geo, mat);
-  m.position.y = size * 0.7;
-  m.rotation.set((rand() - 0.5) * 0.4, rand() * TAU, (rand() - 0.5) * 0.4);
-  const g = new THREE.Group();
-  g.add(m);
-  return g;
-}
-
-function faceTexture() {
-  return canvasTexture(256, 256, (g) => {
-    g.fillStyle = "#f4a15a"; g.beginPath(); g.arc(128, 128, 127, 0, TAU); g.fill();
-    g.fillStyle = "#fbe8d8"; g.beginPath(); g.arc(128, 128, 114, 0, TAU); g.fill();
-    const n = 10;
-    for (let i = 0; i < n; i++) {
-      const a0 = (i / n) * TAU + 0.06, a1 = ((i + 1) / n) * TAU - 0.06;
-      const grad = g.createRadialGradient(128, 128, 10, 128, 128, 104);
-      grad.addColorStop(0, "#e5405f"); grad.addColorStop(1, "#f27a86");
-      g.fillStyle = grad;
-      g.beginPath(); g.moveTo(128, 128); g.arc(128, 128, 104, a0, a1); g.closePath(); g.fill();
-    }
-    g.fillStyle = "#fbe8d8"; g.beginPath(); g.arc(128, 128, 11, 0, TAU); g.fill();
-  });
-}
-
-function makeGrapefruitHalf(rand) {
-  const g = new THREE.Group();
-  const r = 0.4;
-  const rind = new THREE.MeshPhysicalMaterial({ color: 0xf08a4b, roughness: 0.6, sheen: 0.4, sheenColor: new THREE.Color(0xffc48a) });
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(r, 40, 20, 0, TAU, Math.PI / 2, Math.PI / 2), rind);
-  const face = new THREE.Mesh(
-    new THREE.CircleGeometry(r * 0.995, 48),
-    new THREE.MeshPhysicalMaterial({ map: faceTexture(), roughness: 0.35, clearcoat: 0.6, clearcoatRoughness: 0.2 })
-  );
-  face.rotation.x = -Math.PI / 2;
-  face.position.y = 0.002;
-  g.add(dome, face);
-  g.rotation.x = 0.55;
-  g.rotation.z = (rand() - 0.5) * 0.3;
-  g.position.y = r;
-  const outer = new THREE.Group();
-  outer.add(g);
-  return outer;
-}
-
-function makeSlice(rand) {
-  const faceMat = new THREE.MeshPhysicalMaterial({ map: faceTexture(), roughness: 0.35, clearcoat: 0.6, clearcoatRoughness: 0.2 });
-  const rimMat = new THREE.MeshStandardMaterial({ color: 0xf4a15a, roughness: 0.6 });
-  const m = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.045, 40), [rimMat, faceMat, faceMat]);
-  m.position.y = 0.024;
-  m.rotation.z = (rand() - 0.5) * 0.1;
-  const g = new THREE.Group();
-  g.add(m);
-  return g;
-}
-
-function makeSaffron(rand) {
-  const g = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ color: 0xc2260c, roughness: 0.45, emissive: 0x3a0a02 });
-  for (let i = 0; i < 9; i++) {
-    const a = rand() * TAU, L = 0.35 + rand() * 0.2;
-    const V = (x, y, z) => new THREE.Vector3(x, y, z);
-    const pts = [
-      V(0, 0.01, 0),
-      V(Math.cos(a) * L * 0.4, 0.02 + rand() * 0.03, Math.sin(a) * L * 0.4),
-      V(Math.cos(a + 0.5) * L * 0.8, 0.01 + rand() * 0.02, Math.sin(a + 0.5) * L * 0.8),
-      V(Math.cos(a + 0.3) * L, 0.01, Math.sin(a + 0.3) * L),
-    ];
-    g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 14, 0.006, 4, false), mat));
-  }
-  return g;
-}
-
-function makeRaspberry(rand) {
-  const R = 0.12;
-  const base = new THREE.SphereGeometry(0.038, 10, 8);
-  const pieces = [];
-  const rings = [[0, 1], [0.45, 6], [0.9, 11], [1.35, 15]];
-  const m4 = new THREE.Matrix4();
-  rings.forEach(([phi, n]) => {
-    for (let i = 0; i < n; i++) {
-      const th = (i / n) * TAU + phi;
-      m4.makeTranslation(R * Math.sin(phi) * Math.cos(th), R * Math.cos(phi) * 1.15, R * Math.sin(phi) * Math.sin(th));
-      const shade = 0.85 + rand() * 0.3;
-      pieces.push(coloredPiece(base, m4, new THREE.Color(0xb3122e).multiplyScalar(shade)));
-    }
-  });
-  const berry = new THREE.Mesh(
-    mergeGeometries(pieces),
-    new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.32, clearcoat: 0.4, clearcoatRoughness: 0.25 })
-  );
-  const back = new THREE.Mesh(
-    new THREE.CircleGeometry(R * Math.sin(1.35), 20),
-    new THREE.MeshStandardMaterial({ color: 0x4a0712, roughness: 0.7, side: THREE.DoubleSide })
-  );
-  back.rotation.x = Math.PI / 2;
-  back.position.y = R * Math.cos(1.35) * 1.15;
-  const inner = new THREE.Group();
-  inner.add(berry, back);
-  inner.rotation.x = 1.2;
-  inner.rotation.z = (rand() - 0.5) * 0.8;
-  inner.position.y = 0.12;
-  const g = new THREE.Group();
-  g.add(inner);
-  return g;
-}
-
-function makeBlueberries(rand, count = 7) {
-  const g = new THREE.Group();
-  const mat = new THREE.MeshPhysicalMaterial({
-    color: 0x27356b, roughness: 0.38, sheen: 0.6, sheenRoughness: 0.5, sheenColor: new THREE.Color(0x8fa4d8),
-  });
-  const crown = new THREE.MeshStandardMaterial({ color: 0x151a33, roughness: 0.8, side: THREE.DoubleSide });
-  const geo = new THREE.SphereGeometry(0.065, 18, 14);
-  const crownGeo = new THREE.CircleGeometry(0.02, 5);
-  for (let i = 0; i < count; i++) {
-    const a = rand() * TAU, d = Math.sqrt(rand()) * 0.22;
-    const s = 0.85 + rand() * 0.35;
-    const m = new THREE.Mesh(geo, mat);
-    m.scale.set(s, s * 0.9, s);
-    m.position.set(Math.cos(a) * d, 0.062 * s, Math.sin(a) * d);
-    const c = new THREE.Mesh(crownGeo, crown);
-    c.rotation.x = -Math.PI / 2;
-    c.position.set(m.position.x, m.position.y + 0.056 * s, m.position.z);
-    g.add(m, c);
-  }
-  return g;
-}
-
-function makeLavender(rand, sprigs = 5, len = 1.1) {
-  const g = new THREE.Group();
-  const stemMat = new THREE.MeshStandardMaterial({ color: 0x6a8a45, roughness: 0.7 });
-  const budMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6 });
-  const budBase = new THREE.SphereGeometry(0.018, 6, 5);
-  const m4 = new THREE.Matrix4();
-  for (let s = 0; s < sprigs; s++) {
-    const spread = (s - (sprigs - 1) / 2) * 0.12;
-    const bow = (rand() - 0.5) * 0.1;
-    const pts = [0, 0.33, 0.66, 1].map((t) => new THREE.Vector3(t * len, 0.03 + Math.sin(t * Math.PI) * 0.03 + s * 0.004, spread * (0.3 + t) + bow * Math.sin(t * Math.PI)));
-    const curve = new THREE.CatmullRomCurve3(pts);
-    g.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 24, 0.008, 5, false), stemMat));
-    const pieces = [];
-    for (let k = 0; k < 22; k++) {
-      const t = 0.6 + 0.38 * (k / 21);
-      const p = curve.getPoint(t);
-      for (const sgn of [-1, 1]) {
-        m4.makeScale(1.5, 1, 1);
-        m4.setPosition(p.x + (rand() - 0.5) * 0.01, p.y + 0.016 * sgn * 0.8, p.z + 0.016 * sgn * (rand() < 0.5 ? 1 : -1));
-        const c = new THREE.Color(rand() < 0.5 ? 0x7b5fb8 : 0x9b7fd8);
-        pieces.push(coloredPiece(budBase, m4, c));
-      }
-    }
-    g.add(new THREE.Mesh(mergeGeometries(pieces), budMat));
-  }
-  return g;
-}
-
-function makePepper(rand, count = 14, x0 = 0, x1 = 0.6, z0 = 0.9, z1 = 1.2) {
-  const base = new THREE.SphereGeometry(0.024, 8, 6);
-  const m4 = new THREE.Matrix4();
-  const pieces = [];
-  for (let i = 0; i < count; i++) {
-    const s = 0.85 + rand() * 0.4;
-    m4.makeScale(s, s, s);
-    m4.setPosition(lerp(x0, x1, rand()), 0.022 * s, lerp(z0, z1, rand()));
-    pieces.push(coloredPiece(base, m4, new THREE.Color(rand() < 0.7 ? 0x1c1612 : 0x3a2a1c)));
-  }
-  return new THREE.Mesh(mergeGeometries(pieces), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.65 }));
-}
-
-// What sits around each perfume. Coordinates are x (left/right) and z (towards the viewer).
-// `smoke` lists where light smoke rises from: [x, y, z, size].
-const RECIPES = {
-  "blanc-royal": (R) => ({
-    items: [
-      at(makeRose(R, 0xf3e7d3, 0.7), -1.3, -0.1, R() * TAU),
-      at(makeRose(R, 0xefe0c8, 0.55), -0.8, 0.92, R() * TAU),
-      at(makeStarFlower(R, { petals: 5, len: 0.28, width: 0.3, color: 0xfbf6ec, pitch: 0.4, center: 0xe2c56a }), -1.45, 0.78, R() * TAU, 0.02),
-      scatterPetals(R, 6, 0xf3e7d3, -1.6, -0.3, 1.05, 1.35),
-      at(makePodBundle(R, 3, 1.0), 1.2, 0.95, -0.5),
-      at(makeResin(R, { size: 0.11, color: 0xe9cf8a, emissive: 0x5a4210 }), 1.3, -0.2),
-      at(makeResin(R, { size: 0.09, color: 0xe3c57c, emissive: 0x5a4210 }), 0.4, 1.15),
-    ],
-    smoke: [[1.3, 0.2, -0.2, 0.8], [0.4, 0.15, 1.15, 0.7], [-1.3, 0.35, -0.1, 0.9], [-1.45, 0.2, 0.78, 0.7], [-0.8, 0.3, 0.92, 0.7]],
-  }),
-  "reve-paradoxe": (R) => ({
-    items: [
-      at(makeRose(R, 0x8d1423, 0.72), -1.3, -0.15, R() * TAU),
-      at(makeGrapefruitHalf(R), -1.2, 0.9, 0.4),
-      at(makeSlice(R), 0.95, 0.95, R() * TAU),
-      at(makeSlice(R), 1.45, 0.4, R() * TAU),
-      at(makeSaffron(R), 0.2, 1.15, R() * TAU),
-      at(makeResin(R, { size: 0.11 }), 1.4, -0.35),
-      at(makeResin(R, { size: 0.09 }), 0.5, 1.3),
-      scatterPetals(R, 4, 0x8d1423, -1.6, -0.9, -0.95, -0.45),
-    ],
-    smoke: [[1.4, 0.2, -0.35, 0.8], [0.5, 0.15, 1.3, 0.7], [-1.2, 0.6, 0.9, 0.9], [-1.3, 0.35, -0.15, 0.9], [0.2, 0.1, 1.15, 0.6]],
-  }),
-  "noir-prestige": (R) => ({
-    items: [
-      at(makeLog(R, { len: 1.0, radius: 0.17, base: "#4a3020", dark: "#241409", light: "#6a4a30" }), 1.2, 0.15, 1.35),
-      at(makeLog(R, { len: 0.8, radius: 0.13, base: "#5a3a26", dark: "#2a170a", light: "#7a5638" }), 1.6, 0.55, 1.8),
-      at(makePodBundle(R, 3, 1.0), -1.2, 0.85, 0.5),
-      at(makePepper(R, 16, -0.2, 0.7, 0.9, 1.25), 0, 0),
-      at(makeResin(R, { size: 0.11, color: 0x9a4a12, emissive: 0x3a1a04 }), -1.35, -0.2),
-      at(makeResin(R, { size: 0.09, color: 0xa85a18, emissive: 0x3a1a04 }), 0.9, -0.8),
-    ],
-    smoke: [[1.2, 0.4, 0.15, 0.9], [1.6, 0.3, 0.55, 0.8], [-1.35, 0.2, -0.2, 0.7], [0.9, 0.2, -0.8, 0.7], [-1.2, 0.15, 0.85, 0.6]],
-  }),
-  "rouge-absolu": (R) => ({
-    items: [
-      at(makeRose(R, 0x9c1426, 0.7), -1.3, -0.1, R() * TAU),
-      at(makeRose(R, 0x8a1020, 0.55), -0.85, -0.98, R() * TAU),
-      at(makeRaspberry(R), -1.05, 0.92, R() * TAU),
-      at(makeRaspberry(R), -0.6, 1.12, R() * TAU),
-      at(makeRaspberry(R), -1.5, 0.6, R() * TAU),
-      at(makeLog(R, { len: 0.95, radius: 0.16, base: "#3b2417", dark: "#1c0f07", light: "#5a3a26" }), 1.2, 0.1, 1.35),
-      at(makeLog(R, { len: 0.7, radius: 0.13, base: "#442a1b", dark: "#1f1109", light: "#62402b" }), 1.6, 0.5, 1.8),
-      at(makeResin(R, { size: 0.11 }), 0.7, 1.1),
-      at(makeResin(R, { size: 0.09 }), 1.2, -0.75),
-      scatterPetals(R, 4, 0x9c1426, -1.5, -0.5, 1.2, 1.4),
-    ],
-    smoke: [[1.2, 0.4, 0.1, 0.9], [1.6, 0.3, 0.5, 0.7], [0.7, 0.15, 1.1, 0.7], [-1.3, 0.35, -0.1, 0.9], [-0.85, 0.3, -0.98, 0.8]],
-  }),
-  "bleu-eternel": (R) => ({
-    items: [
-      at(makeLavender(R, 5, 1.1), -0.45, 0.85, Math.PI),
-      at(makeStarFlower(R, { petals: 5, len: 0.2, width: 0.1, color: 0xfdfbf4, pitch: 0.25, center: 0xe8d27a }), -0.7, 1.2, R() * TAU, 0.03),
-      at(makeStarFlower(R, { petals: 5, len: 0.2, width: 0.1, color: 0xfdfbf4, pitch: 0.25, center: 0xe8d27a }), -1.1, 1.3, R() * TAU, 0.03),
-      at(makeStarFlower(R, { petals: 5, len: 0.2, width: 0.1, color: 0xfdfbf4, pitch: 0.25, center: 0xe8d27a }), -1.5, 0.2, R() * TAU, 0.03),
-      at(makeBlueberries(R, 7), 0.95, 0.95),
-      at(makeLog(R, { len: 0.9, radius: 0.15, base: "#6a5442", dark: "#3a2c20", light: "#8a7058" }), 1.3, -0.15, 1.4),
-      at(makeResin(R, { size: 0.1 }), 0.65, -0.8),
-      at(makeResin(R, { size: 0.09 }), 1.6, 0.5),
-    ],
-    smoke: [[-1.0, 0.2, 0.85, 0.8], [-0.7, 0.15, 1.2, 0.6], [1.3, 0.3, -0.15, 0.8], [0.65, 0.2, -0.8, 0.7], [0.95, 0.2, 0.95, 0.6]],
-  }),
-};
-
-const FALLBACK_RECIPE = (R) => ({
-  items: [
-    at(makeLog(R, { len: 0.9, radius: 0.15 }), 1.25, 0.1, 1.4),
-    at(makeResin(R, { size: 0.1 }), 0.8, 1.0),
-    at(makeResin(R, { size: 0.09 }), -1.2, 0.6),
-  ],
-  smoke: [[1.25, 0.3, 0.1, 0.8], [0.8, 0.15, 1.0, 0.7], [-1.2, 0.15, 0.6, 0.7]],
-});
 
 // ================================================================ light smoke
 
@@ -846,17 +355,18 @@ function createSmoke(emitters, color, tex) {
   };
 }
 
+
 // ================================================================ dust
 
-function makeDust(count, size, opacity, color, sprite) {
+function makeDust(count, size, opacity, color, sprite, ex, ey) {
   const positions = new Float32Array(count * 3);
   const speed = new Float32Array(count);
   const phase = new Float32Array(count);
   for (let i = 0; i < count; i++) {
-    positions[i * 3] = (Math.random() - 0.5) * 9;
-    positions[i * 3 + 1] = Math.random() * 6.5;
-    positions[i * 3 + 2] = -4 + Math.random() * 6;
-    speed[i] = 0.08 + Math.random() * 0.22;
+    positions[i * 3] = (Math.random() - 0.5) * 2 * ex;
+    positions[i * 3 + 1] = (Math.random() - 0.5) * 2 * ey;
+    positions[i * 3 + 2] = -1.5 + Math.random() * 3;
+    speed[i] = 0.05 + Math.random() * 0.16;
     phase[i] = Math.random() * TAU;
   }
   const geo = new THREE.BufferGeometry();
@@ -865,39 +375,41 @@ function makeDust(count, size, opacity, color, sprite) {
     size, map: sprite, color, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending,
   });
   const points = new THREE.Points(geo, mat);
-  points.userData = { positions, speed, phase, baseOpacity: opacity };
+  points.frustumCulled = false;
+  points.userData = { positions, speed, phase, baseOpacity: opacity, ex, ey };
   return points;
 }
 
 function stepDust(points, dt, time) {
-  const { positions, speed, phase } = points.userData;
+  const { positions, speed, phase, ex, ey } = points.userData;
   for (let i = 0; i < speed.length; i++) {
     positions[i * 3 + 1] += speed[i] * dt;
-    positions[i * 3] += Math.sin(time * 0.4 + phase[i]) * 0.0025;
-    if (positions[i * 3 + 1] > 6.8) {
-      positions[i * 3 + 1] = -0.2;
-      positions[i * 3] = (Math.random() - 0.5) * 9;
+    positions[i * 3] += Math.sin(time * 0.4 + phase[i]) * 0.003;
+    if (positions[i * 3 + 1] > ey) {
+      positions[i * 3 + 1] = -ey;
+      positions[i * 3] = (Math.random() - 0.5) * 2 * ex;
     }
   }
   points.geometry.attributes.position.needsUpdate = true;
 }
 
-// ================================================================ animated background shader
+// ================================================================ animated photo background
 
-const BG_VERT = `
+const PLATE_VERT = `
 varying vec2 vUv;
 void main() {
   vUv = uv;
-  gl_Position = vec4(position.xy, 0.0, 1.0);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
 
-const BG_FRAG = `
+// The photo, with a slow smoke-like flow warp and shimmering highlights. The header (logo + name)
+// is excluded so that it stays perfectly sharp and still.
+const PLATE_FRAG = `
+uniform sampler2D map;
 uniform float uTime;
-uniform float uFade;
-uniform vec2 uRes;
-uniform vec3 uDark;
-uniform vec3 uGlow;
-uniform vec3 uSmoke;
+uniform float uOpacity;
+uniform float uAmp;
+uniform vec4 uProt;
 varying vec2 vUv;
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -911,276 +423,316 @@ float noise(vec2 p) {
 float fbm(vec2 p) {
   float v = 0.0;
   float a = 0.5;
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 4; i++) {
     v += a * noise(p);
-    p = p * 2.02 + vec2(1.7, 9.2);
+    p = p * 2.03 + vec2(1.7, 9.2);
     a *= 0.5;
   }
   return v;
 }
 
 void main() {
-  vec2 p = (vUv - 0.5) * vec2(uRes.x / uRes.y, 1.0) * 2.0;
-  float t = uTime * 0.08;
-  vec2 q = vec2(fbm(p * 1.1 + vec2(0.0, t * 2.0)), fbm(p * 1.1 + vec2(5.2, 1.3) - t));
-  float s = fbm(p * 1.5 + 2.4 * q + vec2(t * 1.5, -t * 3.0));
-  float smoke = smoothstep(0.32, 0.92, s);
-  float d = length(p * vec2(0.85, 0.7) - vec2(0.0, 0.15));
-  float glow = exp(-d * d * 1.7);
-  vec3 col = uDark * (1.0 - 0.35 * d);
-  col += uGlow * glow * 0.85;
-  col += uSmoke * smoke * (0.22 + 0.78 * glow) * 0.75;
-  col *= smoothstep(2.3, 0.5, length(p));
-  gl_FragColor = vec4(col * uFade, uFade);
+  vec2 p = vUv;
+  float t = uTime;
+  vec2 c0 = (uProt.xy + uProt.zw) * 0.5;
+  vec2 hs = (uProt.zw - uProt.xy) * 0.5;
+  vec2 q = abs(p - c0) - hs;
+  float dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
+  float prot = smoothstep(0.0, 0.07, dist);
+
+  vec2 sp = p * vec2(2.4, 3.2);
+  vec2 flow = vec2(
+    fbm(sp + vec2(0.0, -t * 0.05)),
+    fbm(sp + vec2(5.2, 1.3) + vec2(t * 0.035, -t * 0.045))
+  );
+  vec2 uv = p + (flow - 0.5) * uAmp * prot;
+  vec3 col = texture2D(map, uv).rgb;
+
+  float l = dot(col, vec3(0.299, 0.587, 0.114));
+  float pulse = 0.5 + 0.5 * sin(t * 0.85 + fbm(p * 4.0 + 3.0) * 6.2831);
+  col *= 1.0 + 0.18 * smoothstep(0.22, 0.8, l) * pulse * prot;
+
+  gl_FragColor = vec4(col, uOpacity);
   #include <colorspace_fragment>
 }`;
 
 // ================================================================ viewer
 
+function el(tag, cls, parent) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+
 export function createBottleViewer(container, product) {
+  if (!product.plate || !product.bottle) throw new Error("no photo plate for this product");
   const theme = { ...DEFAULT_THEME, ...(product.theme || {}) };
+  const B = product.bottle; // { ar, cx, bw, bottom } as fractions of the photo
   const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let disposed = false;
+
+  // --- DOM layers: blurred fill, the photo (instant, already cached), the plate, then the WebGL canvas
+  container.classList.add("vp");
+  const fillImg = el("img", "vp-fill", container);
+  const photoImg = el("img", "vp-photo", container);
+  const plateImg = el("img", "vp-plate", container);
+  fillImg.alt = ""; photoImg.alt = product.name; plateImg.alt = "";
+  photoImg.src = product.image;
+  plateImg.decoding = "async";
+  plateImg.src = product.plate;
+  fillImg.src = product.plate;
+  plateImg.style.opacity = "0";
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 3));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.1;
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMappingExposure = 1.0;
   renderer.autoClear = false;
+  renderer.domElement.className = "vp-canvas";
   container.appendChild(renderer.domElement);
 
-  // --- background pass (own scene, drawn first). Alpha fades it in over the CSS background.
-  const bgScene = new THREE.Scene();
-  const bgCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-  const bgMat = new THREE.ShaderMaterial({
-    vertexShader: BG_VERT,
-    fragmentShader: BG_FRAG,
+  // --- background pass: the plate in pixel space
+  const plateScene = new THREE.Scene();
+  const plateCam = new THREE.OrthographicCamera(-1, 1, 1, -1, -10, 10);
+  const plateMat = new THREE.ShaderMaterial({
+    vertexShader: PLATE_VERT,
+    fragmentShader: PLATE_FRAG,
+    transparent: true,
     depthTest: false,
     depthWrite: false,
     uniforms: {
+      map: { value: null },
       uTime: { value: 0 },
-      uFade: { value: 0 },
-      uRes: { value: new THREE.Vector2(1, 1) },
-      uDark: { value: new THREE.Color(theme.bgDark) },
-      uGlow: { value: new THREE.Color(theme.glow) },
-      uSmoke: { value: new THREE.Color(theme.smoke) },
+      uOpacity: { value: 0 },
+      uAmp: { value: reduceMotion ? 0 : 0.011 },
+      uProt: { value: new THREE.Vector4(0.17, 0.70, 0.83, 0.985) },
     },
   });
-  bgScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), bgMat));
+  const plateMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), plateMat);
+  plateMesh.visible = false;
+  plateScene.add(plateMesh);
 
-  const camera = new THREE.PerspectiveCamera(34, 1, 0.5, 80);
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.target.set(0, 1.15, 0);
-  controls.enablePan = false;
-  controls.enableDamping = true;
-  controls.minDistance = 4;
-  controls.minPolarAngle = 0.75;
-  controls.maxPolarAngle = 1.62;
-  controls.enabled = false;
-  controls.addEventListener("start", () => { controls.autoRotate = false; });
-
-  let fitDist = 9;
-  const resize = () => {
-    const w = container.clientWidth || 1;
-    const h = container.clientHeight || 1;
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-    bgMat.uniforms.uRes.value.set(w, h);
-    // distance at which the bottle and its ingredients fit on screen (portrait phones need more)
-    const t = Math.tan((camera.fov * Math.PI) / 360);
-    fitDist = Math.max(1.9 / t, 1.85 / (t * camera.aspect)) + 1.2;
-    controls.maxDistance = fitDist * 1.5;
-  };
-  const ro = new ResizeObserver(resize);
-  ro.observe(container);
-  resize();
-
-  // --- the still life is built right after the first frame so the background shows immediately
-  let scene = null, rig = null, smoke = null, dust = null, bokeh = null, shadow = null;
+  // --- bottle pass
+  const camera = new THREE.PerspectiveCamera(20, 1, 1, 200);
+  const D = 30;           // camera distance; far enough that perspective is gentle
+  const FRONT = 0.55;     // front face of the bottle body
+  const scene = new THREE.Scene();
+  const anchor = new THREE.Group(); // sits at the base of the photographed bottle
+  scene.add(anchor);
+  const rig = new THREE.Group();    // yaw / pitch
+  anchor.add(rig);
+  let smoke = null, dust = null, bokeh = null, shadowBlob = null;
   let envTexture = null, pmrem = null, envScene = null;
-  let tBuilt = -1;
-  const disposables = [];
+  let built = false, plateReady = false, tStart = -1;
+  let W = 1, H = 1, kPx = 100;
 
+  const layout = () => {
+    W = container.clientWidth || 1;
+    H = container.clientHeight || 1;
+    renderer.setSize(W, H, false);
+    const plateH = H, plateW = H * B.ar;
+    plateCam.left = -W / 2; plateCam.right = W / 2; plateCam.top = H / 2; plateCam.bottom = -H / 2;
+    plateCam.updateProjectionMatrix();
+    plateMesh.scale.set(plateW, plateH, 1);
+    // pixels per world unit, measured on the front face of the bottle body (1.5 units wide)
+    kPx = (B.bw * plateW) / 1.5;
+    camera.fov = (2 * Math.atan(H / (2 * kPx * (D - FRONT))) * 180) / Math.PI;
+    camera.aspect = W / H;
+    camera.position.set(0, 0, D);
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+    const cxPx = (W - plateW) / 2 + B.cx * plateW;
+    const bottomPx = B.bottom * plateH;
+    anchor.position.set((cxPx - W / 2) / kPx, (H / 2 - bottomPx) / kPx, 0);
+    if (dust) { dust.userData.ex = W / (2 * kPx) + 1; dust.userData.ey = H / (2 * kPx) + 1; }
+    if (bokeh) { bokeh.userData.ex = W / (2 * kPx) + 1; bokeh.userData.ey = H / (2 * kPx) + 1; }
+  };
+  const ro = new ResizeObserver(layout);
+  ro.observe(container);
+  layout();
+
+  // --- the plate: wait until it is decoded, then swap it in for the photo
+  const loadPlate = async () => {
+    try {
+      if (plateImg.decode) await plateImg.decode();
+      else await new Promise((res, rej) => { plateImg.onload = res; plateImg.onerror = rej; });
+    } catch { /* fall through: show what we have */ }
+    if (disposed || !plateImg.naturalWidth) return;
+    const tex = new THREE.Texture(plateImg);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.generateMipmaps = true;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.needsUpdate = true;
+    plateMat.uniforms.map.value = tex;
+    plateReady = true;
+    tryStart();
+  };
+
+  // --- build the bottle scene
   const build = () => {
     if (disposed) return;
-    scene = new THREE.Scene();
     pmrem = new THREE.PMREMGenerator(renderer);
     envScene = makeStudioEnvironment();
     envTexture = pmrem.fromScene(envScene, 0.03).texture;
     scene.environment = envTexture;
 
-    const key = new THREE.DirectionalLight(0xfff1d6, 1.2);
-    key.position.set(2.5, 6, 4);
-    key.castShadow = true;
-    key.shadow.mapSize.set(1024, 1024);
-    key.shadow.camera.left = -4; key.shadow.camera.right = 4;
-    key.shadow.camera.top = 4; key.shadow.camera.bottom = -4;
-    key.shadow.camera.near = 0.5; key.shadow.camera.far = 20;
-    key.shadow.bias = -0.0004;
-    key.shadow.camera.updateProjectionMatrix();
-    const rim = new THREE.DirectionalLight(new THREE.Color(theme.smoke), 1.0);
-    rim.position.set(-4, 3, -5);
-    scene.add(key, rim, new THREE.AmbientLight(0xffffff, 0.2));
+    const key = new THREE.DirectionalLight(0xfff1d6, 1.4);
+    key.position.set(-3, 5, 7);
+    const rim = new THREE.DirectionalLight(new THREE.Color(theme.smoke), 1.1);
+    rim.position.set(5, 3, -4);
+    scene.add(key, rim, new THREE.AmbientLight(0xffffff, 0.25));
 
-    // glossy dark surface that fades out into the background
-    const floorAlpha = radialTexture([[0, "#ffffff"], [0.35, "#ffffff"], [1, "#000000"]]);
-    const floor = new THREE.Mesh(
-      new THREE.CircleGeometry(12, 64),
-      new THREE.MeshStandardMaterial({
-        color: 0x0b0a09, roughness: 0.22, metalness: 0.6, transparent: true,
-        opacity: 0.72, alphaMap: floorAlpha, depthWrite: false,
-      })
-    );
-    floor.rotation.x = -Math.PI / 2;
-    floor.renderOrder = 1;
-    scene.add(floor);
-
-    // soft cast shadows (real shadow map) + a small dark contact patch under the bottle
-    const catcher = new THREE.Mesh(new THREE.CircleGeometry(6, 48), new THREE.ShadowMaterial({ opacity: 0.5 }));
-    catcher.rotation.x = -Math.PI / 2;
-    catcher.position.y = 0.003;
-    catcher.receiveShadow = true;
-    catcher.renderOrder = 2;
-    scene.add(catcher);
-    const contactTex = radialTexture([[0, "rgba(0,0,0,0.75)"], [0.55, "rgba(0,0,0,0.3)"], [1, "rgba(0,0,0,0)"]]);
-    shadow = new THREE.Mesh(
-      new THREE.PlaneGeometry(3.4, 2.4),
-      new THREE.MeshBasicMaterial({ map: contactTex, transparent: true, depthWrite: false })
-    );
-    shadow.rotation.x = -Math.PI / 2;
-    shadow.position.y = 0.004;
-    shadow.renderOrder = 3;
-    scene.add(shadow);
-
-    // bottle + this perfume's ingredients
-    const R = seeded(product.id || product.name);
     const maps = makeLabelMaps(product, renderer.capabilities.getMaxAnisotropy());
-    const stage = new THREE.Group();
-    stage.add(buildBottle(maps));
-    const recipe = (RECIPES[product.id] || FALLBACK_RECIPE)(R);
-    recipe.items.forEach((o) => stage.add(o));
-    stage.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    rig.add(buildBottle(maps));
 
-    const reflection = stage.clone();
-    reflection.scale.y = -1;
-    reflection.traverse((o) => { if (o.isMesh) o.castShadow = false; });
+    // soft contact shadow at the foot of the bottle
+    const blobTex = radialTexture([[0, "rgba(0,0,0,0.7)"], [0.5, "rgba(0,0,0,0.32)"], [1, "rgba(0,0,0,0)"]]);
+    shadowBlob = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.4, 0.5),
+      new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false })
+    );
+    shadowBlob.position.set(0, 0.02, -0.7);
+    shadowBlob.renderOrder = 4;
+    anchor.add(shadowBlob);
 
-    rig = new THREE.Group();
-    rig.add(stage, reflection);
-    rig.visible = false;
-    scene.add(rig);
+    // light smoke curling up beside and behind the bottle
+    smoke = createSmoke(
+      [[-1.9, 0.2, -0.8, 1.1], [1.9, 0.2, -0.8, 1.1], [-1.0, 0.1, -1.0, 0.9], [1.0, 0.1, -1.0, 0.9]],
+      new THREE.Color(theme.smoke).lerp(new THREE.Color(0xffffff), 0.35),
+      makeSmokeTexture()
+    );
+    anchor.add(smoke.group);
 
-    // light smoke curling up from the ingredients
-    smoke = createSmoke(recipe.smoke, new THREE.Color(theme.smoke).lerp(new THREE.Color(0xffffff), 0.35), makeSmokeTexture());
-    scene.add(smoke.group);
-
-    // golden dust + soft bokeh discs
+    // golden dust and soft bokeh floating up the whole picture
     const sprite = radialTexture([[0, "rgba(255,255,255,1)"], [0.4, "rgba(255,255,255,0.35)"], [1, "rgba(255,255,255,0)"]], 64);
-    dust = makeDust(140, 0.07, 0.85, new THREE.Color(theme.smoke), sprite);
-    bokeh = makeDust(22, 0.42, 0.18, new THREE.Color(theme.glow).lerp(new THREE.Color(0xffd98a), 0.5), sprite);
+    const ex = W / (2 * kPx) + 1, ey = H / (2 * kPx) + 1;
+    dust = makeDust(90, 0.08, 0.8, new THREE.Color(theme.smoke), sprite, ex, ey);
+    bokeh = makeDust(14, 0.5, 0.14, new THREE.Color(theme.glow).lerp(new THREE.Color(0xffd98a), 0.5), sprite, ex, ey);
     scene.add(dust, bokeh);
 
-    tBuilt = time;
+    built = true;
+    layout();
+    tryStart();
   };
 
-  // --- timeline (seconds): background first, then everything else right after
-  const T_BG = 0.35;
-  const T_BOTTLE = 0.9;
-  const T_CAM = 1.2;
-  const FINAL_YAW = 0.2;
-  let time = 0;
-  let frames = 0;
-  let introDone = false;
-  let buildScheduled = false;
+  const tryStart = () => {
+    if (tStart >= 0 || !built || !plateReady) return;
+    tStart = time;
+    // swap: the plate (no bottle) goes in, and the 3D bottle takes its place in the same frame
+    plateImg.style.opacity = "1";
+    photoImg.style.visibility = "hidden";
+    plateMesh.visible = true;
+  };
 
+  // --- interaction
+  let interacted = false;
+  let yawFree = 0, yawVel = 0, pitch = 0, zoom = 1, zoomTarget = 1;
+  const ptrs = new Map();
+  let pinchD = 0;
+  const dom = renderer.domElement;
+  dom.addEventListener("pointerdown", (e) => {
+    dom.setPointerCapture(e.pointerId);
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinchD = Math.hypot(a.x - b.x, a.y - b.y); }
+    if (!interacted) { interacted = true; yawFree = swayYaw; }
+    yawVel = 0;
+  });
+  dom.addEventListener("pointermove", (e) => {
+    const p = ptrs.get(e.pointerId);
+    if (!p) return;
+    const dx = e.clientX - p.x, dy = e.clientY - p.y;
+    p.x = e.clientX; p.y = e.clientY;
+    if (ptrs.size === 2) {
+      const [a, b] = [...ptrs.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (pinchD > 0) zoomTarget = Math.min(1.8, Math.max(1, zoomTarget * (d / pinchD)));
+      pinchD = d;
+    } else {
+      yawFree += dx * 0.011;
+      yawVel = dx * 0.011 * 60;
+      pitch = Math.min(0.25, Math.max(-0.2, pitch + dy * 0.004));
+    }
+  });
+  const up = (e) => { ptrs.delete(e.pointerId); pinchD = 0; };
+  dom.addEventListener("pointerup", up);
+  dom.addEventListener("pointercancel", up);
+  dom.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    zoomTarget = Math.min(1.8, Math.max(1, zoomTarget * Math.exp(-e.deltaY * 0.0012)));
+  }, { passive: false });
+
+  // --- animation
+  let time = 0, frames = 0;
+  let swayYaw = 0;
   const clock = new THREE.Clock();
   renderer.setAnimationLoop(() => {
     const dt = Math.min(clock.getDelta(), 0.05);
     time += dt;
     frames++;
-
-    const bgT = easeOut(clamp01(time / T_BG));
-    bgMat.uniforms.uFade.value = bgT;
-    bgMat.uniforms.uTime.value = time;
-
-    // build the still life after the first couple of frames have put the background on screen
-    if (!buildScheduled && frames >= 2) {
-      buildScheduled = true;
-      // make sure the label font is ready so the label text is drawn in it, but never wait long
-      const fontReady = document.fonts && document.fonts.load
-        ? Promise.race([document.fonts.load('600 100px "Cormorant Garamond"').catch(() => {}), new Promise((r) => setTimeout(r, 700))])
-        : Promise.resolve();
-      fontReady.then(build);
-    }
+    if (frames === 2) setTimeout(() => { fontReady.then(build); }, 0);
 
     renderer.clear();
-    renderer.render(bgScene, bgCam);
+    if (tStart < 0) return; // the DOM photo is showing; nothing to draw yet
+    const tb = time - tStart;
 
-    if (!scene || tBuilt < 0) {
-      camera.position.set(0, 2.2, fitDist * 1.25);
-      controls.update();
-      return;
+    plateMat.uniforms.uTime.value = time;
+    plateMat.uniforms.uOpacity.value = easeOut(clamp01(tb / 0.9));
+    renderer.render(plateScene, plateCam);
+
+    // bottle: one full turn at the start, then a gentle sway until the user takes over
+    const spin = reduceMotion ? 0 : easeInOut(clamp01(tb / 1.4)) * TAU;
+    swayYaw = reduceMotion ? 0 : 0.55 * Math.sin(Math.max(0, tb - 1.4) * 0.8) * clamp01((tb - 1.4) / 0.8);
+    if (interacted) {
+      yawFree += yawVel * dt;
+      yawVel *= Math.exp(-2.6 * dt);
     }
+    rig.rotation.y = (interacted ? yawFree : swayYaw) + (interacted ? 0 : spin);
+    rig.rotation.x = interacted ? pitch : 0;
+    zoom += (zoomTarget - zoom) * Math.min(1, dt * 8);
+    anchor.scale.setScalar(zoom);
 
-    const tb = time - tBuilt;
-    dust.material.opacity = dust.userData.baseOpacity * bgT;
-    bokeh.material.opacity = bokeh.userData.baseOpacity * bgT;
+    dust.material.opacity = dust.userData.baseOpacity * clamp01(tb / 1.2);
+    bokeh.material.opacity = bokeh.userData.baseOpacity * clamp01(tb / 1.2);
     stepDust(dust, dt, time);
     stepDust(bokeh, dt * 0.6, time);
+    smoke.update(dt, time, reduceMotion ? 0.5 : easeInOut(clamp01((tb - 0.2) / 1.2)));
 
-    const skip = reduceMotion;
-    const b = skip ? 1 : clamp01(tb / T_BOTTLE);
-    rig.visible = true;
-    const e = easeOut(b);
-    rig.position.y = lerp(-0.4, 0, e);
-    rig.scale.setScalar(lerp(0.9, 1, e));
-    rig.rotation.y = FINAL_YAW - (1 - e) * Math.PI * 1.2;
-    renderer.toneMappingExposure = lerp(0.55, 1.1, easeInOut(b));
-    shadow.material.opacity = e;
-    smoke.update(dt, time, skip ? 1 : easeInOut(clamp01((tb - 0.15) / 1.0)));
-
-    if (!introDone) {
-      const c = skip ? 1 : easeOut(clamp01(tb / T_CAM));
-      camera.position.set(0, 2.2, lerp(fitDist * 1.25, fitDist, c));
-      if (tb >= Math.max(T_BOTTLE, T_CAM)) {
-        introDone = true;
-        controls.enabled = true;
-        controls.autoRotate = true;
-        controls.autoRotateSpeed = 1.6;
-      }
-    }
-
-    controls.update();
     renderer.clearDepth();
     renderer.render(scene, camera);
   });
+
+  // fonts (for the label text) then plate; never wait long
+  const fontReady = document.fonts && document.fonts.load
+    ? Promise.race([document.fonts.load('600 100px "Cormorant Garamond"').catch(() => {}), new Promise((r) => setTimeout(r, 600))])
+    : Promise.resolve();
+  loadPlate();
 
   return {
     dispose() {
       disposed = true;
       renderer.setAnimationLoop(null);
       ro.disconnect();
-      controls.dispose();
       const texKeys = ["map", "alphaMap", "metalnessMap", "roughnessMap", "emissiveMap"];
       const disposeObject = (o) => {
         if (o.geometry) o.geometry.dispose();
         const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
         mats.forEach((m) => {
           texKeys.forEach((k) => { if (m[k]) m[k].dispose(); });
+          if (m.uniforms && m.uniforms.map && m.uniforms.map.value) m.uniforms.map.value.dispose();
           m.dispose();
         });
       };
-      if (scene) scene.traverse(disposeObject);
-      bgScene.traverse(disposeObject);
+      scene.traverse(disposeObject);
+      plateScene.traverse(disposeObject);
       if (envScene) envScene.traverse(disposeObject);
       if (envTexture) envTexture.dispose();
       if (pmrem) pmrem.dispose();
-      disposables.length = 0;
       renderer.dispose();
-      renderer.domElement.remove();
+      container.classList.remove("vp");
+      container.innerHTML = "";
     },
   };
 }
