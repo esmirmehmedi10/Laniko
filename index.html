@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Shop</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>My Shop</h1>
+    <button id="cart-btn" class="cart-btn" aria-label="Open cart">
+      Cart <span id="cart-count">0</span>
+    </button>
+  </header>
+
+  <main>
+    <p id="status" class="notice" hidden></p>
+    <section id="products" class="grid" aria-live="polite">Loading…</section>
+  </main>
+
+  <aside id="cart" class="cart" hidden>
+    <div class="cart-head">
+      <h2>Your cart</h2>
+      <button id="cart-close" aria-label="Close cart">✕</button>
+    </div>
+    <div id="cart-items"></div>
+    <div class="cart-foot">
+      <p>Subtotal: <strong id="cart-subtotal">€0.00</strong></p>
+      <p class="small">Shipping is calculated at checkout.</p>
+      <button id="checkout-btn" class="primary" disabled>Checkout</button>
+    </div>
+  </aside>
+
+  <footer class="foot">© My Shop</footer>
+  <script src="/app.js"></script>
+</body>
+</html>

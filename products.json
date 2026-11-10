@@ -1,0 +1,23 @@
+[
+  {
+    "id": "mug-classic",
+    "name": "Classic Ceramic Mug",
+    "description": "350 ml handmade-look ceramic mug, dishwasher safe.",
+    "price": 14.9,
+    "image": "https://placehold.co/600x600/f3ede4/5a4a3a?text=Mug"
+  },
+  {
+    "id": "tote-canvas",
+    "name": "Canvas Tote Bag",
+    "description": "Sturdy organic cotton tote with an inner pocket.",
+    "price": 19.0,
+    "image": "https://placehold.co/600x600/e4ecf3/3a4a5a?text=Tote"
+  },
+  {
+    "id": "notebook-a5",
+    "name": "A5 Notebook",
+    "description": "120 pages of recycled paper, dotted grid.",
+    "price": 9.5,
+    "image": "https://placehold.co/600x600/ecf3e4/4a5a3a?text=Notebook"
+  }
+]
