@@ -18,10 +18,26 @@
     return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
 
+  // Retry a failed image once (covers a deploy that was still finishing)
+  function watchImages(root) {
+    root.querySelectorAll("img").forEach((img) => {
+      img.addEventListener("error", () => {
+        if (img.dataset.retry) return;
+        img.dataset.retry = "1";
+        setTimeout(() => {
+          img.src = img.src.split("&r=")[0] + (img.src.includes("?") ? "&" : "?") + "r=" + Date.now();
+        }, 1500);
+      });
+    });
+  }
+
   function renderProducts() {
     $("products").innerHTML = products.map((p) => `
       <article class="card">
-        <img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy">
+        <button class="imgbtn" data-view="${esc(p.id)}" aria-label="View ${esc(p.name)} in 3D">
+          <img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy">
+          <span class="badge3d">3D</span>
+        </button>
         <div class="body">
           <h3>${esc(p.name)}</h3>
           <p>${esc(p.description)}</p>
@@ -29,6 +45,41 @@
           <button data-add="${esc(p.id)}">Add to cart</button>
         </div>
       </article>`).join("");
+    watchImages($("products"));
+  }
+
+  // ---- 3D viewer ----
+  let viewer = null;
+  let viewerProductId = null;
+
+  async function openViewer(id) {
+    const p = byId(id);
+    if (!p) return;
+    viewerProductId = id;
+    $("viewer-title").textContent = p.name;
+    $("viewer-price").textContent = fmt(p.price);
+    $("viewer-hint").textContent = "Drag to rotate · pinch to zoom";
+    const stage = $("viewer-stage");
+    stage.innerHTML = "";
+    $("viewer").hidden = false;
+    document.body.style.overflow = "hidden";
+    try {
+      const mod = await import("/viewer.js");
+      if (viewerProductId !== id || $("viewer").hidden) return; // closed meanwhile
+      viewer = mod.createBottleViewer(stage, p);
+    } catch (e) {
+      console.error("3D viewer failed", e);
+      stage.innerHTML = `<img src="${esc(p.image)}" alt="${esc(p.name)}">`;
+      $("viewer-hint").textContent = "3D view isn't available on this device.";
+    }
+  }
+
+  function closeViewer() {
+    if (viewer) { viewer.dispose(); viewer = null; }
+    viewerProductId = null;
+    $("viewer").hidden = true;
+    $("viewer-stage").innerHTML = "";
+    document.body.style.overflow = "";
   }
 
   function renderCart() {
@@ -55,6 +106,7 @@
           </div>`;
         }).join("")
       : "<p class='small'>Your cart is empty.</p>";
+    watchImages($("cart-items"));
     save();
   }
 
@@ -95,13 +147,21 @@
   document.addEventListener("click", (e) => {
     const t = e.target.closest("button");
     if (!t) return;
-    if (t.dataset.add) { change(t.dataset.add, 1); $("cart").hidden = false; }
+    if (t.dataset.view) openViewer(t.dataset.view);
+    else if (t.dataset.add) { change(t.dataset.add, 1); $("cart").hidden = false; }
     else if (t.dataset.inc) change(t.dataset.inc, 1);
     else if (t.dataset.dec) change(t.dataset.dec, -1);
   });
   $("cart-btn").addEventListener("click", () => { $("cart").hidden = !$("cart").hidden; });
   $("cart-close").addEventListener("click", () => { $("cart").hidden = true; });
   $("checkout-btn").addEventListener("click", checkout);
+  $("viewer-close").addEventListener("click", closeViewer);
+  $("viewer-add").addEventListener("click", () => {
+    if (viewerProductId) change(viewerProductId, 1);
+    closeViewer();
+    $("cart").hidden = false;
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("viewer").hidden) closeViewer(); });
 
   async function init() {
     const params = new URLSearchParams(location.search);

@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>My Shop</title>
   <link rel="stylesheet" href="/style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
 </head>
 <body>
   <header class="top">
@@ -31,6 +39,19 @@
       <button id="checkout-btn" class="primary" disabled>Checkout</button>
     </div>
   </aside>
+
+  <div id="viewer" class="viewer" hidden role="dialog" aria-modal="true" aria-label="3D view">
+    <div class="viewer-head">
+      <strong id="viewer-title"></strong>
+      <button id="viewer-close" aria-label="Close 3D view">✕</button>
+    </div>
+    <div id="viewer-stage" class="viewer-stage"></div>
+    <p id="viewer-hint" class="viewer-hint">Drag to rotate · pinch to zoom</p>
+    <div class="viewer-foot">
+      <span id="viewer-price" class="price"></span>
+      <button id="viewer-add" class="primary">Add to cart</button>
+    </div>
+  </div>
 
   <footer class="foot">© My Shop</footer>
   <script src="/app.js"></script>
