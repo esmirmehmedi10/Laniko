@@ -402,7 +402,7 @@
   };
 
   window.I18N = {
-    LANGS, t, desc, noteName, fmtMoney, splitWords, setLang, applyStatic, hasChoice, guess,
+    LANGS, t, phrase: (code, key) => (S[code] && S[code][key]) || S.en[key], desc, noteName, fmtMoney, splitWords, setLang, applyStatic, hasChoice, guess,
     get lang() { return cur; }, get info() { return byCode(cur); },
     onChange: (f) => listeners.push(f),
   };

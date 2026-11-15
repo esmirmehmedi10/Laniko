@@ -367,13 +367,28 @@
     gate.innerHTML = `
       ${first ? "" : `<button class="gate-x" aria-label="${esc(t("closeLang"))}">✕</button>`}
       <img class="gate-logo" src="/logo.svg" alt="Laniko" width="30" height="74">
-      <h1 class="gate-title">${first ? "Choose your language" : esc(t("chooseLang"))}</h1>
-      <p class="gate-sub">${first ? "Wählen Sie Ihre Sprache · Choisissez votre langue · اختر لغتك · 请选择语言" : esc(t("chooseSub"))}</p>
+      <h1 class="gate-title"${first ? ' aria-label="Choose your language"' : ""}>${first ? '<span class="gate-cycle" lang="en">Choose your language</span>' : esc(t("chooseLang"))}</h1>
+      ${first ? "" : `<p class="gate-sub">${esc(t("chooseSub"))}</p>`}
       <div class="gate-list">
         ${I.LANGS.map((l, i) => `<button class="gate-btn${!first && l.code === I.lang ? " on" : ""}" data-lang="${l.code}" lang="${l.code}" dir="${l.dir}" style="--i:${i}">${esc(l.name)}</button>`).join("")}
       </div>`;
     document.body.appendChild(gate);
     document.body.style.overflow = "hidden";
+    if (first) {
+      // the title says "choose your language" in every language, one after the other
+      const cyc = gate.querySelector(".gate-cycle");
+      let n = 0;
+      const timer = setInterval(() => {
+        if (!gate || !cyc.isConnected) { clearInterval(timer); return; }
+        cyc.classList.add("swap");
+        setTimeout(() => {
+          n = (n + 1) % I.LANGS.length;
+          const l = I.LANGS[n];
+          cyc.textContent = I.phrase(l.code, "chooseLang"); cyc.lang = l.code; cyc.dir = l.dir;
+          cyc.classList.remove("swap");
+        }, 380);
+      }, 1900);
+    }
     const pick = (code) => {
       I.setLang(code);
       closeGate();
