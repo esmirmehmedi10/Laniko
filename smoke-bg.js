@@ -45,16 +45,18 @@ vec3 smokeAt(vec2 uv, float p) {
 void main() {
   vec2 uv = vUv;
   vec3 base = texture(uBase, uv).rgb;
-  float sp = 0.125;                                   // one cycle = 8 s
+  float sp = 0.1667;                                  // one cycle = 6 s
   float p1 = fract(uTime * sp);
   float p2 = fract(uTime * sp + 0.5);
   float w1 = 1.0 - abs(2.0 * p1 - 1.0);
   float w2 = 1.0 - w1;
   vec3 moving = smokeAt(uv, p1) * w1 + smokeAt(uv, p2) * w2;
-  moving *= 1.32;                                     // two half-faded copies are a touch thinner than one
+  moving *= 1.12;                                     // two half-faded copies are a touch thinner than one
   vec3 still = texture(uSmoke, uv).rgb;
   float k = smoothstep(0.0, 1.6, uTime);              // eases from the still picture into the motion
-  outColor = vec4(base + mix(still, moving, k), 1.0);
+  // a faint part of the smoke stays where it was (the plume never empties out), the rest climbs
+  vec3 drift = still * 0.22 + moving * 0.78;
+  outColor = vec4(base + mix(still, drift, k), 1.0);
 }`;
 
 function compile(gl, type, src) {
@@ -95,7 +97,7 @@ function makeNoise(size = 256) {
   return data;
 }
 
-export function createSmokeBackground(canvas, baseImg, smokeImg, { rise = 0.2 } = {}) {
+export function createSmokeBackground(canvas, baseImg, smokeImg, { rise = 0.17 } = {}) {
   let gl;
   try {
     gl = canvas.getContext("webgl2", { alpha: false, antialias: false, premultipliedAlpha: false, preserveDrawingBuffer: false });
