@@ -32,7 +32,8 @@
     },
     "bodyColor": "#ebe9e5",
     "model": "/models/reve-paradoxe.glb?v=6",
-    "labelGain": 1.0371
+    "labelGain": 1.0371,
+    "featured": true
   },
   {
     "id": "noir-prestige",

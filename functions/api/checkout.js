@@ -6,6 +6,12 @@ const SHIPPING_COUNTRIES = ["LU", "BE", "FR", "DE", "NL"]; // edit to taste
 const SHIPPING_FLAT_CENTS = 500; // €5.00 flat rate
 const SHIPPING_LABEL = "Standard shipping";
 const MAX_QTY = 20;
+// languages Stripe Checkout can show (Arabic is not one of them: Stripe picks from the browser then)
+const STRIPE_LOCALES = { en: "en", de: "de", fr: "fr", pt: "pt", it: "it", es: "es", zh: "zh" };
+const SHIPPING_LABELS = {
+  en: "Standard shipping", de: "Standardversand", fr: "Livraison standard", pt: "Envio padrão",
+  it: "Spedizione standard", es: "Envío estándar", ar: "الشحن العادي", zh: "标准配送",
+};
 
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -18,9 +24,9 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Shop is not configured yet (missing STRIPE_SECRET_KEY)." }, 500);
   }
 
-  let items;
+  let items, lang;
   try {
-    ({ items } = await request.json());
+    ({ items, lang } = await request.json());
   } catch {
     return json({ error: "Invalid request." }, 400);
   }
@@ -39,12 +45,13 @@ export async function onRequestPost({ request, env }) {
   params.set("success_url", `${origin}/success.html`);
   params.set("cancel_url", `${origin}/?canceled=1`);
   params.set("billing_address_collection", "auto");
+  params.set("locale", STRIPE_LOCALES[lang] || "auto");
   params.set("phone_number_collection[enabled]", "true");
   SHIPPING_COUNTRIES.forEach((c, i) =>
     params.set(`shipping_address_collection[allowed_countries][${i}]`, c)
   );
   params.set("shipping_options[0][shipping_rate_data][type]", "fixed_amount");
-  params.set("shipping_options[0][shipping_rate_data][display_name]", SHIPPING_LABEL);
+  params.set("shipping_options[0][shipping_rate_data][display_name]", SHIPPING_LABELS[lang] || SHIPPING_LABEL);
   params.set("shipping_options[0][shipping_rate_data][fixed_amount][amount]", String(SHIPPING_FLAT_CENTS));
   params.set("shipping_options[0][shipping_rate_data][fixed_amount][currency]", "eur");
 

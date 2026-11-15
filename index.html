@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -25,17 +25,23 @@
 <body>
   <div class="chrome">
     <header class="top">
-      <a href="#/perfumes" class="brand" aria-label="Laniko, home">
+      <a href="/" class="brand" data-route="perfumes" data-i18n-aria="brandAria" aria-label="Laniko, home">
         <img src="/logo.svg" alt="Laniko" width="21" height="52">
       </a>
-      <button id="cart-btn" class="cart-btn" aria-label="Open cart">
-        Cart <span id="cart-count">0</span>
-      </button>
+      <div class="top-actions">
+        <button id="lang-btn" class="lang-btn" data-i18n-aria="langBtnAria" aria-label="Change language">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.9 5.6 3.9 9s-1.3 6.4-3.9 9c-2.6-2.6-3.9-5.6-3.9-9S9.4 5.6 12 3z"/></svg>
+          <span id="lang-short">EN</span>
+        </button>
+        <button id="cart-btn" class="cart-btn" data-i18n-aria="openCart" aria-label="Open cart">
+          <span data-i18n="cart">Cart</span> <span id="cart-count">0</span>
+        </button>
+      </div>
     </header>
-    <nav class="tabs" aria-label="Pages">
-      <a href="#/perfumes" data-route="perfumes">Perfumes</a>
-      <a href="#/top-sellers" data-route="top-sellers">Top sellers</a>
-      <a href="#/wishlist" data-route="wishlist">Wishlist<span id="tab-wish-count" class="tab-count" hidden></span></a>
+    <nav class="tabs" data-i18n-aria="pagesAria" aria-label="Pages">
+      <a href="/" data-route="perfumes" data-i18n="perfumes">Perfumes</a>
+      <a href="#/top-sellers" data-route="top-sellers" data-i18n="topSellers">Top sellers</a>
+      <a href="#/wishlist" data-route="wishlist"><span data-i18n="wishlist">Wishlist</span><span id="tab-wish-count" class="tab-count" hidden></span></a>
     </nav>
   </div>
 
@@ -45,33 +51,33 @@
       <p id="page-sub"></p>
     </section>
     <p id="status" class="notice" hidden></p>
-    <section id="products" class="grid" aria-live="polite">Loading…</section>
+    <section id="products" class="grid" aria-live="polite" data-i18n="loading">Loading…</section>
   </main>
 
   <aside id="cart" class="cart" hidden>
     <div class="cart-head">
-      <h2>Your cart</h2>
-      <button id="cart-close" aria-label="Close cart">✕</button>
+      <h2 data-i18n="yourCart">Your cart</h2>
+      <button id="cart-close" data-i18n-aria="closeCart" aria-label="Close cart">✕</button>
     </div>
     <div id="cart-items"></div>
     <div class="cart-foot">
-      <p>Subtotal: <strong id="cart-subtotal">€0.00</strong></p>
-      <p class="small">Shipping is calculated at checkout.</p>
-      <button id="checkout-btn" class="primary" disabled>Checkout</button>
+      <p><span data-i18n="subtotal">Subtotal</span>: <strong id="cart-subtotal">€0.00</strong></p>
+      <p class="small" data-i18n="shipNote">Shipping is calculated at checkout.</p>
+      <button id="checkout-btn" class="primary" data-i18n="checkout" disabled>Checkout</button>
     </div>
   </aside>
 
-  <div id="viewer" class="viewer" hidden role="dialog" aria-modal="true" aria-label="3D view">
+  <div id="viewer" class="viewer" hidden role="dialog" aria-modal="true" data-i18n-aria="view3dLabel" aria-label="3D view">
     <div class="viewer-head">
       <strong id="viewer-title"></strong>
-      <button id="viewer-close" aria-label="Close 3D view">✕</button>
+      <button id="viewer-close" data-i18n-aria="close3d" aria-label="Close 3D view">✕</button>
     </div>
     <div id="viewer-stage" class="viewer-stage"></div>
     <div id="viewer-desc" class="viewer-desc" aria-hidden="false"></div>
-    <p id="viewer-hint" class="viewer-hint">Drag to rotate · pinch to zoom · two fingers to move</p>
+    <p id="viewer-hint" class="viewer-hint" data-i18n="viewerHint">Drag to rotate · pinch to zoom · two fingers to move</p>
     <div class="viewer-foot">
       <span id="viewer-price" class="price"></span>
-      <button id="viewer-add" class="primary">Add to cart</button>
+      <button id="viewer-add" class="primary" data-i18n="add">Add to cart</button>
     </div>
   </div>
 
@@ -79,8 +85,9 @@
 
   <footer class="foot">
     <img src="/logo.svg" alt="" width="14" height="35" class="foot-logo">
-    <p>© Laniko · Extrait de Parfum</p>
+    <p data-i18n="footer">© Laniko · Extrait de Parfum</p>
   </footer>
+  <script src="/i18n.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

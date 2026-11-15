@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr" data-page="thanks">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,16 +7,17 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
   <div class="center">
     <a href="/" class="brand" aria-label="Laniko, home"><img src="/logo.svg" alt="Laniko" width="21" height="52"></a>
-    <h1 style="font-family: var(--serif); font-weight: 600;">Thank you for your order!</h1>
-    <p>Your payment went through. A receipt is on its way to your email.</p>
-    <p><a href="/">Back to the shop</a></p>
+    <h1 style="font-family: var(--serif); font-weight: 600;" data-i18n="thanksTitle">Thank you for your order!</h1>
+    <p data-i18n="thanksBody">Your payment went through. A receipt is on its way to your email.</p>
+    <p><a href="/" data-i18n="back">Back to the shop</a></p>
   </div>
+  <script src="/i18n.js"></script>
   <script>
     try { localStorage.removeItem("shop-cart-v1"); } catch (e) {}
   </script>
