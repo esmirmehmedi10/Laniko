@@ -175,6 +175,7 @@ function makeStudioEnvironment() {
   panel(2, 11, new THREE.Color(9, 8, 6.6), [7.5, 3, -4]);       // rim strip, right-back
   panel(2, 11, new THREE.Color(8, 7.4, 6.6), [-5, 3, -8]);      // rim strip, left-back
   panel(11, 5, new THREE.Color(6, 5.7, 5.2), [0, 9, 1]);        // overhead softbox (top faces)
+  panel(14, 8, new THREE.Color(4.2, 3.7, 2.8), [0, 10, -4.5]);     // overhead-back softbox: the gold tops glow when seen from above
   panel(1.4, 1.4, new THREE.Color(14, 12.5, 10), [4.5, 6, 6]);
   panel(18, 9, new THREE.Color(0.55, 0.38, 0.17), [0, 1.5, 9.5]);  // broad warm fill: keeps the gold a rich mid-tone    // small hot spot for sparkle
   return env;
@@ -486,7 +487,16 @@ export function createBottleViewer(container, product) {
       capNode = bottleModel.getObjectByName("Cap"); nozNode = bottleModel.getObjectByName("Nozzle");
       capNodeR = reflRoot.getObjectByName("Cap"); nozNodeR = reflRoot.getObjectByName("Nozzle");
       if (capNode) capBase = capNode.position.y;
-      if (nozNode) nozBase = nozNode.position.y;
+      if (nozNode) {
+        nozBase = nozNode.position.y;
+        // the little spray hole on the side of the button (a dark slot that hugs the cylinder), facing +x
+        const hole = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.003515, 0.003515, 0.0016, 16, 1, true, Math.PI / 2 - 0.34, 0.68),
+          new THREE.MeshBasicMaterial({ color: 0x060403, side: THREE.DoubleSide })
+        );
+        hole.position.set(0, 0.0345 * 0.06 * 1.0, 0);
+        nozNode.add(hole);
+      }
 
       // soft contact shadow behind the foot of the bottle
       const blobTex = radialTexture([[0, "rgba(0,0,0,0.7)"], [0.5, "rgba(0,0,0,0.32)"], [1, "rgba(0,0,0,0)"]]);
@@ -512,7 +522,7 @@ export function createBottleViewer(container, product) {
   // zoom + pan: the view is  position = rest position + pan  at scale `zoom`; targets are eased every frame
   let zoom = 1, zoomTarget = 1, panX = 0, panY = 0, panTX = 0, panTY = 0;
   let swayYaw = 0, zoomSent = 1;
-  // fixed pose for the scroll-animation frames: { yaw, pitch, lift, slide, tilt, press }   (lengths in body widths)
+  // fixed pose for the scroll-animation frames: { yaw, pitch, lift, slide, tilt, press, zoom, panX, panY, roll }   (lengths in body widths)
   let pose = null, capNode = null, capNodeR = null, nozNode = null, nozNodeR = null, capBase = 0, nozBase = 0;
   const ptrs = new Map();
   let pinchD = 0, pinchMx = 0, pinchMy = 0, dragMode = "rotate", lastTap = 0, lastTapX = 0, lastTapY = 0, moved = 0;
@@ -638,14 +648,13 @@ export function createBottleViewer(container, product) {
       rig.rotation.x = pitchShown;
       {
         const L = pose ? (pose.lift || 0) * 0.06 : 0, X = pose ? -(pose.slide || 0) * 0.06 : 0, Z = pose ? pose.tilt || 0 : 0;
-        const Pr = pose ? (pose.press || 0) * 0.012 * 0.06 : 0;
+        const Pr = pose ? (pose.press || 0) * 0.03 * 0.06 : 0;
         [[capNode, capBase], [capNodeR, capBase]].forEach(([n, b]) => { if (n) { n.position.set(X, b + L, 0); n.rotation.z = Z; } });
         [[nozNode, nozBase], [nozNodeR, nozBase]].forEach(([n, b]) => { if (n) n.position.y = b - Pr; });
       }
       if (zoomTarget !== zoomSent) { zoomSent = zoomTarget; container.dispatchEvent(new CustomEvent("vp-zoom", { detail: zoomTarget })); }
       const ease = Math.min(1, dt * 12);
-      if (pose) { zoom = zoomTarget = 1; panX = panY = panTX = panTY = 0; }
-      if (pose) { zoom = zoomTarget = 1; panX = panY = panTX = panTY = 0; }
+      if (pose) { zoom = zoomTarget = pose.zoom || 1; panX = panTX = pose.panX || 0; panY = panTY = pose.panY || 0; }
       zoom += (zoomTarget - zoom) * ease; panX += (panTX - panX) * ease; panY += (panTY - panY) * ease;
       // zoom toward the point the viewer chose, and move around freely once zoomed in
       anchor.scale.setScalar(zoom);
@@ -685,9 +694,13 @@ export function createBottleViewer(container, product) {
     renderNow() { loopTick(0.016); },
     nozzleScreen() {
       if (!nozNode) return null;
-      scene.updateMatrixWorld(true);
-      const v = nozNode.localToWorld(new THREE.Vector3(0.012, 0.045 * 0.06, 0)).project(camera);
-      return { x: (v.x + 1) / 2, y: (1 - v.y) / 2 };
+      scene.updateMatrixWorld(true); camera.updateMatrixWorld(true);
+      const loc = (x) => nozNode.localToWorld(new THREE.Vector3(x, 0.0345 * 0.06, 0));
+      const a = loc(0.0036), b = loc(0.0036 + 0.01);
+      const v = a.clone().project(camera);
+      const va = a.clone().applyMatrix4(camera.matrixWorldInverse), vb = b.clone().applyMatrix4(camera.matrixWorldInverse);
+      const d = vb.sub(va).normalize();                       // spray direction in camera space (x right, y up, z towards the viewer)
+      return { x: (v.x + 1) / 2, y: (1 - v.y) / 2, ux: d.x, uy: d.y, uz: d.z };
     },
     dispose() {
       disposed = true;
