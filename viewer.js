@@ -374,7 +374,7 @@ export function createBottleViewer(container, product) {
   anchor.add(rig);
   const reflU = { uStrength: { value: 0.5 }, uReach: { value: 1.35 }, uFloorY: { value: 0 }, uZoom: { value: 1 } };
   let envTexture = null, pmrem = null, envScene = null;
-  let built = false, plateReady = false, started = false, shown = false;
+  let built = false, plateReady = false, started = false, shown = false, bgOn = false;
   let W = 1, H = 1, kPx = 100;
 
   const fail = (err) => {
@@ -548,11 +548,14 @@ export function createBottleViewer(container, product) {
       shown = true;
       plateImg.style.visibility = "visible";
       photoImg.style.visibility = "hidden";
-      if (bg) {
-        bg.draw(0);
-        bgCanvas.style.visibility = "visible";
-        bg.start(); // the smoke is the point of this view; it is slow and gentle, so it always runs
-      }
+    }
+    // The smoke renderer is created asynchronously (the mask is decoded after the plate), so it can
+    // be ready before OR after the swap above: start it as soon as it exists, whichever came first.
+    if (shown && bg && !bgOn) {
+      bgOn = true;
+      bg.draw(0);
+      bgCanvas.style.visibility = "visible";
+      bg.start(); // the smoke is the point of this view; it is slow and gentle, so it always runs
     }
   });
 
