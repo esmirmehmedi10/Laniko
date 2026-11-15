@@ -36,7 +36,7 @@ const LABEL_W = 1600, LABEL_H = 2327;
 // mode "orm":   roughness (green) + metalness (blue): gold ink is shiny metal, the paper stays matte.
 // mode "emit":  ink only, on black. It lifts the ink a little so the text stays readable even where
 //               the metal would reflect a dark part of the studio.
-function drawLabel(product, mode, scale = 1) {
+export function drawLabel(product, mode, scale = 1) {
   const W = LABEL_W, H = LABEL_H;
   const c = document.createElement("canvas");
   c.width = Math.round(W * scale); c.height = Math.round(H * scale);

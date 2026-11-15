@@ -18,6 +18,7 @@ jobs:
           mkdir dist
           cp index.html success.html style.css app.js viewer.js smoke-bg.js products.json logo.svg favicon.svg dist/
           [ -d images ] && cp -r images dist/images || true
+          [ -d models ] && cp -r models dist/models || true
 
       - name: Create Pages project (first run only)
         uses: cloudflare/wrangler-action@v3
