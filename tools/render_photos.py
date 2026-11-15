@@ -22,7 +22,7 @@ with sync_playwright() as p:
         pg.route("https://fonts.googleapis.com/**", lambda r: r.abort()); pg.route("https://fonts.gstatic.com/**", lambda r: r.abort())
         pg.goto("http://127.0.0.1:8841/"); pg.wait_for_selector(".imgbtn")
         pg.add_init_script("window.LANIKO_FRAME={bw:0.50,bottom:0.70}")
-        pg.add_style_tag(content=".viewer-head,.viewer-foot,.viewer-hint{display:none!important}")
+        pg.add_style_tag(content=".viewer-head,.viewer-foot,.viewer-hint,.viewer-desc{display:none!important}")
         pg.locator(".imgbtn").nth(i).click()
         pg.wait_for_timeout(12000)
         pg.screenshot(path=f"/tmp/ph-{i}.png")
