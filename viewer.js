@@ -358,7 +358,8 @@ export function createBottleViewer(container, product) {
   const theme = { ...DEFAULT_THEME, ...(product.theme || {}) };
   // Where the bottle stands: just the perfume on a plain studio backdrop. (ar = width/height of the area the bottle is
   // laid out in, cx = centre, bw = bottle width as a fraction of that area, bottom = the floor line as a fraction of the height)
-  const B = { ar: 0.62, cx: 0.5, bw: 0.56, bottom: 0.66 };
+  // the bottle is shown fairly small in the viewer; the product pictures are rendered with a bigger frame (window.LANIKO_FRAME, see tools/render_photos.py)
+  const B = { ar: 0.62, cx: 0.5, bw: 0.42, bottom: 0.60, ...(window.LANIKO_FRAME || {}) };
   const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let disposed = false, failed = false;
 

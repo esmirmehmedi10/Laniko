@@ -105,16 +105,16 @@ def make_base_logo(step=0.0010,half=0.105,y_floor=0.012,lift=0.0003):
 
 # ---- gold collar + sprayer cap (lathe)
 def arc(cx,cy,r,a0,a1,n=8): a=np.radians(np.linspace(a0,a1,n)); return [(cx+r*np.cos(t),cy+r*np.sin(t)) for t in a]
-CAPK=1.15; CAPH=0.62  # cap scale vs. first version (real cap is much smaller than the bottle body)
+# cap proportions measured on the owner's marked photo (body width = 1.0): sprayer cap ~0.49 wide x ~0.42 tall on a ~0.32 wide collar
 def collar_strips():
     s=[]
-    s.append([(0.17,0.0),(0.17,0.020)])                                   # base lip, vertical
-    s.append([(0.17,0.020),(0.158,0.032)])                                # lip chamfer
-    s.append([(0.158,0.032),(0.158,0.190)]+arc(0.150,0.190,0.008,0,90))   # lower collar, rounded shoulder
-    s.append([(0.150,0.198),(0.137,0.198)])                               # shoulder, flat
-    s.append([(0.137,0.198),(0.137,0.362)]+arc(0.125,0.362,0.012,0,90)[1:]) # sprayer cap wall + rounded top edge
-    s.append([(0.125,0.374),(0.0,0.374)])                                 # flat top
-    return [[(x*CAPK,y*CAPH) for x,y in st] for st in s]
+    s.append([(0.17,0.0),(0.17,0.012)])                                   # base lip, vertical
+    s.append([(0.17,0.012),(0.16,0.022)])                                 # lip chamfer
+    s.append([(0.16,0.022),(0.16,0.097)])                                 # narrow collar
+    s.append([(0.16,0.097),(0.233,0.097)]+arc(0.233,0.107,0.010,-90,0)[1:])   # underside of the cap, rounded edge
+    s.append([(0.243,0.107),(0.243,0.500)]+arc(0.233,0.500,0.010,0,90)[1:])   # cap wall + rounded top edge
+    s.append([(0.233,0.510),(0.0,0.510)])                                 # flat top
+    return s
 def make_lathe(y0,seg=256):
     P=[];N=[];I=[];off=0
     for pts in collar_strips():
