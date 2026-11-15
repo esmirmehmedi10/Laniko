@@ -411,7 +411,7 @@ export function createBottleViewer(container, product) {
   const reflU = { uStrength: { value: 0.5 }, uReach: { value: 1.35 }, uFloorY: { value: 0 }, uZoom: { value: 1 } };
   let envTexture = null, pmrem = null, envScene = null;
   let built = false, plateReady = true, started = false, shown = false;
-  let W = 1, H = 1, kPx = 100, baseY = 0, bgZoomShown = 1;
+  let W = 1, H = 1, kPx = 100, baseY = 0, anchorX = 0, bgZoomShown = 1;
 
   const fail = (err) => {
     if (failed) return;
@@ -438,7 +438,8 @@ export function createBottleViewer(container, product) {
     const cxPx = (W - plateW) / 2 + B.cx * plateW;
     const bottomPx = B.bottom * plateH;
     baseY = (H / 2 - bottomPx) / kPx;
-    anchor.position.set((cxPx - W / 2) / kPx, baseY, 0);
+    anchorX = (cxPx - W / 2) / kPx;
+    anchor.position.set(anchorX, baseY, 0);
     bgZoomShown = -1;
   };
   const ro = new ResizeObserver(layout);
@@ -501,16 +502,55 @@ export function createBottleViewer(container, product) {
 
   // --- interaction
   let interacted = false;
-  const PITCH_MIN = -1.75, PITCH_MAX = 0.75, ZOOM_MAX = 4;   // the bottle can be turned until its base faces you
-  let yawFree = 0, yawVel = 0, pitch = 0, pitchShown = 0, zoom = 1, zoomTarget = 1;
+  const PITCH_MIN = -1.75, PITCH_MAX = 0.75, ZOOM_MAX = 6;   // the bottle can be turned until its base faces you
+  let yawFree = 0, yawVel = 0, pitch = 0, pitchShown = 0;
+  // zoom + pan: the view is  position = rest position + pan  at scale `zoom`; targets are eased every frame
+  let zoom = 1, zoomTarget = 1, panX = 0, panY = 0, panTX = 0, panTY = 0;
   let swayYaw = 0;
   const ptrs = new Map();
-  let pinchD = 0;
+  let pinchD = 0, pinchMx = 0, pinchMy = 0, dragMode = "rotate", lastTap = 0, lastTapX = 0, lastTapY = 0, moved = 0;
   const dom = renderer.domElement;
+  const HALF_W = 0.75;   // half width of the bottle in world units (the body is 1.5 units wide)
+
+  // world position (relative to the screen centre, y up) of a point given in client pixels
+  const toWorld = (cx, cy) => {
+    const r = dom.getBoundingClientRect();
+    return [(cx - r.left - r.width / 2) / kPx, (r.top + r.height / 2 - cy) / kPx];
+  };
+  // where the anchor sits for a given zoom (before pan)
+  const restX = () => anchorX;
+  const restY = (s) => baseY - (s - 1) * MID;
+  // keep the bottle from being lost: the more it is zoomed, the further it may be moved
+  const clampPan = () => {
+    const f = smooth01((zoomTarget - 1.05) / 0.35);
+    const rx = f * (zoomTarget * HALF_W * 1.05 + 0.15), ry = f * (zoomTarget * MID * 1.05 + 0.15);
+    panTX = Math.min(rx, Math.max(-rx, panTX));
+    panTY = Math.min(ry, Math.max(-ry, panTY));
+  };
+  // zoom to scale s, keeping the point under (wx, wy) where it is
+  const zoomAt = (wx, wy, s) => {
+    s = Math.min(ZOOM_MAX, Math.max(1, s));
+    const k = s / zoomTarget;
+    const tx = restX() + panTX, ty = restY(zoomTarget) + panTY;
+    const nx = wx - (wx - tx) * k, ny = wy - (wy - ty) * k;
+    zoomTarget = s;
+    panTX = nx - restX(); panTY = ny - restY(s);
+    clampPan();
+  };
+
+  dom.addEventListener("contextmenu", (e) => e.preventDefault());
   dom.addEventListener("pointerdown", (e) => {
     dom.setPointerCapture(e.pointerId);
     ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinchD = Math.hypot(a.x - b.x, a.y - b.y); }
+    if (ptrs.size === 1) {
+      moved = 0;
+      // mouse: right / middle button or shift moves the picture around, the left button turns the bottle
+      dragMode = (e.pointerType === "mouse" && (e.button !== 0 || e.shiftKey)) ? "pan" : "rotate";
+    }
+    if (ptrs.size === 2) {
+      const [a, b] = [...ptrs.values()];
+      pinchD = Math.hypot(a.x - b.x, a.y - b.y); pinchMx = (a.x + b.x) / 2; pinchMy = (a.y + b.y) / 2;
+    }
     if (!interacted) { interacted = true; yawFree = swayYaw; }
     yawVel = 0;
   });
@@ -519,23 +559,45 @@ export function createBottleViewer(container, product) {
     if (!p) return;
     const dx = e.clientX - p.x, dy = e.clientY - p.y;
     p.x = e.clientX; p.y = e.clientY;
+    moved += Math.abs(dx) + Math.abs(dy);
     if (ptrs.size === 2) {
+      // two fingers: zoom around the point between them and move the picture with them
       const [a, b] = [...ptrs.values()];
-      const d = Math.hypot(a.x - b.x, a.y - b.y);
-      if (pinchD > 0) zoomTarget = Math.min(ZOOM_MAX, Math.max(1, zoomTarget * (d / pinchD)));
-      pinchD = d;
+      const d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      if (pinchD > 0) {
+        panTX += (mx - pinchMx) / kPx; panTY -= (my - pinchMy) / kPx;
+        const [wx, wy] = toWorld(mx, my);
+        zoomAt(wx, wy, zoomTarget * (d / pinchD));
+      }
+      pinchD = d; pinchMx = mx; pinchMy = my;
+    } else if (dragMode === "pan") {
+      panTX += dx / kPx; panTY -= dy / kPx; clampPan();
     } else {
       yawFree += dx * 0.011;
       yawVel = dx * 0.011 * 60;
       pitch = Math.min(PITCH_MAX, Math.max(PITCH_MIN, pitch + dy * 0.006)); // drag up: see the bottom; drag down: see the top
     }
   });
-  const up = (e) => { ptrs.delete(e.pointerId); pinchD = 0; };
+  const up = (e) => {
+    const wasOne = ptrs.size === 1;
+    ptrs.delete(e.pointerId); pinchD = 0;
+    if (ptrs.size === 1) dragMode = "rotate";
+    // double tap / double click: zoom in right there (or back out)
+    if (wasOne && e.type === "pointerup" && moved < 10) {
+      const now = performance.now();
+      if (now - lastTap < 320 && Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY) < 40) {
+        const [wx, wy] = toWorld(e.clientX, e.clientY);
+        if (zoomTarget > 1.6) { zoomTarget = 1; panTX = 0; panTY = 0; } else zoomAt(wx, wy, 3);
+        lastTap = 0; yawVel = 0;
+      } else { lastTap = now; lastTapX = e.clientX; lastTapY = e.clientY; }
+    }
+  };
   dom.addEventListener("pointerup", up);
   dom.addEventListener("pointercancel", up);
   dom.addEventListener("wheel", (e) => {
     e.preventDefault();
-    zoomTarget = Math.min(ZOOM_MAX, Math.max(1, zoomTarget * Math.exp(-e.deltaY * 0.0015)));
+    const [wx, wy] = toWorld(e.clientX, e.clientY);
+    zoomAt(wx, wy, zoomTarget * Math.exp(-e.deltaY * 0.0015));
   }, { passive: false });
 
   // --- animation
@@ -566,10 +628,12 @@ export function createBottleViewer(container, product) {
       rig.rotation.y = (interacted ? yawFree : swayYaw) + (interacted ? 0 : spin);
       pitchShown += ((interacted ? pitch : 0) - pitchShown) * Math.min(1, dt * 12);
       rig.rotation.x = pitchShown;
-      zoom += (zoomTarget - zoom) * Math.min(1, dt * 8);
-      // zoom about the middle of the bottle; the background only follows a little (it is far behind the bottle)
+      const ease = Math.min(1, dt * 12);
+      zoom += (zoomTarget - zoom) * ease; panX += (panTX - panX) * ease; panY += (panTY - panY) * ease;
+      // zoom toward the point the viewer chose, and move around freely once zoomed in
       anchor.scale.setScalar(zoom);
-      anchor.position.y = baseY - (zoom - 1) * MID;
+      anchor.position.x = anchorX + panX;
+      anchor.position.y = restY(zoom) + panY;
       reflU.uFloorY.value = anchor.position.y;
       reflU.uZoom.value = zoom;
       rig.updateMatrix(); holder.updateMatrix();

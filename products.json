@@ -14,7 +14,7 @@
     },
     "rank": 1,
     "bodyColor": "#ebe9e5",
-    "model": "/models/blanc-royal.glb?v=4",
+    "model": "/models/blanc-royal.glb?v=5",
     "labelGain": 0.5684
   },
   {
@@ -31,7 +31,7 @@
       "smoke": "#8fc7a8"
     },
     "bodyColor": "#ebe9e5",
-    "model": "/models/reve-paradoxe.glb?v=4",
+    "model": "/models/reve-paradoxe.glb?v=5",
     "labelGain": 1.0371
   },
   {
@@ -49,7 +49,7 @@
     },
     "rank": 2,
     "bodyColor": "#ebe9e5",
-    "model": "/models/noir-prestige.glb?v=4",
+    "model": "/models/noir-prestige.glb?v=5",
     "labelGain": 0.7482
   },
   {
@@ -67,7 +67,7 @@
     },
     "rank": 3,
     "bodyColor": "#ebe9e5",
-    "model": "/models/rouge-absolu.glb?v=4",
+    "model": "/models/rouge-absolu.glb?v=5",
     "labelGain": 0.7919
   },
   {
@@ -84,7 +84,7 @@
       "smoke": "#8fa8e0"
     },
     "bodyColor": "#ebe9e5",
-    "model": "/models/bleu-eternel.glb?v=4",
+    "model": "/models/bleu-eternel.glb?v=5",
     "labelGain": 1.3349
   }
 ]

@@ -147,7 +147,7 @@
     viewerProductId = id;
     $("viewer-title").textContent = p.name;
     $("viewer-price").textContent = fmt(p.price);
-    $("viewer-hint").textContent = "Drag to rotate · pinch to zoom";
+    $("viewer-hint").textContent = "Drag to rotate · pinch to zoom · two fingers to move";
     const stage = $("viewer-stage");
     stage.innerHTML = "";
     // the themed background is plain CSS, so it is on screen in the very first frame

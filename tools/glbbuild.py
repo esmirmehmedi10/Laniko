@@ -62,6 +62,47 @@ def make_body():
     pos[:,1]+=HY  # sit on the floor
     return pos,nrm,idx
 
+# ---- embossed logo in the recessed base panel (rounded triangle with a few small marks, like the real bottle)
+def _seg_dist(a,b,p0,p1):
+    dx,dy=p1[0]-p0[0],p1[1]-p0[1]; L2=dx*dx+dy*dy
+    t=np.clip(((a-p0[0])*dx+(b-p0[1])*dy)/L2,0,1); return np.hypot(a-(p0[0]+t*dx),b-(p0[1]+t*dy))
+def _tri_sdf(a,b,V,r):
+    """signed distance to a triangle (a: horizontal, b: vertical), rounded by radius r (negative inside)"""
+    d=np.min([_seg_dist(a,b,V[i],V[(i+1)%3]) for i in range(3)],axis=0)
+    sgn=np.ones_like(a)
+    inside=np.ones_like(a,bool)
+    for i in range(3):
+        p0,p1=V[i],V[(i+1)%3]; cr=(p1[0]-p0[0])*(b-p0[1])-(p1[1]-p0[1])*(a-p0[0]); inside&=(cr>=0)
+    return np.where(inside,-d,d)-r
+def logo_emboss(a,b):
+    """raised height (>=0) of the logo at base-plane position (a=along depth z, b=along width x)"""
+    V=[(0.0,0.050),(-0.056,-0.042),(0.056,-0.042)]
+    sd=_tri_sdf(a,b,V,0.042)
+    bead=lambda d,w:np.sqrt(np.clip(1-(d/(w/2))**2,0,1))
+    e=0.0085*bead(np.abs(sd),0.0105)                       # outer ring
+    e=np.maximum(e,0.0045*bead(np.abs(sd+0.0185),0.0055))  # thin inner contour
+    caps=[((-0.038,-0.004),(-0.012,-0.004),0.0075),((-0.038,-0.024),(-0.014,-0.024),0.0075),   # left mark
+          ((0.012,0.010),(0.012,-0.026),0.0075),((0.012,-0.026),(0.030,-0.026),0.0065),        # right mark
+          ((-0.030,0.026),(0.026,0.026),0.0055)]                                                # little arch bar above
+    for p0,p1,w in caps: e=np.maximum(e,0.006*bead(_seg_dist(a,b,p0,p1),w))
+    return e
+def make_base_logo(step=0.0010,half=0.105,y_floor=0.012,lift=0.0003):
+    g=np.arange(-half,half+1e-9,step); A,B=np.meshgrid(g,g,indexing='ij')   # A: z, B: x
+    E=logo_emboss(A,B); n=len(g)
+    keep=np.zeros((n-1,n-1),bool)
+    for di in (0,1):
+        for dj in (0,1): keep|=E[di:n-1+di,dj:n-1+dj]>1e-6
+    e=1e-4
+    ex=(logo_emboss(A,B+e)-logo_emboss(A,B-e))/(2*e); ez=(logo_emboss(A+e,B)-logo_emboss(A-e,B))/(2*e)
+    pos=np.stack([B.ravel(),(y_floor-E-lift).ravel(),A.ravel()],1)
+    nrm=np.stack([(-ex).ravel(),np.full(E.size,-1.0),(-ez).ravel()],1); nrm/=np.linalg.norm(nrm,axis=1)[:,None]
+    ii=[]; I,J=np.nonzero(keep)
+    a=I*n+J; b=a+1; c=a+n; d=c+1
+    idx=np.stack([a,c,b,b,c,d],1).ravel().astype(np.uint32)
+    used=np.unique(idx); remap=-np.ones(len(pos),np.int64); remap[used]=np.arange(len(used))
+    pos,nrm,idx=pos[used],nrm[used],remap[idx].astype(np.uint32)
+    return pos,nrm,fix_winding(pos,nrm,idx)
+
 # ---- gold collar + sprayer cap (lathe)
 def arc(cx,cy,r,a0,a1,n=8): a=np.radians(np.linspace(a0,a1,n)); return [(cx+r*np.cos(t),cy+r*np.sin(t)) for t in a]
 CAPK=1.15; CAPH=0.62  # cap scale vs. first version (real cap is much smaller than the bottle body)
@@ -140,6 +181,7 @@ def build(pid,body_rgb,out):
        "emissiveTexture":{"index":te},"emissiveFactor":[0.4,0.4,0.4]}]
     sc=W
     p,n,i=make_body(); g.mesh("Body",p*sc,n,i,0)
+    p,n,i=make_base_logo(); g.mesh("Base_logo",p*sc,n,i,0)
     y_top=BH-0.013
     p,n,i=make_lathe(y_top); g.mesh("Collar_and_cap",p*sc,n,i,1)
     p,n,uv,i=make_label(); g.mesh("Label",p*sc,n,i,2,uv)
