@@ -1,16 +1,11 @@
 // 3D viewer (Three.js, loaded from a CDN through the import map in index.html).
 //
-// The product photo is the background. It is a copy of the photo with the original bottle taken out
-// (a "plate", extended downwards so the bottle sits in the middle of the screen). The smoke that is
-// already in the photo is animated by smoke-bg.js; nothing is added to the picture. Only the bottle
-// is 3D: it turns once, then sways gently; drag to rotate, pinch / wheel to zoom.
-//
-// The bottle is generated in code (no model file): opal glass body, lathe-turned polished gold cap,
-// vector foil label with the Laniko logo.
+// Just the perfume: the real .glb bottle (models/<id>.glb) on a plain studio backdrop in the perfume's colour,
+// standing on a glossy floor that mirrors it. It turns once, then sways gently; drag to rotate (up: see the base),
+// pinch / wheel to zoom. If the model cannot be loaded, a bottle built in code is used instead.
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { createSmokeBackground } from "./smoke-bg.js";
 
 const TAU = Math.PI * 2;
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
@@ -360,9 +355,10 @@ function el(tag, cls, parent) {
 }
 
 export function createBottleViewer(container, product) {
-  if (!product.plate || !product.bottle) throw new Error("no photo plate for this product");
   const theme = { ...DEFAULT_THEME, ...(product.theme || {}) };
-  const B = product.bottle; // { ar, cx, bw, bottom, photoFrac }: where the bottle is in the plate
+  // Where the bottle stands: just the perfume on a plain studio backdrop. (ar = width/height of the area the bottle is
+  // laid out in, cx = centre, bw = bottle width as a fraction of that area, bottom = the floor line as a fraction of the height)
+  const B = { ar: 0.62, cx: 0.5, bw: 0.56, bottom: 0.66 };
   const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let disposed = false, failed = false;
 
@@ -372,30 +368,30 @@ export function createBottleViewer(container, product) {
   container.classList.add("vp");
   container.style.setProperty("--v-glow", theme.glow);
   container.style.setProperty("--v-smoke", theme.smoke);
-  const fillImg = el("img", "vp-fill", container);
-  const photoImg = el("img", "vp-photo", container);
-  const plateImg = el("img", "vp-plate", container);
-  const bgCanvas = el("canvas", "vp-bg", container);
-  bgCanvas.style.visibility = "hidden";
-  const baseImg = new Image();
-  const smokeImg = new Image();
-  baseImg.src = product.smokeBase || "";
-  smokeImg.src = product.smokeLayer || "";
-  fillImg.alt = ""; plateImg.alt = ""; photoImg.alt = product.name;
-  let bg = null;
-  photoImg.style.height = B.photoFrac * 100 + "%";
-  photoImg.src = product.image;
-  plateImg.decoding = "async";
-  plateImg.src = product.plate;
-  fillImg.src = product.plate;
-  plateImg.style.visibility = "hidden";
-
+  const rgba = (hex, a) => {
+    const n = parseInt(hex.replace("#", ""), 16);
+    return "rgba(" + (n >> 16) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")";
+  };
+  const backdrop = el("div", "vp-backdrop", container);
+  backdrop.style.background =
+    "radial-gradient(ellipse 75% 40% at 50% " + (B.bottom * 100 - 20) + "%, " + rgba(theme.glow, 0.34) + " 0%, " + rgba(theme.glow, 0.10) + " 55%, transparent 80%)," +
+    "linear-gradient(180deg, " + rgba(theme.glow, 0.10) + " 0%, " + theme.bgDark + " 62%)";
+  const floor = el("div", "vp-floor", container);   // a glossy surface: the bottle's reflection is drawn on it
+  floor.style.top = B.bottom * 100 + "%";
+  floor.style.background =
+    "linear-gradient(180deg, " + rgba(theme.glow, 0.30) + " 0%, " + rgba(theme.glow, 0.08) + " 7%, rgba(0,0,0,0.30) 55%, rgba(0,0,0,0.55) 100%)";
+  floor.style.boxShadow = "0 -1px 0 " + rgba(theme.smoke, 0.35) + ", 0 -6px 18px " + rgba(theme.glow, 0.25);
+  const photoImg = el("img", "vp-photo", container);   // only used if 3D cannot start
+  photoImg.alt = product.name;
+  photoImg.style.visibility = "hidden";
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 3));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
   renderer.setClearColor(0x000000, 0);
   renderer.domElement.className = "vp-canvas";
+  renderer.domElement.style.opacity = "0";
+  renderer.domElement.style.transition = "opacity .45s ease";
   container.appendChild(renderer.domElement);
 
   // --- the bottle (the only 3D thing)
@@ -414,7 +410,7 @@ export function createBottleViewer(container, product) {
   const mirrorY = new THREE.Matrix4().makeScale(1, -1, 1);
   const reflU = { uStrength: { value: 0.5 }, uReach: { value: 1.35 }, uFloorY: { value: 0 }, uZoom: { value: 1 } };
   let envTexture = null, pmrem = null, envScene = null;
-  let built = false, plateReady = false, started = false, shown = false, bgOn = false;
+  let built = false, plateReady = true, started = false, shown = false;
   let W = 1, H = 1, kPx = 100, baseY = 0, bgZoomShown = 1;
 
   const fail = (err) => {
@@ -423,10 +419,8 @@ export function createBottleViewer(container, product) {
     console.error("3D viewer failed", err);
     renderer.setAnimationLoop(null);
     renderer.domElement.style.display = "none";
-    if (bg) bg.stop();
-    bgCanvas.style.visibility = "hidden";
-    plateImg.style.visibility = "hidden";
-    photoImg.style.visibility = "visible"; // the plain photo still works
+    photoImg.src = product.image;
+    photoImg.style.visibility = "visible"; // the plain picture still works
   };
 
   const layout = () => {
@@ -446,30 +440,12 @@ export function createBottleViewer(container, product) {
     baseY = (H / 2 - bottomPx) / kPx;
     anchor.position.set((cxPx - W / 2) / kPx, baseY, 0);
     bgZoomShown = -1;
-    if (bg) bg.resize(H, B.ar, Math.min(window.devicePixelRatio || 1, 2));
   };
   const ro = new ResizeObserver(layout);
   ro.observe(container);
   layout();
 
   // --- wait until the plate is decoded
-  const loadPlate = async () => {
-    try {
-      if (plateImg.decode) await plateImg.decode();
-      else await new Promise((res, rej) => { plateImg.onload = res; plateImg.onerror = rej; });
-    } catch { /* fall through */ }
-    if (disposed) return;
-    plateReady = !!plateImg.naturalWidth;
-    if (!plateReady) { fail(new Error("plate image missing")); return; }
-    try {
-      if (product.smokeBase && product.smokeLayer) await Promise.all([baseImg.decode(), smokeImg.decode()]);
-      if (baseImg.naturalWidth && smokeImg.naturalWidth && !disposed) {
-        bg = createSmokeBackground(bgCanvas, baseImg, smokeImg);
-        if (bg && !bg.ok) { bg.dispose(); bg = null; }
-        if (bg) bg.resize(H, B.ar, Math.min(window.devicePixelRatio || 1, 2));
-      }
-    } catch (err) { console.warn("smoke animation unavailable", err); bg = null; } // the still photo is used
-  };
 
   // --- build the bottle scene
   const build = async () => {
@@ -605,16 +581,6 @@ export function createBottleViewer(container, product) {
       const stand = (1 - smooth01((zoom - 1.0) / 0.5)) * (1 - smooth01((Math.abs(pitchShown) - 0.05) / 0.35));
       reflU.uStrength.value = 0.5 * stand;
       if (blob) blob.material.opacity = stand;
-      const bgz = 1 + (zoom - 1) * 0.28;
-      if (Math.abs(bgz - bgZoomShown) > 1e-4) {
-        bgZoomShown = bgz;
-        const oy = (B.bottom - (MID * kPx) / H) * 100;
-        const tf = "translateX(-50%) scale(" + bgz.toFixed(4) + ")";
-        for (const [elm, h] of [[plateImg, 1], [bgCanvas, 1], [photoImg, B.photoFrac]]) {
-          elm.style.transformOrigin = (B.cx * 100).toFixed(2) + "% " + (oy / h).toFixed(2) + "%";
-          elm.style.transform = tf;
-        }
-      }
 
       renderer.clear();
       renderer.render(scene, camera);
@@ -624,29 +590,17 @@ export function createBottleViewer(container, product) {
     }
 
     if (!shown) {
-      // the bottle has really been drawn: swap the photo for the plate (original bottle taken out)
-      shown = true;
-      plateImg.style.visibility = "visible";
-      photoImg.style.visibility = "hidden";
-    }
-    // The smoke renderer is created asynchronously (the mask is decoded after the plate), so it can
-    // be ready before OR after the swap above: start it as soon as it exists, whichever came first.
-    if (shown && bg && !bgOn) {
-      bgOn = true;
-      bg.draw(0);
-      bgCanvas.style.visibility = "visible";
-      bg.start(); // the smoke is the point of this view; it is slow and gentle, so it always runs
+      shown = true;   // the bottle has really been drawn: fade it in
+      renderer.domElement.style.opacity = "1";
     }
   });
 
-  loadPlate();
 
   return {
     dispose() {
       disposed = true;
       renderer.setAnimationLoop(null);
       ro.disconnect();
-      if (bg) bg.dispose();
       const texKeys = ["map", "alphaMap", "metalnessMap", "roughnessMap", "emissiveMap"];
       const disposeObject = (o) => {
         if (o.geometry) o.geometry.dispose();

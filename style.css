@@ -130,6 +130,10 @@ main { padding: 16px; max-width: 1000px; margin: 0 auto; }
 .viewer-stage { position: absolute; inset: 0; touch-action: none; }
 .viewer-stage img { display: block; }
 .viewer-stage > img:not(.vp-fill):not(.vp-photo):not(.vp-plate) { width: 100%; height: 100%; object-fit: contain; }
+.vp-backdrop, .vp-floor { position: absolute; left: 0; right: 0; pointer-events: none; }
+.vp-backdrop { top: 0; bottom: 0; }
+.vp-floor { bottom: 0; }
+.vp-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .vp-fill { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: blur(28px) brightness(.55); transform: scale(1.15); }
 .vp-photo, .vp-plate { position: absolute; top: 0; left: 50%; height: 100%; width: auto; max-width: none; transform: translateX(-50%); transform-origin: 50% 50%; }
 .vp-bg { position: absolute; top: 0; left: 50%; height: 100%; transform: translateX(-50%); }
