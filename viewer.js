@@ -359,7 +359,7 @@ export function createBottleViewer(container, product) {
   // Where the bottle stands: just the perfume on a plain studio backdrop. (ar = width/height of the area the bottle is
   // laid out in, cx = centre, bw = bottle width as a fraction of that area, bottom = the floor line as a fraction of the height)
   // the bottle is shown fairly small in the viewer; the product pictures are rendered with a bigger frame (window.LANIKO_FRAME, see tools/render_photos.py)
-  const B = { ar: 0.62, cx: 0.5, bw: 0.42, bottom: 0.60, ...(window.LANIKO_FRAME || {}) };
+  const B = { ar: 0.62, cx: 0.5, bw: 0.42, bottom: 0.64, ...(window.LANIKO_FRAME || {}) };
   const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let disposed = false, failed = false;
 
@@ -409,7 +409,7 @@ export function createBottleViewer(container, product) {
   rig.add(holder);
   let reflRoot = null, blob = null, MID = 1;
   const mirrorY = new THREE.Matrix4().makeScale(1, -1, 1);
-  const reflU = { uStrength: { value: 0.5 }, uReach: { value: 1.35 }, uFloorY: { value: 0 }, uZoom: { value: 1 } };
+  const reflU = { uStrength: { value: 0.5 }, uReach: { value: 0.85 }, uFloorY: { value: 0 }, uZoom: { value: 1 } };
   let envTexture = null, pmrem = null, envScene = null;
   let built = false, plateReady = true, started = false, shown = false;
   let W = 1, H = 1, kPx = 100, baseY = 0, anchorX = 0, bgZoomShown = 1;

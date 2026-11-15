@@ -149,23 +149,23 @@ main { padding: 16px; max-width: 1000px; margin: 0 auto; }
 .viewer-foot .price { font-size: 1.2rem; text-shadow: 0 1px 6px rgba(0,0,0,.7); }
 .viewer-foot .primary { width: auto; padding: 12px 22px; background: #d9b96a; color: #1d1d1b; border-color: #d9b96a; }
 
-/* description printed on the picture, under the bottle */
+/* description printed on the picture, under the bottle: small tracked capitals in champagne gold */
 .media { container-type: inline-size; }
 .pic-desc {
-  position: absolute; left: 7%; right: 7%; top: 77%; text-align: center; pointer-events: none;
-  font-family: var(--serif); font-style: italic; font-weight: 500; color: #eadfc6;
-  font-size: 4.9cqw; line-height: 1.28; letter-spacing: .01em; text-shadow: 0 1px 8px rgba(0,0,0,.85);
+  position: absolute; left: 9%; right: 9%; top: 75%; text-align: center; pointer-events: none;
+  font-family: var(--serif); font-weight: 500; text-transform: uppercase; color: #e8d7a9;
+  font-size: 3.2cqw; line-height: 1.85; letter-spacing: .17em; text-shadow: 0 1px 10px rgba(0,0,0,.9);
 }
-@supports not (font-size: 1cqw) { .pic-desc { font-size: 1rem; } }
+@supports not (font-size: 1cqw) { .pic-desc { font-size: .7rem; } }
 
 /* the same text in the 3D view: a gold rule draws itself, then the words rise in one after the other */
 .viewer-desc {
-  position: absolute; left: 0; right: 0; top: 74%; z-index: 2; padding: 0 9%; text-align: center; pointer-events: none;
+  position: absolute; left: 0; right: 0; top: 71%; z-index: 2; padding: 0 8%; text-align: center; pointer-events: none;
   transition: opacity .5s ease;
 }
 .viewer-desc.zoomed { opacity: 0; }
-.viewer-desc p { margin: 0; font-family: var(--serif); font-style: italic; font-weight: 500; font-size: 1.12rem; line-height: 1.35; color: #eadfc6; text-shadow: 0 1px 8px rgba(0,0,0,.85); }
-.vd-rule { display: block; width: 54px; height: 1px; margin: 0 auto 12px; background: linear-gradient(90deg, transparent, #d9b96a, transparent); transform: scaleX(0); animation: vd-rule .9s cubic-bezier(.2,.7,.2,1) 1.1s forwards; }
+.viewer-desc p { margin: 0; font-family: var(--serif); font-weight: 500; text-transform: uppercase; font-size: .8rem; line-height: 1.85; letter-spacing: .17em; color: #e8d7a9; text-shadow: 0 1px 10px rgba(0,0,0,.9); }
+.vd-rule { display: block; width: 46px; height: 1px; margin: 0 auto 14px; background: linear-gradient(90deg, transparent, #d9b96a, transparent); transform: scaleX(0); animation: vd-rule .9s cubic-bezier(.2,.7,.2,1) 1.1s forwards; }
 .vd-w { display: inline-block; opacity: 0; transform: translateY(10px); filter: blur(5px); animation: vd-word .8s cubic-bezier(.2,.7,.2,1) calc(1.5s + var(--i) * 70ms) forwards; }
 @keyframes vd-rule { to { transform: scaleX(1); } }
 @keyframes vd-word { to { opacity: 1; transform: none; filter: blur(0); } }
