@@ -483,6 +483,10 @@ export function createBottleViewer(container, product) {
       reflRoot.scale.set(1, 1, 1);
       reflRoot.matrixAutoUpdate = false;   // its matrix follows the bottle every frame (mirror in the floor)
       anchor.add(reflRoot);
+      capNode = bottleModel.getObjectByName("Cap"); nozNode = bottleModel.getObjectByName("Nozzle");
+      capNodeR = reflRoot.getObjectByName("Cap"); nozNodeR = reflRoot.getObjectByName("Nozzle");
+      if (capNode) capBase = capNode.position.y;
+      if (nozNode) nozBase = nozNode.position.y;
 
       // soft contact shadow behind the foot of the bottle
       const blobTex = radialTexture([[0, "rgba(0,0,0,0.7)"], [0.5, "rgba(0,0,0,0.32)"], [1, "rgba(0,0,0,0)"]]);
@@ -508,6 +512,8 @@ export function createBottleViewer(container, product) {
   // zoom + pan: the view is  position = rest position + pan  at scale `zoom`; targets are eased every frame
   let zoom = 1, zoomTarget = 1, panX = 0, panY = 0, panTX = 0, panTY = 0;
   let swayYaw = 0, zoomSent = 1;
+  // fixed pose for the scroll-animation frames: { yaw, pitch, lift, slide, tilt, press }   (lengths in body widths)
+  let pose = null, capNode = null, capNodeR = null, nozNode = null, nozNodeR = null, capBase = 0, nozBase = 0;
   const ptrs = new Map();
   let pinchD = 0, pinchMx = 0, pinchMy = 0, dragMode = "rotate", lastTap = 0, lastTapX = 0, lastTapY = 0, moved = 0;
   const dom = renderer.domElement;
@@ -608,9 +614,9 @@ export function createBottleViewer(container, product) {
     ? Promise.race([document.fonts.load('600 100px "Cormorant Garamond"').catch(() => {}), new Promise((r) => setTimeout(r, 600))])
     : Promise.resolve();
 
-  renderer.setAnimationLoop(() => {
+  const loopTick = (forcedDt) => {
     if (failed) return;
-    const dt = Math.min(clock.getDelta(), 0.05);
+    const dt = forcedDt !== undefined ? forcedDt : Math.min(clock.getDelta(), 0.05);
     time += dt;
     frames++;
     if (frames === 2) setTimeout(() => { fontReady.then(build); }, 0);
@@ -626,11 +632,20 @@ export function createBottleViewer(container, product) {
         yawFree += yawVel * dt;
         yawVel *= Math.exp(-2.6 * dt);
       }
-      rig.rotation.y = (interacted ? yawFree : swayYaw) + (interacted ? 0 : spin);
-      pitchShown += ((interacted ? pitch : 0) - pitchShown) * Math.min(1, dt * 12);
+      rig.rotation.y = pose ? pose.yaw : (interacted ? yawFree : swayYaw) + (interacted ? 0 : spin);
+      if (pose) pitchShown = pose.pitch || 0;
+      else pitchShown += ((interacted ? pitch : 0) - pitchShown) * Math.min(1, dt * 12);
       rig.rotation.x = pitchShown;
+      {
+        const L = pose ? (pose.lift || 0) * 0.06 : 0, X = pose ? -(pose.slide || 0) * 0.06 : 0, Z = pose ? pose.tilt || 0 : 0;
+        const Pr = pose ? (pose.press || 0) * 0.012 * 0.06 : 0;
+        [[capNode, capBase], [capNodeR, capBase]].forEach(([n, b]) => { if (n) { n.position.set(X, b + L, 0); n.rotation.z = Z; } });
+        [[nozNode, nozBase], [nozNodeR, nozBase]].forEach(([n, b]) => { if (n) n.position.y = b - Pr; });
+      }
       if (zoomTarget !== zoomSent) { zoomSent = zoomTarget; container.dispatchEvent(new CustomEvent("vp-zoom", { detail: zoomTarget })); }
       const ease = Math.min(1, dt * 12);
+      if (pose) { zoom = zoomTarget = 1; panX = panY = panTX = panTY = 0; }
+      if (pose) { zoom = zoomTarget = 1; panX = panY = panTX = panTY = 0; }
       zoom += (zoomTarget - zoom) * ease; panX += (panTX - panX) * ease; panY += (panTY - panY) * ease;
       // zoom toward the point the viewer chose, and move around freely once zoomed in
       anchor.scale.setScalar(zoom);
@@ -659,10 +674,21 @@ export function createBottleViewer(container, product) {
       shown = true;   // the bottle has really been drawn: fade it in
       renderer.domElement.style.opacity = "1";
     }
-  });
+  };
+  renderer.setAnimationLoop(() => loopTick());
 
 
   return {
+    // used by tools/render_sequence.py: fix the bottle in a given pose, draw it, report where the spray nozzle is
+    setPose(p) { pose = p; },
+    pause() { renderer.setAnimationLoop(null); },
+    renderNow() { loopTick(0.016); },
+    nozzleScreen() {
+      if (!nozNode) return null;
+      scene.updateMatrixWorld(true);
+      const v = nozNode.localToWorld(new THREE.Vector3(0.012, 0.045 * 0.06, 0)).project(camera);
+      return { x: (v.x + 1) / 2, y: (1 - v.y) / 2 };
+    },
     dispose() {
       disposed = true;
       renderer.setAnimationLoop(null);

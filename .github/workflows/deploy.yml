@@ -16,7 +16,7 @@ jobs:
       - name: Collect static files
         run: |
           mkdir dist
-          cp index.html success.html style.css i18n.js app.js viewer.js products.json logo.svg favicon.svg dist/
+          cp index.html success.html style.css i18n.js app.js detail-anim.js viewer.js products.json logo.svg favicon.svg dist/
           [ -d images ] && cp -r images dist/images || true
           [ -d models ] && cp -r models dist/models || true
 

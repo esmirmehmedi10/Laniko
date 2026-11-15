@@ -105,19 +105,28 @@ def make_base_logo(step=0.0010,half=0.105,y_floor=0.012,lift=0.0003):
 
 # ---- gold collar + sprayer cap (lathe)
 def arc(cx,cy,r,a0,a1,n=8): a=np.radians(np.linspace(a0,a1,n)); return [(cx+r*np.cos(t),cy+r*np.sin(t)) for t in a]
-# cap proportions measured on the owner's marked photo (body width = 1.0): sprayer cap ~0.49 wide x ~0.42 tall on a ~0.32 wide collar
+# cap proportions measured on the owner's marked photo (body width = 1.0): sprayer cap ~0.49 wide x ~0.42 tall on a ~0.32 wide collar.
+# Three separate parts so the cap can be taken off: Collar (with the neck), Nozzle (spray button, can be pressed), Cap (solid, closed).
+CAP_Y=0.097   # where the cap sits on the collar
 def collar_strips():
     s=[]
     s.append([(0.17,0.0),(0.17,0.012)])                                   # base lip, vertical
     s.append([(0.17,0.012),(0.16,0.022)])                                 # lip chamfer
-    s.append([(0.16,0.022),(0.16,0.097)])                                 # narrow collar
-    s.append([(0.16,0.097),(0.233,0.097)]+arc(0.233,0.107,0.010,-90,0)[1:])   # underside of the cap, rounded edge
-    s.append([(0.243,0.107),(0.243,0.500)]+arc(0.233,0.500,0.010,0,90)[1:])   # cap wall + rounded top edge
-    s.append([(0.233,0.510),(0.0,0.510)])                                 # flat top
+    s.append([(0.16,0.022),(0.16,CAP_Y)])                                 # narrow collar
+    s.append([(0.16,CAP_Y),(0.072,CAP_Y)])                                # top of the collar (seen when the cap is off)
+    s.append([(0.072,CAP_Y),(0.072,0.172)])                               # neck
+    s.append([(0.072,0.172),(0.058,0.172)])                               # flange
     return s
-def make_lathe(y0,seg=256):
+NOZ_Y=0.172
+def nozzle_strips():   # relative to NOZ_Y
+    return [[(0.058,0.0),(0.058,0.044)]+arc(0.050,0.044,0.008,0,90)[1:], [(0.050,0.052),(0.0,0.052)]]
+def cap_strips():      # relative to CAP_Y
+    return [[(0.0,0.0),(0.233,0.0)]+arc(0.233,0.010,0.010,-90,0)[1:],
+            [(0.243,0.010),(0.243,0.403)]+arc(0.233,0.403,0.010,0,90)[1:],
+            [(0.233,0.413),(0.0,0.413)]]
+def make_lathe(strips,y0=0.0,seg=256):
     P=[];N=[];I=[];off=0
-    for pts in collar_strips():
+    for pts in strips:
         pts=np.array(pts); n=len(pts)
         t=np.zeros_like(pts)
         for k in range(n): t[k]=pts[min(k+1,n-1)]-pts[max(k-1,0)]
@@ -155,12 +164,14 @@ class GLB:
     def image(s,path):
         v=s._view(open(path,'rb').read()); s.j["images"].append({"bufferView":v,"mimeType":"image/png"})
         s.j["textures"].append({"sampler":0,"source":len(s.j["images"])-1}); return len(s.j["textures"])-1
-    def mesh(s,name,pos,nrm,idx,mat,uv=None):
+    def mesh(s,name,pos,nrm,idx,mat,uv=None,t=None):
         at={"POSITION":s.accessor(pos.astype(np.float32),5126,"VEC3",34962,True),"NORMAL":s.accessor(nrm.astype(np.float32),5126,"VEC3",34962)}
         if uv is not None: at["TEXCOORD_0"]=s.accessor(uv.astype(np.float32),5126,"VEC2",34962)
         ind=s.accessor(idx.astype(np.uint32).reshape(-1,1),5125,"SCALAR",34963)
         s.j["meshes"].append({"name":name,"primitives":[{"attributes":at,"indices":ind,"material":mat}]})
-        s.j["nodes"].append({"name":name,"mesh":len(s.j["meshes"])-1}); return len(s.j["nodes"])-1
+        nd={"name":name,"mesh":len(s.j["meshes"])-1}
+        if t is not None: nd["translation"]=[float(v) for v in t]
+        s.j["nodes"].append(nd); return len(s.j["nodes"])-1
     def save(s,path,root_name):
         kids=list(range(0,len(s.j["nodes"])))
         s.j["nodes"].append({"name":root_name,"children":kids}); s.j["scenes"][0]["nodes"]=[len(s.j["nodes"])-1]
@@ -183,7 +194,9 @@ def build(pid,body_rgb,out):
     p,n,i=make_body(); g.mesh("Body",p*sc,n,i,0)
     p,n,i=make_base_logo(); g.mesh("Base_logo",p*sc,n,i,0)
     y_top=BH-0.013
-    p,n,i=make_lathe(y_top); g.mesh("Collar_and_cap",p*sc,n,i,1)
+    p,n,i=make_lathe(collar_strips(),y_top); g.mesh("Collar",p*sc,n,i,1)
+    p,n,i=make_lathe(nozzle_strips()); g.mesh("Nozzle",p*sc,n,i,1,t=(0,(y_top+NOZ_Y)*sc,0))
+    p,n,i=make_lathe(cap_strips()); g.mesh("Cap",p*sc,n,i,1,t=(0,(y_top+CAP_Y)*sc,0))
     p,n,uv,i=make_label(); g.mesh("Label",p*sc,n,i,2,uv)
     return g.save(out,"Laniko_"+pid)
 

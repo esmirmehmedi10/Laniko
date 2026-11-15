@@ -233,6 +233,48 @@
     },
   };
 
+
+  // product page
+  const P = {
+    en: { pdBack: "Back", pdScroll: "Scroll to discover", pdTap: "Tap the bottle to view it in 3D", pdAbout: "The fragrance", pdNotes: "Key notes", pdDetails: "Details", pdConc: "Concentration", pdConcVal: "Extrait de Parfum", pdSize: "Size", pdSizeVal: "50 ml", pdShip: "Shipping", pdShipVal: "Flat rate {price} · LU, BE, FR, DE, NL", pdPay: "Payment", pdPayVal: "Secure checkout with Stripe" },
+    de: { pdBack: "Zurück", pdScroll: "Scrollen zum Entdecken", pdTap: "Auf die Flasche tippen für die 3D-Ansicht", pdAbout: "Der Duft", pdNotes: "Duftnoten", pdDetails: "Details", pdConc: "Konzentration", pdConcVal: "Extrait de Parfum", pdSize: "Größe", pdSizeVal: "50 ml", pdShip: "Versand", pdShipVal: "Pauschal {price} · LU, BE, FR, DE, NL", pdPay: "Zahlung", pdPayVal: "Sichere Bezahlung über Stripe" },
+    fr: { pdBack: "Retour", pdScroll: "Faites défiler pour découvrir", pdTap: "Touchez le flacon pour le voir en 3D", pdAbout: "Le parfum", pdNotes: "Notes principales", pdDetails: "Détails", pdConc: "Concentration", pdConcVal: "Extrait de Parfum", pdSize: "Contenance", pdSizeVal: "50 ml", pdShip: "Livraison", pdShipVal: "Forfait {price} · LU, BE, FR, DE, NL", pdPay: "Paiement", pdPayVal: "Paiement sécurisé avec Stripe" },
+    pt: { pdBack: "Voltar", pdScroll: "Deslize para descobrir", pdTap: "Toque no frasco para ver em 3D", pdAbout: "A fragrância", pdNotes: "Notas principais", pdDetails: "Detalhes", pdConc: "Concentração", pdConcVal: "Extrait de Parfum", pdSize: "Tamanho", pdSizeVal: "50 ml", pdShip: "Envio", pdShipVal: "Taxa fixa {price} · LU, BE, FR, DE, NL", pdPay: "Pagamento", pdPayVal: "Pagamento seguro com Stripe" },
+    it: { pdBack: "Indietro", pdScroll: "Scorri per scoprire", pdTap: "Tocca il flacone per vederlo in 3D", pdAbout: "La fragranza", pdNotes: "Note principali", pdDetails: "Dettagli", pdConc: "Concentrazione", pdConcVal: "Extrait de Parfum", pdSize: "Formato", pdSizeVal: "50 ml", pdShip: "Spedizione", pdShipVal: "Tariffa fissa {price} · LU, BE, FR, DE, NL", pdPay: "Pagamento", pdPayVal: "Pagamento sicuro con Stripe" },
+    es: { pdBack: "Volver", pdScroll: "Desliza para descubrir", pdTap: "Toca el frasco para verlo en 3D", pdAbout: "La fragancia", pdNotes: "Notas principales", pdDetails: "Detalles", pdConc: "Concentración", pdConcVal: "Extrait de Parfum", pdSize: "Tamaño", pdSizeVal: "50 ml", pdShip: "Envío", pdShipVal: "Tarifa plana {price} · LU, BE, FR, DE, NL", pdPay: "Pago", pdPayVal: "Pago seguro con Stripe" },
+    ar: { pdBack: "رجوع", pdScroll: "مرّر للاستكشاف", pdTap: "اضغط على الزجاجة لعرضها ثلاثية الأبعاد", pdAbout: "العطر", pdNotes: "النوتات الرئيسية", pdDetails: "التفاصيل", pdConc: "التركيز", pdConcVal: "إكستريت دو بارفان", pdSize: "الحجم", pdSizeVal: "50 مل", pdShip: "الشحن", pdShipVal: "سعر ثابت {price} · LU, BE, FR, DE, NL", pdPay: "الدفع", pdPayVal: "دفع آمن عبر Stripe" },
+    zh: { pdBack: "返回", pdScroll: "向下滚动探索", pdTap: "点按瓶身以 3D 查看", pdAbout: "香氛", pdNotes: "主要香调", pdDetails: "详情", pdConc: "浓度", pdConcVal: "Extrait de Parfum 浓香精", pdSize: "容量", pdSizeVal: "50 毫升", pdShip: "配送", pdShipVal: "统一运费 {price} · LU, BE, FR, DE, NL", pdPay: "支付", pdPayVal: "通过 Stripe 安全支付" },
+  };
+  Object.keys(P).forEach((c) => Object.assign(S[c], P[c]));
+
+  // scent notes (the English words are the keys used in products.json)
+  const NOTES = {
+    "white rose": ["Weiße Rose", "Rose blanche", "Rosa branca", "Rosa bianca", "Rosa blanca", "وردة بيضاء", "白玫瑰"],
+    "orchid": ["Orchidee", "Orchidée", "Orquídea", "Orchidea", "Orquídea", "أوركيد", "兰花"],
+    "Bourbon vanilla": ["Bourbon-Vanille", "Vanille Bourbon", "Baunilha Bourbon", "Vaniglia Bourbon", "Vainilla Bourbon", "فانيلا بوربون", "波本香草"],
+    "golden resin": ["Goldenes Harz", "Résine dorée", "Resina dourada", "Resina dorata", "Resina dorada", "راتنج ذهبي", "金色树脂"],
+    "red grapefruit": ["Rote Grapefruit", "Pamplemousse rouge", "Toranja vermelha", "Pompelmo rosso", "Pomelo rojo", "جريب فروت أحمر", "红西柚"],
+    "velvet rose": ["Samtrose", "Rose veloutée", "Rosa aveludada", "Rosa vellutata", "Rosa aterciopelada", "ورد مخملي", "丝绒玫瑰"],
+    "saffron": ["Safran", "Safran", "Açafrão", "Zafferano", "Azafrán", "زعفران", "藏红花"],
+    "smoked sandalwood": ["Geräuchertes Sandelholz", "Bois de santal fumé", "Sândalo defumado", "Sandalo affumicato", "Sándalo ahumado", "خشب صندل مدخّن", "烟熏檀香"],
+    "black pepper": ["Schwarzer Pfeffer", "Poivre noir", "Pimenta-preta", "Pepe nero", "Pimienta negra", "فلفل أسود", "黑胡椒"],
+    "dark vanilla": ["Dunkle Vanille", "Vanille sombre", "Baunilha escura", "Vaniglia scura", "Vainilla oscura", "فانيلا داكنة", "深邃香草"],
+    "amber": ["Amber", "Ambre", "Âmbar", "Ambra", "Ámbar", "عنبر", "琥珀"],
+    "crimson rose": ["Purpurrote Rose", "Rose cramoisie", "Rosa carmesim", "Rosa cremisi", "Rosa carmesí", "وردة قرمزية", "绯红玫瑰"],
+    "ripe raspberry": ["Reife Himbeere", "Framboise mûre", "Framboesa madura", "Lampone maturo", "Frambuesa madura", "توت العليق الناضج", "熟透覆盆子"],
+    "precious woods": ["Edle Hölzer", "Bois précieux", "Madeiras preciosas", "Legni preziosi", "Maderas preciosas", "خشب نفيس", "珍贵木质调"],
+    "lavender": ["Lavendel", "Lavande", "Lavanda", "Lavanda", "Lavanda", "خزامى", "薰衣草"],
+    "white jasmine": ["Weißer Jasmin", "Jasmin blanc", "Jasmim branco", "Gelsomino bianco", "Jazmín blanco", "ياسمين أبيض", "白茉莉"],
+    "dark berries": ["Dunkle Beeren", "Baies sombres", "Frutos silvestres escuros", "Bacche scure", "Bayas oscuras", "توت داكن", "黑莓"],
+    "smooth wood": ["Sanftes Holz", "Bois doux", "Madeira suave", "Legno morbido", "Madera suave", "خشب ناعم", "柔和木质调"],
+  };
+  const NOTE_ORDER = ["de", "fr", "pt", "it", "es", "ar", "zh"];
+  const noteName = (key) => {
+    if (cur === "en") return key[0].toUpperCase() + key.slice(1);
+    const row = NOTES[key]; const i = NOTE_ORDER.indexOf(cur);
+    return (row && i >= 0 && row[i]) || key;
+  };
+
   // product descriptions (the names are brand names and are never translated)
   const D = {
     "blanc-royal": {
@@ -360,7 +402,7 @@
   };
 
   window.I18N = {
-    LANGS, t, desc, fmtMoney, splitWords, setLang, applyStatic, hasChoice, guess,
+    LANGS, t, desc, noteName, fmtMoney, splitWords, setLang, applyStatic, hasChoice, guess,
     get lang() { return cur; }, get info() { return byCode(cur); },
     onChange: (f) => listeners.push(f),
   };

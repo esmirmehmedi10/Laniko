@@ -14,8 +14,14 @@
     },
     "rank": 1,
     "bodyColor": "#ebe9e5",
-    "model": "/models/blanc-royal.glb?v=6",
-    "labelGain": 0.5684
+    "model": "/models/blanc-royal.glb?v=7",
+    "labelGain": 0.5684,
+    "notes": [
+      "white rose",
+      "orchid",
+      "Bourbon vanilla",
+      "golden resin"
+    ]
   },
   {
     "id": "reve-paradoxe",
@@ -31,9 +37,14 @@
       "smoke": "#8fc7a8"
     },
     "bodyColor": "#ebe9e5",
-    "model": "/models/reve-paradoxe.glb?v=6",
+    "model": "/models/reve-paradoxe.glb?v=7",
     "labelGain": 1.0371,
-    "featured": true
+    "featured": true,
+    "notes": [
+      "red grapefruit",
+      "velvet rose",
+      "saffron"
+    ]
   },
   {
     "id": "noir-prestige",
@@ -50,8 +61,14 @@
     },
     "rank": 2,
     "bodyColor": "#ebe9e5",
-    "model": "/models/noir-prestige.glb?v=6",
-    "labelGain": 0.7482
+    "model": "/models/noir-prestige.glb?v=7",
+    "labelGain": 0.7482,
+    "notes": [
+      "smoked sandalwood",
+      "black pepper",
+      "dark vanilla",
+      "amber"
+    ]
   },
   {
     "id": "rouge-absolu",
@@ -68,8 +85,14 @@
     },
     "rank": 3,
     "bodyColor": "#ebe9e5",
-    "model": "/models/rouge-absolu.glb?v=6",
-    "labelGain": 0.7919
+    "model": "/models/rouge-absolu.glb?v=7",
+    "labelGain": 0.7919,
+    "notes": [
+      "crimson rose",
+      "ripe raspberry",
+      "precious woods",
+      "amber"
+    ]
   },
   {
     "id": "bleu-eternel",
@@ -85,7 +108,14 @@
       "smoke": "#8fa8e0"
     },
     "bodyColor": "#ebe9e5",
-    "model": "/models/bleu-eternel.glb?v=6",
-    "labelGain": 1.3349
+    "model": "/models/bleu-eternel.glb?v=7",
+    "labelGain": 1.3349,
+    "notes": [
+      "lavender",
+      "white jasmine",
+      "dark berries",
+      "smooth wood",
+      "amber"
+    ]
   }
 ]

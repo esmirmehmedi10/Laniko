@@ -67,6 +67,28 @@
     </div>
   </aside>
 
+  <div id="detail" class="pd-wrap" hidden role="dialog" aria-modal="true">
+    <div class="pd">
+      <div class="pd-top">
+        <button id="pd-back" class="pd-back" data-i18n-aria="pdBack" aria-label="Back"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      </div>
+      <div id="pd-stage" class="pd-stage">
+        <button id="pd-pic" class="pd-pic" aria-label="View in 3D">
+          <img id="pd-poster" class="pd-poster" alt="">
+          <canvas id="pd-canvas" class="pd-canvas"></canvas>
+          <canvas id="pd-mist" class="pd-mist"></canvas>
+          <span class="pd-3d">3D</span>
+          <span class="pd-hint"><span data-i18n="pdScroll">Scroll to discover</span><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span>
+        </button>
+      </div>
+      <div id="pd-scroll" class="pd-scroll" tabindex="0"><div id="pd-inner" class="pd-inner"></div></div>
+      <div class="pd-bar">
+        <span id="pd-price" class="price"></span>
+        <button id="pd-add" class="primary" data-i18n="add">Add to cart</button>
+      </div>
+    </div>
+  </div>
+
   <div id="viewer" class="viewer" hidden role="dialog" aria-modal="true" data-i18n-aria="view3dLabel" aria-label="3D view">
     <div class="viewer-head">
       <strong id="viewer-title"></strong>
