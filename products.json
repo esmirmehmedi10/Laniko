@@ -2,7 +2,7 @@
   {
     "id": "blanc-royal",
     "name": "Blanc Royal",
-    "description": "Extrait de Parfum, 50 ml. Creamy white rose and orchid resting on warm Bourbon vanilla and golden resin. Soft, luminous and quietly regal.",
+    "description": "Creamy white rose and orchid resting on warm Bourbon vanilla and golden resin. Soft, luminous and quietly regal.",
     "price": 150,
     "image": "/images/blanc-royal.jpg?v=11",
     "labelColor": "#ae8570",
@@ -20,7 +20,7 @@
   {
     "id": "reve-paradoxe",
     "name": "Rêve Paradoxé",
-    "description": "Extrait de Parfum, 50 ml. Sparkling red grapefruit meets velvety rose and a thread of saffron. Fresh and dark at once, a dream that contradicts itself.",
+    "description": "Sparkling red grapefruit meets velvety rose and a thread of saffron. Fresh and dark at once, a dream that contradicts itself.",
     "price": 150,
     "image": "/images/reve-paradoxe.jpg?v=11",
     "labelColor": "#042405",
@@ -37,7 +37,7 @@
   {
     "id": "noir-prestige",
     "name": "Noir Prestige",
-    "description": "Extrait de Parfum, 50 ml. Smoked sandalwood, black pepper and dark vanilla over glowing amber. Deep, confident and made for the evening.",
+    "description": "Smoked sandalwood, black pepper and dark vanilla over glowing amber. Deep, confident and made for the evening.",
     "price": 150,
     "image": "/images/noir-prestige.jpg?v=11",
     "labelColor": "#050506",
@@ -55,7 +55,7 @@
   {
     "id": "rouge-absolu",
     "name": "Rouge Absolu",
-    "description": "Extrait de Parfum, 50 ml. Crimson rose and ripe raspberry wrapped in precious woods and amber. Bold, velvety and unapologetically passionate.",
+    "description": "Crimson rose and ripe raspberry wrapped in precious woods and amber. Bold, velvety and unapologetically passionate.",
     "price": 150,
     "image": "/images/rouge-absolu.jpg?v=11",
     "labelColor": "#3d0604",
@@ -73,7 +73,7 @@
   {
     "id": "bleu-eternel",
     "name": "Bleu Éternel",
-    "description": "Extrait de Parfum, 50 ml. Lavender and white jasmine with a hint of dark berries, settling into smooth wood and amber. Calm, deep and timeless.",
+    "description": "Lavender and white jasmine with a hint of dark berries, settling into smooth wood and amber. Calm, deep and timeless.",
     "price": 150,
     "image": "/images/bleu-eternel.jpg?v=11",
     "labelColor": "#030d32",

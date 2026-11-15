@@ -81,13 +81,13 @@
           <button class="imgbtn" data-view="${esc(p.id)}" aria-label="View ${esc(p.name)} in 3D">
             <img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy">
             <span class="badge3d">3D</span>
+            <span class="pic-desc">${esc(p.description)}</span>
           </button>
           <button class="heart${liked ? " on" : ""}" data-wish="${esc(p.id)}" aria-pressed="${liked}" aria-label="Save ${esc(p.name)} to wishlist">${HEART}</button>
           ${rank}
         </div>
         <div class="body">
           <h3>${esc(p.name)}</h3>
-          <p>${esc(p.description)}</p>
           <span class="price">${fmt(p.price)}</span>
           <button class="add" data-add="${esc(p.id)}">Add to cart</button>
         </div>
@@ -150,6 +150,11 @@
     $("viewer-hint").textContent = "Drag to rotate · pinch to zoom · two fingers to move";
     const stage = $("viewer-stage");
     stage.innerHTML = "";
+    // the description appears under the bottle, word by word (new elements, so the animation restarts on every open)
+    const desc = $("viewer-desc");
+    desc.classList.remove("zoomed");
+    desc.innerHTML = '<span class="vd-rule"></span><p>' +
+      p.description.split(/\s+/).map((w, i) => `<span class="vd-w" style="--i:${i}">${esc(w)}</span>`).join(" ") + "</p>";
     // the themed background is plain CSS, so it is on screen in the very first frame
     const th = p.theme || {};
     const v = $("viewer");
@@ -162,6 +167,7 @@
       const mod = await import("/viewer.js");
       if (viewerProductId !== id || $("viewer").hidden) return; // closed meanwhile
       viewer = mod.createBottleViewer(stage, p);
+      stage.addEventListener("vp-zoom", (e) => desc.classList.toggle("zoomed", e.detail > 1.15));
     } catch (e) {
       console.error("3D viewer failed", e);
       stage.innerHTML = `<img src="${esc(p.image)}" alt="${esc(p.name)}">`;
@@ -174,6 +180,7 @@
     viewerProductId = null;
     $("viewer").hidden = true;
     $("viewer-stage").innerHTML = "";
+    $("viewer-desc").innerHTML = "";
     document.body.style.overflow = "";
   }
 

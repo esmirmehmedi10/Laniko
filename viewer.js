@@ -507,7 +507,7 @@ export function createBottleViewer(container, product) {
   let yawFree = 0, yawVel = 0, pitch = 0, pitchShown = 0;
   // zoom + pan: the view is  position = rest position + pan  at scale `zoom`; targets are eased every frame
   let zoom = 1, zoomTarget = 1, panX = 0, panY = 0, panTX = 0, panTY = 0;
-  let swayYaw = 0;
+  let swayYaw = 0, zoomSent = 1;
   const ptrs = new Map();
   let pinchD = 0, pinchMx = 0, pinchMy = 0, dragMode = "rotate", lastTap = 0, lastTapX = 0, lastTapY = 0, moved = 0;
   const dom = renderer.domElement;
@@ -629,6 +629,7 @@ export function createBottleViewer(container, product) {
       rig.rotation.y = (interacted ? yawFree : swayYaw) + (interacted ? 0 : spin);
       pitchShown += ((interacted ? pitch : 0) - pitchShown) * Math.min(1, dt * 12);
       rig.rotation.x = pitchShown;
+      if (zoomTarget !== zoomSent) { zoomSent = zoomTarget; container.dispatchEvent(new CustomEvent("vp-zoom", { detail: zoomTarget })); }
       const ease = Math.min(1, dt * 12);
       zoom += (zoomTarget - zoom) * ease; panX += (panTX - panX) * ease; panY += (panTY - panY) * ease;
       // zoom toward the point the viewer chose, and move around freely once zoomed in

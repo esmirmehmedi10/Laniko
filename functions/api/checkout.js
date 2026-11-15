@@ -61,7 +61,7 @@ export async function onRequestPost({ request, env }) {
     params.set(`${p}[price_data][unit_amount]`, String(Math.round(product.price * 100)));
     params.set(`${p}[price_data][product_data][name]`, product.name);
     if (product.description) {
-      params.set(`${p}[price_data][product_data][description]`, product.description);
+      params.set(`${p}[price_data][product_data][description]`, `Extrait de Parfum, 50 ml. ${product.description}`);
     }
     if (product.image) {
       const imageUrl = product.image.startsWith("/") ? origin + product.image : product.image;
