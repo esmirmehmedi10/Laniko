@@ -9,6 +9,7 @@
 // vector foil label with the Laniko logo.
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { createSmokeBackground } from "./smoke-bg.js";
 
 const TAU = Math.PI * 2;
@@ -231,6 +232,37 @@ function detailedCapProfile() {
 }
 
 // Bottle stands on y = 0 and is about 2.74 units tall.
+// The bottle is the real .glb model of the perfume (models/<id>.glb, built from the photos of the real
+// bottle). Its materials are re-tuned here so that, under this scene's lighting, the colours come out the
+// same as in the product photo (calibrated per perfume in products.json: bodyColor, labelGain).
+function prepareGlb(gltf, product, renderer) {
+  const root = gltf.scene;
+  root.scale.setScalar(25); // 60 mm wide body -> 1.5 world units
+  const aniso = renderer.capabilities.getMaxAnisotropy();
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    const m = o.material;
+    ["map", "metalnessMap", "roughnessMap", "emissiveMap"].forEach((k) => { if (m[k]) m[k].anisotropy = aniso; });
+    if (m.name === "Body_glossy_white") {
+      m.color.set(product.bodyColor || "#bb856b");
+      m.envMapIntensity = 1;
+    } else if (m.name === "Gold_polished") {
+      m.color.set(0xe39a2c);
+      m.roughness = 0.075;
+      m.envMapIntensity = 1.6;
+    } else if (m.name === "Label_print") {
+      const lm = new THREE.MeshPhysicalMaterial({
+        name: m.name, map: m.map, metalnessMap: m.metalnessMap, roughnessMap: m.roughnessMap,
+        metalness: 1, roughness: 1, emissive: 0xffffff, emissiveMap: m.emissiveMap, emissiveIntensity: 0.4,
+        specularIntensity: 0.25, // paper is matt: keeps dark labels properly dark
+      });
+      lm.color.setScalar(product.labelGain ?? 0.7);
+      o.material = lm;
+    }
+  });
+  return root;
+}
+
 function buildBottle(maps, product) {
   const g = new THREE.Group();
 
@@ -366,7 +398,8 @@ export function createBottleViewer(container, product) {
   // --- the bottle (the only 3D thing)
   const camera = new THREE.PerspectiveCamera(20, 1, 1, 200);
   const D = 30;           // camera distance; far enough that perspective is gentle
-  const FRONT = 0.55;     // front face of the bottle body
+  let FRONT = 0.55;       // front face of the bottle body (0.4125 for the real-bottle .glb)
+  const glbPromise = product.model ? new GLTFLoader().loadAsync(product.model).catch((e) => { console.warn("model failed, using the built-in bottle", e); return null; }) : Promise.resolve(null);
   const scene = new THREE.Scene();
   const anchor = new THREE.Group(); // sits at the base of the bottle
   scene.add(anchor);
@@ -430,7 +463,7 @@ export function createBottleViewer(container, product) {
   };
 
   // --- build the bottle scene
-  const build = () => {
+  const build = async () => {
     if (disposed || failed) return;
     try {
       pmrem = new THREE.PMREMGenerator(renderer);
@@ -444,8 +477,16 @@ export function createBottleViewer(container, product) {
       rim.position.set(5, 3, -4);
       scene.add(key, rim, new THREE.AmbientLight(0xffffff, 0.5));
 
-      const maps = makeLabelMaps(product, renderer.capabilities.getMaxAnisotropy(), renderer.capabilities.maxTextureSize);
-      const bottleModel = buildBottle(maps, product);
+      const gltf = await glbPromise;
+      if (disposed || failed) return;
+      let bottleModel;
+      if (gltf) {
+        bottleModel = prepareGlb(gltf, product, renderer);
+        FRONT = 0.4125 + 0.015;
+      } else {
+        const maps = makeLabelMaps(product, renderer.capabilities.getMaxAnisotropy(), renderer.capabilities.maxTextureSize);
+        bottleModel = buildBottle(maps, product);
+      }
       rig.add(bottleModel);
       rig.add(makeReflection(bottleModel, reflU));
 

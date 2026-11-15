@@ -271,7 +271,10 @@
     const saver = navigator.connection && navigator.connection.saveData;
     const go = () => {
       import("/viewer.js").catch(() => {});
-      if (!saver) products.forEach((p) => { if (p.plate) { const im = new Image(); im.decoding = "async"; im.src = p.plate; } });
+      if (!saver) products.forEach((p) => {
+        if (p.plate) { const im = new Image(); im.decoding = "async"; im.src = p.plate; }
+        if (p.model) fetch(p.model).catch(() => {});
+      });
     };
     if ("requestIdleCallback" in window) requestIdleCallback(go, { timeout: 4000 });
     else setTimeout(go, 2000);
@@ -281,6 +284,7 @@
     const b = e.target.closest && e.target.closest("[data-view]");
     const p = b && byId(b.dataset.view);
     if (p && p.plate) { const im = new Image(); im.src = p.plate; }
+    if (p && p.model) fetch(p.model).catch(() => {});
   }, { passive: true });
 
   async function init() {

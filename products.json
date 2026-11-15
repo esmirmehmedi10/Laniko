@@ -22,7 +22,9 @@
       "photoFrac": 0.7931
     },
     "smokeMask": "/images/blanc-royal-smoke.png?v=3",
-    "bodyColor": "#ba846a"
+    "bodyColor": "#c89b8a",
+    "model": "/models/blanc-royal.glb?v=1",
+    "labelGain": 0.5684
   },
   {
     "id": "reve-paradoxe",
@@ -46,7 +48,9 @@
       "photoFrac": 0.7692
     },
     "smokeMask": "/images/reve-paradoxe-smoke.png?v=3",
-    "bodyColor": "#c69071"
+    "bodyColor": "#d4a78f",
+    "model": "/models/reve-paradoxe.glb?v=1",
+    "labelGain": 1.0371
   },
   {
     "id": "noir-prestige",
@@ -71,7 +75,9 @@
       "photoFrac": 0.7969
     },
     "smokeMask": "/images/noir-prestige-smoke.png?v=3",
-    "bodyColor": "#c39075"
+    "bodyColor": "#d6a995",
+    "model": "/models/noir-prestige.glb?v=1",
+    "labelGain": 0.7482
   },
   {
     "id": "rouge-absolu",
@@ -96,7 +102,9 @@
       "photoFrac": 0.7673
     },
     "smokeMask": "/images/rouge-absolu-smoke.png?v=3",
-    "bodyColor": "#be8465"
+    "bodyColor": "#cf9e87",
+    "model": "/models/rouge-absolu.glb?v=1",
+    "labelGain": 0.7919
   },
   {
     "id": "bleu-eternel",
@@ -120,6 +128,8 @@
       "photoFrac": 0.7677
     },
     "smokeMask": "/images/bleu-eternel-smoke.png?v=3",
-    "bodyColor": "#c18b6e"
+    "bodyColor": "#d3a48e",
+    "model": "/models/bleu-eternel.glb?v=1",
+    "labelGain": 1.3349
   }
 ]
