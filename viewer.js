@@ -376,8 +376,10 @@ export function createBottleViewer(container, product) {
   const plateImg = el("img", "vp-plate", container);
   const bgCanvas = el("canvas", "vp-bg", container);
   bgCanvas.style.visibility = "hidden";
-  const maskImg = new Image();
-  maskImg.src = product.smokeMask || "";
+  const baseImg = new Image();
+  const smokeImg = new Image();
+  baseImg.src = product.smokeBase || "";
+  smokeImg.src = product.smokeLayer || "";
   fillImg.alt = ""; plateImg.alt = ""; photoImg.alt = product.name;
   let bg = null;
   photoImg.style.height = B.photoFrac * 100 + "%";
@@ -453,9 +455,9 @@ export function createBottleViewer(container, product) {
     plateReady = !!plateImg.naturalWidth;
     if (!plateReady) { fail(new Error("plate image missing")); return; }
     try {
-      if (maskImg.decode) await maskImg.decode();
-      if (maskImg.naturalWidth && !disposed) {
-        bg = createSmokeBackground(bgCanvas, plateImg, maskImg);
+      if (product.smokeBase && product.smokeLayer) await Promise.all([baseImg.decode(), smokeImg.decode()]);
+      if (baseImg.naturalWidth && smokeImg.naturalWidth && !disposed) {
+        bg = createSmokeBackground(bgCanvas, baseImg, smokeImg);
         if (bg && !bg.ok) { bg.dispose(); bg = null; }
         if (bg) bg.resize(H, B.ar, Math.min(window.devicePixelRatio || 1, 2));
       }

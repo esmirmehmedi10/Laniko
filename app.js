@@ -274,6 +274,7 @@
       if (!saver) products.forEach((p) => {
         if (p.plate) { const im = new Image(); im.decoding = "async"; im.src = p.plate; }
         if (p.model) fetch(p.model).catch(() => {});
+        [p.smokeBase, p.smokeLayer].forEach((u) => { if (u) { const im = new Image(); im.src = u; } });
       });
     };
     if ("requestIdleCallback" in window) requestIdleCallback(go, { timeout: 4000 });

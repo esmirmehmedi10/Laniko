@@ -29,7 +29,7 @@ def fix_winding(pos,nrm,idx):
 
 # ---- body: rounded box (sharp-ish edges like the real bottle), shallow round dish on top, recessed panel underneath
 HX,HY,HZ=BW/2,BH/2,BD/2
-def dish_h(x,z,R0=0.17,R1=0.25,depth=0.013):
+def dish_h(x,z,R0=0.12,R1=0.19,depth=0.013):
     rho=np.sqrt(x*x+z*z); return -depth*(1-smoothstep(R0,R1,rho))
 def base_h(x,z,depth=0.012,inset=0.075,wall=0.022):
     sd=np.maximum(np.abs(x)-(HX-inset),np.abs(z)-(HZ-inset)); return depth*(1-smoothstep(0,wall,sd))
@@ -64,6 +64,7 @@ def make_body():
 
 # ---- gold collar + sprayer cap (lathe)
 def arc(cx,cy,r,a0,a1,n=8): a=np.radians(np.linspace(a0,a1,n)); return [(cx+r*np.cos(t),cy+r*np.sin(t)) for t in a]
+CAPK=0.66  # cap scale vs. first version (real cap is much smaller than the bottle body)
 def collar_strips():
     s=[]
     s.append([(0.17,0.0),(0.17,0.020)])                                   # base lip, vertical
@@ -72,7 +73,7 @@ def collar_strips():
     s.append([(0.150,0.198),(0.137,0.198)])                               # shoulder, flat
     s.append([(0.137,0.198),(0.137,0.362)]+arc(0.125,0.362,0.012,0,90)[1:]) # sprayer cap wall + rounded top edge
     s.append([(0.125,0.374),(0.0,0.374)])                                 # flat top
-    return s
+    return [[(x*CAPK,y*CAPK) for x,y in st] for st in s]
 def make_lathe(y0,seg=128):
     P=[];N=[];I=[];off=0
     for pts in collar_strips():

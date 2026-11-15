@@ -1,9 +1,9 @@
-// Animates the smoke that is already in the product photo.
+// Animates the smoke that is already in the product photo (and nothing else).
 //
-// A small raw-WebGL2 renderer draws the photo and, only where a hand-tuned mask says "smoke"
-// (images/<id>-smoke.png), makes the picture flow slowly upwards and sideways (a classic
-// flow-map warp). Everywhere else, including the logo and name at the top, the photo is
-// reproduced pixel for pixel. Nothing is added to the picture.
+// The background plate has been split offline (tools/smokesplit.py) into a smoke-free base picture and a
+// smoke-only layer. A small raw-WebGL2 renderer draws base + smoke, where the smoke layer drifts upwards,
+// curling and thinning like real smoke. Flowers, cloth, the logo and the name are in the base only, so they
+// never move. Nothing is added to the picture.
 //
 // createSmokeBackground(...) returns null when WebGL2 or the shader is unavailable; the caller then
 // simply keeps showing the still photo.
@@ -18,35 +18,43 @@ void main() {
 
 const FRAG = `#version 300 es
 precision highp float;
-uniform sampler2D uPlate;
-uniform sampler2D uMask;
+uniform sampler2D uBase;    // the picture with the smoke taken out
+uniform sampler2D uSmoke;   // only the smoke (light that is added on top of the base)
 uniform sampler2D uNoise;
 uniform float uTime;
-uniform float uAmp;
+uniform float uRise;        // how far (in picture heights) a smoke particle climbs per cycle
 in vec2 vUv;
 out vec4 outColor;
 
+// Smoke is drawn twice, each copy climbing for one cycle and fading in / out, half a cycle apart, so that the
+// climb never visibly restarts. Only the smoke layer is ever displaced: the base picture (flowers, cloth,
+// bottle plate, logo) is drawn exactly as it is.
+vec3 smokeAt(vec2 uv, float p) {
+  float t = uTime;
+  vec2 nl = texture(uNoise, uv * vec2(0.35, 0.45) + vec2(t * 0.012, t * 0.007)).rg;       // slow field: rise speed varies
+  float lift = uRise * p * (0.7 + 0.6 * nl.x);                                           // upwards
+  // the older the puff, the more it curls and spreads sideways
+  vec2 c1 = texture(uNoise, uv * vec2(0.55, 0.8) + vec2(t * 0.020, -t * 0.030)).rg - 0.5;
+  vec2 c2 = texture(uNoise, uv * vec2(1.3, 1.8) + vec2(-t * 0.035, -t * 0.050)).rg - 0.5;
+  vec2 curl = (c1 * 0.075 + c2 * 0.012) * (0.2 + 1.0 * p);
+  vec2 q = uv - vec2(0.0, lift) + curl;
+  vec3 s = texture(uSmoke, q).rgb;
+  return s * (1.0 - 0.35 * p);                                                           // thins out while rising
+}
+
 void main() {
   vec2 uv = vUv;
-  float m = texture(uMask, uv).r;
-  // slowly wandering direction field: mostly upwards, swirling a little sideways
-  vec2 n1 = texture(uNoise, uv * vec2(1.4, 2.0) + vec2(uTime * 0.012, uTime * 0.020)).rg - 0.5;
-  vec2 n2 = texture(uNoise, uv * vec2(3.1, 4.3) + vec2(uTime * -0.030, uTime * 0.042)).rg - 0.5;
-  vec2 flow = vec2(n1.x * 2.0 + n2.x * 0.8, 0.55 + n1.y * 1.0 + n2.y * 0.5) * uAmp * m;
-  // continuously evolving curl-like wobble so the wisps visibly twist and billow
-  vec2 w = texture(uNoise, uv * vec2(2.2, 3.0) + vec2(uTime * 0.035, -uTime * 0.05)).rg - 0.5;
-  vec2 w2 = texture(uNoise, uv * vec2(5.0, 6.5) + vec2(-uTime * 0.06, uTime * 0.075)).rg - 0.5;
-  vec2 wob = (w * 0.05 + w2 * 0.018) * m;
-  // two phases, cross-faded, so the motion never visibly resets
-  float sp = 0.14;
+  vec3 base = texture(uBase, uv).rgb;
+  float sp = 0.125;                                   // one cycle = 8 s
   float p1 = fract(uTime * sp);
   float p2 = fract(uTime * sp + 0.5);
   float w1 = 1.0 - abs(2.0 * p1 - 1.0);
-  vec3 a = texture(uPlate, uv - flow * p1 + wob).rgb;
-  vec3 b = texture(uPlate, uv - flow * p2 + wob).rgb;
-  vec3 c = mix(b, a, w1);
-  c *= 1.0 + 0.10 * m * sin(uTime * 0.9 + n1.x * 9.0);
-  outColor = vec4(c, 1.0);
+  float w2 = 1.0 - w1;
+  vec3 moving = smokeAt(uv, p1) * w1 + smokeAt(uv, p2) * w2;
+  moving *= 1.32;                                     // two half-faded copies are a touch thinner than one
+  vec3 still = texture(uSmoke, uv).rgb;
+  float k = smoothstep(0.0, 1.6, uTime);              // eases from the still picture into the motion
+  outColor = vec4(base + mix(still, moving, k), 1.0);
 }`;
 
 function compile(gl, type, src) {
@@ -87,7 +95,7 @@ function makeNoise(size = 256) {
   return data;
 }
 
-export function createSmokeBackground(canvas, plateImg, maskImg, { amp = 0.16 } = {}) {
+export function createSmokeBackground(canvas, baseImg, smokeImg, { rise = 0.2 } = {}) {
   let gl;
   try {
     gl = canvas.getContext("webgl2", { alpha: false, antialias: false, premultipliedAlpha: false, preserveDrawingBuffer: false });
@@ -125,17 +133,17 @@ export function createSmokeBackground(canvas, plateImg, maskImg, { amp = 0.16 } 
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, mip ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR);
     return t;
   };
-  const texPlate = makeTex(0, gl.CLAMP_TO_EDGE, true);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, plateImg);
+  const texBase = makeTex(0, gl.CLAMP_TO_EDGE, true);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, baseImg);
   gl.generateMipmap(gl.TEXTURE_2D);
-  const texMask = makeTex(1, gl.CLAMP_TO_EDGE, false);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, maskImg);
+  const texSmoke = makeTex(1, gl.CLAMP_TO_EDGE, false);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, smokeImg);
   const texNoise = makeTex(2, gl.REPEAT, false);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 256, 0, gl.RGBA, gl.UNSIGNED_BYTE, makeNoise(256));
-  gl.uniform1i(gl.getUniformLocation(prog, "uPlate"), 0);
-  gl.uniform1i(gl.getUniformLocation(prog, "uMask"), 1);
+  gl.uniform1i(gl.getUniformLocation(prog, "uBase"), 0);
+  gl.uniform1i(gl.getUniformLocation(prog, "uSmoke"), 1);
   gl.uniform1i(gl.getUniformLocation(prog, "uNoise"), 2);
-  gl.uniform1f(gl.getUniformLocation(prog, "uAmp"), amp);
+  gl.uniform1f(gl.getUniformLocation(prog, "uRise"), rise);
   const uTime = gl.getUniformLocation(prog, "uTime");
 
   const draw = (t) => {
