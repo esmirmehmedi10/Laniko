@@ -29,7 +29,7 @@ def fix_winding(pos,nrm,idx):
 
 # ---- body: rounded box (sharp-ish edges like the real bottle), shallow round dish on top, recessed panel underneath
 HX,HY,HZ=BW/2,BH/2,BD/2
-def dish_h(x,z,R0=0.15,R1=0.22,depth=0.013):
+def dish_h(x,z,R0=0.21,R1=0.28,depth=0.013):
     rho=np.sqrt(x*x+z*z); return -depth*(1-smoothstep(R0,R1,rho))
 def base_h(x,z,depth=0.012,inset=0.075,wall=0.022):
     sd=np.maximum(np.abs(x)-(HX-inset),np.abs(z)-(HZ-inset)); return depth*(1-smoothstep(0,wall,sd))
@@ -64,7 +64,7 @@ def make_body():
 
 # ---- gold collar + sprayer cap (lathe)
 def arc(cx,cy,r,a0,a1,n=8): a=np.radians(np.linspace(a0,a1,n)); return [(cx+r*np.cos(t),cy+r*np.sin(t)) for t in a]
-CAPK=0.80; CAPH=0.88  # cap scale vs. first version (real cap is much smaller than the bottle body)
+CAPK=1.15; CAPH=0.62  # cap scale vs. first version (real cap is much smaller than the bottle body)
 def collar_strips():
     s=[]
     s.append([(0.17,0.0),(0.17,0.020)])                                   # base lip, vertical

@@ -4,7 +4,7 @@
     "name": "Blanc Royal",
     "description": "Extrait de Parfum, 50 ml. Creamy white rose and orchid resting on warm Bourbon vanilla and golden resin. Soft, luminous and quietly regal.",
     "price": 150,
-    "image": "/images/blanc-royal.jpg?v=9",
+    "image": "/images/blanc-royal.jpg?v=10",
     "labelColor": "#ae8570",
     "labelInk": "#8a5f14",
     "theme": {
@@ -14,7 +14,7 @@
     },
     "rank": 1,
     "bodyColor": "#ebe9e5",
-    "model": "/models/blanc-royal.glb?v=3",
+    "model": "/models/blanc-royal.glb?v=4",
     "labelGain": 0.5684
   },
   {
@@ -22,7 +22,7 @@
     "name": "Rêve Paradoxé",
     "description": "Extrait de Parfum, 50 ml. Sparkling red grapefruit meets velvety rose and a thread of saffron. Fresh and dark at once, a dream that contradicts itself.",
     "price": 150,
-    "image": "/images/reve-paradoxe.jpg?v=9",
+    "image": "/images/reve-paradoxe.jpg?v=10",
     "labelColor": "#042405",
     "labelInk": "#e8d08e",
     "theme": {
@@ -31,7 +31,7 @@
       "smoke": "#8fc7a8"
     },
     "bodyColor": "#ebe9e5",
-    "model": "/models/reve-paradoxe.glb?v=3",
+    "model": "/models/reve-paradoxe.glb?v=4",
     "labelGain": 1.0371
   },
   {
@@ -39,7 +39,7 @@
     "name": "Noir Prestige",
     "description": "Extrait de Parfum, 50 ml. Smoked sandalwood, black pepper and dark vanilla over glowing amber. Deep, confident and made for the evening.",
     "price": 150,
-    "image": "/images/noir-prestige.jpg?v=9",
+    "image": "/images/noir-prestige.jpg?v=10",
     "labelColor": "#050506",
     "labelInk": "#e8d08e",
     "theme": {
@@ -49,7 +49,7 @@
     },
     "rank": 2,
     "bodyColor": "#ebe9e5",
-    "model": "/models/noir-prestige.glb?v=3",
+    "model": "/models/noir-prestige.glb?v=4",
     "labelGain": 0.7482
   },
   {
@@ -57,7 +57,7 @@
     "name": "Rouge Absolu",
     "description": "Extrait de Parfum, 50 ml. Crimson rose and ripe raspberry wrapped in precious woods and amber. Bold, velvety and unapologetically passionate.",
     "price": 150,
-    "image": "/images/rouge-absolu.jpg?v=9",
+    "image": "/images/rouge-absolu.jpg?v=10",
     "labelColor": "#3d0604",
     "labelInk": "#e8d08e",
     "theme": {
@@ -67,7 +67,7 @@
     },
     "rank": 3,
     "bodyColor": "#ebe9e5",
-    "model": "/models/rouge-absolu.glb?v=3",
+    "model": "/models/rouge-absolu.glb?v=4",
     "labelGain": 0.7919
   },
   {
@@ -75,7 +75,7 @@
     "name": "Bleu Éternel",
     "description": "Extrait de Parfum, 50 ml. Lavender and white jasmine with a hint of dark berries, settling into smooth wood and amber. Calm, deep and timeless.",
     "price": 150,
-    "image": "/images/bleu-eternel.jpg?v=9",
+    "image": "/images/bleu-eternel.jpg?v=10",
     "labelColor": "#030d32",
     "labelInk": "#e8d08e",
     "theme": {
@@ -84,7 +84,7 @@
       "smoke": "#8fa8e0"
     },
     "bodyColor": "#ebe9e5",
-    "model": "/models/bleu-eternel.glb?v=3",
+    "model": "/models/bleu-eternel.glb?v=4",
     "labelGain": 1.3349
   }
 ]
