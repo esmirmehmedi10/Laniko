@@ -14,6 +14,7 @@ import { createSmokeBackground } from "./smoke-bg.js";
 
 const TAU = Math.PI * 2;
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
+const smooth01 = (t) => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };
 const easeOut = (x) => 1 - Math.pow(1 - x, 3);
 const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -405,12 +406,16 @@ export function createBottleViewer(container, product) {
   const scene = new THREE.Scene();
   const anchor = new THREE.Group(); // sits at the base of the bottle
   scene.add(anchor);
-  const rig = new THREE.Group();    // yaw / pitch
+  const rig = new THREE.Group();    // yaw / pitch, turning about the middle of the bottle
   anchor.add(rig);
+  const holder = new THREE.Group(); // puts the bottle's own base back at the anchor
+  rig.add(holder);
+  let reflRoot = null, blob = null, MID = 1;
+  const mirrorY = new THREE.Matrix4().makeScale(1, -1, 1);
   const reflU = { uStrength: { value: 0.5 }, uReach: { value: 1.35 }, uFloorY: { value: 0 }, uZoom: { value: 1 } };
   let envTexture = null, pmrem = null, envScene = null;
   let built = false, plateReady = false, started = false, shown = false, bgOn = false;
-  let W = 1, H = 1, kPx = 100;
+  let W = 1, H = 1, kPx = 100, baseY = 0, bgZoomShown = 1;
 
   const fail = (err) => {
     if (failed) return;
@@ -438,7 +443,9 @@ export function createBottleViewer(container, product) {
     camera.updateProjectionMatrix();
     const cxPx = (W - plateW) / 2 + B.cx * plateW;
     const bottomPx = B.bottom * plateH;
-    anchor.position.set((cxPx - W / 2) / kPx, (H / 2 - bottomPx) / kPx, 0);
+    baseY = (H / 2 - bottomPx) / kPx;
+    anchor.position.set((cxPx - W / 2) / kPx, baseY, 0);
+    bgZoomShown = -1;
     if (bg) bg.resize(H, B.ar, Math.min(window.devicePixelRatio || 1, 2));
   };
   const ro = new ResizeObserver(layout);
@@ -489,12 +496,19 @@ export function createBottleViewer(container, product) {
         const maps = makeLabelMaps(product, renderer.capabilities.getMaxAnisotropy(), renderer.capabilities.maxTextureSize);
         bottleModel = buildBottle(maps, product);
       }
-      rig.add(bottleModel);
-      rig.add(makeReflection(bottleModel, reflU));
+      const box = new THREE.Box3().setFromObject(bottleModel);
+      MID = (box.min.y + box.max.y) / 2;
+      rig.position.y = MID;
+      holder.position.y = -MID;
+      holder.add(bottleModel);
+      reflRoot = makeReflection(bottleModel, reflU);
+      reflRoot.scale.set(1, 1, 1);
+      reflRoot.matrixAutoUpdate = false;   // its matrix follows the bottle every frame (mirror in the floor)
+      anchor.add(reflRoot);
 
       // soft contact shadow behind the foot of the bottle
       const blobTex = radialTexture([[0, "rgba(0,0,0,0.7)"], [0.5, "rgba(0,0,0,0.32)"], [1, "rgba(0,0,0,0)"]]);
-      const blob = new THREE.Mesh(
+      blob = new THREE.Mesh(
         new THREE.PlaneGeometry(2.6, 0.55),
         new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false })
       );
@@ -511,7 +525,8 @@ export function createBottleViewer(container, product) {
 
   // --- interaction
   let interacted = false;
-  let yawFree = 0, yawVel = 0, pitch = 0, zoom = 1, zoomTarget = 1;
+  const PITCH_MIN = -1.75, PITCH_MAX = 0.75, ZOOM_MAX = 4;   // the bottle can be turned until its base faces you
+  let yawFree = 0, yawVel = 0, pitch = 0, pitchShown = 0, zoom = 1, zoomTarget = 1;
   let swayYaw = 0;
   const ptrs = new Map();
   let pinchD = 0;
@@ -531,12 +546,12 @@ export function createBottleViewer(container, product) {
     if (ptrs.size === 2) {
       const [a, b] = [...ptrs.values()];
       const d = Math.hypot(a.x - b.x, a.y - b.y);
-      if (pinchD > 0) zoomTarget = Math.min(1.8, Math.max(1, zoomTarget * (d / pinchD)));
+      if (pinchD > 0) zoomTarget = Math.min(ZOOM_MAX, Math.max(1, zoomTarget * (d / pinchD)));
       pinchD = d;
     } else {
       yawFree += dx * 0.011;
       yawVel = dx * 0.011 * 60;
-      pitch = Math.min(0.25, Math.max(-0.2, pitch + dy * 0.004));
+      pitch = Math.min(PITCH_MAX, Math.max(PITCH_MIN, pitch + dy * 0.006)); // drag up: see the bottom; drag down: see the top
     }
   });
   const up = (e) => { ptrs.delete(e.pointerId); pinchD = 0; };
@@ -544,7 +559,7 @@ export function createBottleViewer(container, product) {
   dom.addEventListener("pointercancel", up);
   dom.addEventListener("wheel", (e) => {
     e.preventDefault();
-    zoomTarget = Math.min(1.8, Math.max(1, zoomTarget * Math.exp(-e.deltaY * 0.0012)));
+    zoomTarget = Math.min(ZOOM_MAX, Math.max(1, zoomTarget * Math.exp(-e.deltaY * 0.0015)));
   }, { passive: false });
 
   // --- animation
@@ -573,11 +588,33 @@ export function createBottleViewer(container, product) {
         yawVel *= Math.exp(-2.6 * dt);
       }
       rig.rotation.y = (interacted ? yawFree : swayYaw) + (interacted ? 0 : spin);
-      rig.rotation.x = interacted ? pitch : 0;
+      pitchShown += ((interacted ? pitch : 0) - pitchShown) * Math.min(1, dt * 12);
+      rig.rotation.x = pitchShown;
       zoom += (zoomTarget - zoom) * Math.min(1, dt * 8);
+      // zoom about the middle of the bottle; the background only follows a little (it is far behind the bottle)
       anchor.scale.setScalar(zoom);
+      anchor.position.y = baseY - (zoom - 1) * MID;
       reflU.uFloorY.value = anchor.position.y;
       reflU.uZoom.value = zoom;
+      rig.updateMatrix(); holder.updateMatrix();
+      if (reflRoot) {
+        reflRoot.matrix.copy(mirrorY).multiply(rig.matrix).multiply(holder.matrix);
+        reflRoot.matrixWorldNeedsUpdate = true;
+      }
+      // the floor reflection and the contact shadow belong to the standing bottle: fade them when it is zoomed / tipped
+      const stand = (1 - smooth01((zoom - 1.0) / 0.5)) * (1 - smooth01((Math.abs(pitchShown) - 0.05) / 0.35));
+      reflU.uStrength.value = 0.5 * stand;
+      if (blob) blob.material.opacity = stand;
+      const bgz = 1 + (zoom - 1) * 0.28;
+      if (Math.abs(bgz - bgZoomShown) > 1e-4) {
+        bgZoomShown = bgz;
+        const oy = (B.bottom - (MID * kPx) / H) * 100;
+        const tf = "translateX(-50%) scale(" + bgz.toFixed(4) + ")";
+        for (const [elm, h] of [[plateImg, 1], [bgCanvas, 1], [photoImg, B.photoFrac]]) {
+          elm.style.transformOrigin = (B.cx * 100).toFixed(2) + "% " + (oy / h).toFixed(2) + "%";
+          elm.style.transform = tf;
+        }
+      }
 
       renderer.clear();
       renderer.render(scene, camera);

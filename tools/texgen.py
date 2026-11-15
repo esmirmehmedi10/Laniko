@@ -17,7 +17,7 @@ with sync_playwright() as p:
     print(pg.evaluate("document.fonts.check('600 40px \"Cormorant Garamond\"')"))
     for pr in P:
         pr=dict(pr); pr['labelColor']=hx(paper[pr['id']]); pr['labelInk']=hx(ink.get(pr['id'],[228,203,141]))
-        for mode,scale in (('color',1.5),('orm',0.75),('emit',0.75)):
+        for mode,scale in (('color',2.0),('orm',1.0),('emit',1.0)):
             url=pg.evaluate("""async ([pr,mode,scale])=>{const m=await import('/viewer.js'); await document.fonts.load('600 40px "Cormorant Garamond"'); return m.drawLabel(pr,mode,scale).toDataURL('image/png');}""",[pr,mode,scale])
             open(f'tex/{pr["id"]}-{mode}.png','wb').write(base64.b64decode(url.split(',')[1]))
         print(pr['id'],'ok')

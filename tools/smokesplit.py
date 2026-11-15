@@ -19,8 +19,6 @@ def build(pid):
     H, W = plate.shape[:2]
     h, w = H // 2, W // 2
     small = cv2.resize(plate, (w, h), interpolation=cv2.INTER_AREA).astype(np.float32)
-    mask = cv2.imread(f"{IMG}/{pid}-smoke.png", 0)
-    mask = cv2.resize(mask, (w, h), interpolation=cv2.INTER_CUBIC).astype(np.float32) / 255
     zone = np.zeros((h, w), np.float32)
     for x0, x1, ym in ZONES[pid]:
         zone[: int(ym * h), int(x0 * w): int(x1 * w)] = 1

@@ -21,8 +21,8 @@
       "bottom": 0.7524,
       "photoFrac": 0.7931
     },
-    "bodyColor": "#c89b8a",
-    "model": "/models/blanc-royal.glb?v=2",
+    "bodyColor": "#ebe9e5",
+    "model": "/models/blanc-royal.glb?v=3",
     "labelGain": 0.5684,
     "smokeBase": "/images/blanc-royal-smoke-base.jpg?v=1",
     "smokeLayer": "/images/blanc-royal-smoke-layer.png?v=1"
@@ -48,8 +48,8 @@
       "bottom": 0.7508,
       "photoFrac": 0.7692
     },
-    "bodyColor": "#d4a78f",
-    "model": "/models/reve-paradoxe.glb?v=2",
+    "bodyColor": "#ebe9e5",
+    "model": "/models/reve-paradoxe.glb?v=3",
     "labelGain": 1.0371,
     "smokeBase": "/images/reve-paradoxe-smoke-base.jpg?v=1",
     "smokeLayer": "/images/reve-paradoxe-smoke-layer.png?v=1"
@@ -76,8 +76,8 @@
       "bottom": 0.7512,
       "photoFrac": 0.7969
     },
-    "bodyColor": "#d6a995",
-    "model": "/models/noir-prestige.glb?v=2",
+    "bodyColor": "#ebe9e5",
+    "model": "/models/noir-prestige.glb?v=3",
     "labelGain": 0.7482,
     "smokeBase": "/images/noir-prestige-smoke-base.jpg?v=1",
     "smokeLayer": "/images/noir-prestige-smoke-layer.png?v=1"
@@ -104,8 +104,8 @@
       "bottom": 0.7504,
       "photoFrac": 0.7673
     },
-    "bodyColor": "#cf9e87",
-    "model": "/models/rouge-absolu.glb?v=2",
+    "bodyColor": "#ebe9e5",
+    "model": "/models/rouge-absolu.glb?v=3",
     "labelGain": 0.7919,
     "smokeBase": "/images/rouge-absolu-smoke-base.jpg?v=1",
     "smokeLayer": "/images/rouge-absolu-smoke-layer.png?v=1"
@@ -131,8 +131,8 @@
       "bottom": 0.7508,
       "photoFrac": 0.7677
     },
-    "bodyColor": "#d3a48e",
-    "model": "/models/bleu-eternel.glb?v=2",
+    "bodyColor": "#ebe9e5",
+    "model": "/models/bleu-eternel.glb?v=3",
     "labelGain": 1.3349,
     "smokeBase": "/images/bleu-eternel-smoke-base.jpg?v=1",
     "smokeLayer": "/images/bleu-eternel-smoke-layer.png?v=1"
