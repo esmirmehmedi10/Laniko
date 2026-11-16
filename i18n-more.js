@@ -1,6 +1,7 @@
 // Texts for: scent evolution, spray/AR, mood finder, scent card, gift, discovery set. Merged into the main packs.
 window.I18N.add({
   en: {
+    arFail: "AR isn't available on this phone.",
     evoTitle: "How it evolves", evoSub: "Slide through time and see how the scent changes on your skin.", evoPlay: "Play the timeline", evoSlider: "Time since spraying",
     evoNow: "First spray", evoMin: "{n} min", evoHr: "{n} h",
     evoTop: "Top notes", evoTopWhen: "the first minutes", evoHeart: "Heart notes", evoHeartWhen: "the next hours", evoBase: "Base notes", evoBaseWhen: "stays all day",
@@ -18,6 +19,7 @@ window.I18N.add({
     setName: "Discovery Set", setChip: "New", setSub: "5 × 2 ml · the whole collection", setCredit: "{amount} credited on your first full bottle",
   },
   de: {
+    arFail: "AR ist auf diesem Handy nicht verfügbar.",
     evoTitle: "Wie er sich entwickelt", evoSub: "Schieb durch die Zeit und sieh, wie sich der Duft auf deiner Haut verändert.", evoPlay: "Zeitverlauf abspielen", evoSlider: "Zeit seit dem Aufsprühen",
     evoNow: "Erster Sprühstoß", evoMin: "{n} Min.", evoHr: "{n} Std.",
     evoTop: "Kopfnoten", evoTopWhen: "die ersten Minuten", evoHeart: "Herznoten", evoHeartWhen: "die nächsten Stunden", evoBase: "Basisnoten", evoBaseWhen: "bleibt den ganzen Tag",
@@ -35,6 +37,7 @@ window.I18N.add({
     setName: "Entdeckerset", setChip: "Neu", setSub: "5 × 2 ml · die ganze Kollektion", setCredit: "{amount} werden auf deine erste volle Flasche angerechnet",
   },
   fr: {
+    arFail: "La réalité augmentée n'est pas disponible sur ce téléphone.",
     evoTitle: "Comment il évolue", evoSub: "Faites glisser le temps et voyez comment le parfum change sur votre peau.", evoPlay: "Lancer la chronologie", evoSlider: "Temps depuis la vaporisation",
     evoNow: "Première vaporisation", evoMin: "{n} min", evoHr: "{n} h",
     evoTop: "Notes de tête", evoTopWhen: "les premières minutes", evoHeart: "Notes de cœur", evoHeartWhen: "les heures suivantes", evoBase: "Notes de fond", evoBaseWhen: "dure toute la journée",
@@ -52,6 +55,7 @@ window.I18N.add({
     setName: "Coffret Découverte", setChip: "Nouveau", setSub: "5 × 2 ml · toute la collection", setCredit: "{amount} déduits de votre premier flacon complet",
   },
   pt: {
+    arFail: "A realidade aumentada não está disponível neste telemóvel.",
     evoTitle: "Como evolui", evoSub: "Deslize pelo tempo e veja como o perfume muda na sua pele.", evoPlay: "Reproduzir a linha do tempo", evoSlider: "Tempo desde a aplicação",
     evoNow: "Primeiro spray", evoMin: "{n} min", evoHr: "{n} h",
     evoTop: "Notas de topo", evoTopWhen: "os primeiros minutos", evoHeart: "Notas de coração", evoHeartWhen: "as horas seguintes", evoBase: "Notas de base", evoBaseWhen: "dura o dia todo",
@@ -69,6 +73,7 @@ window.I18N.add({
     setName: "Kit Descoberta", setChip: "Novo", setSub: "5 × 2 ml · toda a coleção", setCredit: "{amount} descontados no seu primeiro frasco completo",
   },
   it: {
+    arFail: "La realtà aumentata non è disponibile su questo telefono.",
     evoTitle: "Come evolve", evoSub: "Scorri nel tempo e guarda come cambia il profumo sulla tua pelle.", evoPlay: "Avvia la timeline", evoSlider: "Tempo dall'applicazione",
     evoNow: "Primo spruzzo", evoMin: "{n} min", evoHr: "{n} h",
     evoTop: "Note di testa", evoTopWhen: "i primi minuti", evoHeart: "Note di cuore", evoHeartWhen: "le ore successive", evoBase: "Note di fondo", evoBaseWhen: "dura tutto il giorno",
@@ -86,6 +91,7 @@ window.I18N.add({
     setName: "Set Scoperta", setChip: "Novità", setSub: "5 × 2 ml · tutta la collezione", setCredit: "{amount} scontati sul tuo primo flacone intero",
   },
   es: {
+    arFail: "La realidad aumentada no está disponible en este teléfono.",
     evoTitle: "Cómo evoluciona", evoSub: "Desliza por el tiempo y mira cómo cambia el perfume en tu piel.", evoPlay: "Reproducir la línea de tiempo", evoSlider: "Tiempo desde la aplicación",
     evoNow: "Primer spray", evoMin: "{n} min", evoHr: "{n} h",
     evoTop: "Notas de salida", evoTopWhen: "los primeros minutos", evoHeart: "Notas de corazón", evoHeartWhen: "las horas siguientes", evoBase: "Notas de fondo", evoBaseWhen: "dura todo el día",
@@ -103,6 +109,7 @@ window.I18N.add({
     setName: "Set Descubrimiento", setChip: "Nuevo", setSub: "5 × 2 ml · toda la colección", setCredit: "{amount} descontados de tu primer frasco completo",
   },
   ar: {
+    arFail: "الواقع المعزز غير متاح على هذا الهاتف.",
     evoTitle: "كيف يتطوّر العطر", evoSub: "حرّك الزمن وشاهد كيف يتغيّر العطر على بشرتك.", evoPlay: "تشغيل المخطط الزمني", evoSlider: "الوقت منذ الرش",
     evoNow: "أول رشة", evoMin: "{n} د", evoHr: "{n} س",
     evoTop: "النوتات العليا", evoTopWhen: "الدقائق الأولى", evoHeart: "نوتات القلب", evoHeartWhen: "الساعات التالية", evoBase: "نوتات القاعدة", evoBaseWhen: "تبقى طوال اليوم",
@@ -120,6 +127,7 @@ window.I18N.add({
     setName: "مجموعة الاكتشاف", setChip: "جديد", setSub: "5 × 2 مل · المجموعة كاملة", setCredit: "يُخصم {amount} من أول زجاجة كاملة",
   },
   zh: {
+    arFail: "此手机不支持 AR。",
     evoTitle: "香气如何演变", evoSub: "拖动时间轴，看看香气在你肌肤上如何变化。", evoPlay: "播放时间轴", evoSlider: "喷洒后的时间",
     evoNow: "初次喷洒", evoMin: "{n} 分钟", evoHr: "{n} 小时",
     evoTop: "前调", evoTopWhen: "最初几分钟", evoHeart: "中调", evoHeartWhen: "随后几小时", evoBase: "后调", evoBaseWhen: "整天留香",
