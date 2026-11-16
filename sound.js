@@ -57,7 +57,7 @@ function build(c) {
   makeBuffers(c);
   const comp = c.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 3; comp.attack.value = 0.002; comp.release.value = 0.12;
   const m = c.createGain(); m.gain.value = 0.9; m.connect(comp); comp.connect(c.destination);
-  const r = makeRoom(c), wet = c.createGain(); wet.gain.value = 0.16; r.connect(wet); wet.connect(m);
+  const r = makeRoom(c), wet = c.createGain(); wet.gain.value = 0.09; r.connect(wet); wet.connect(m);
   const bus = c.createGain(); bus.connect(m); bus.connect(r);
   master = bus; room = r;
 
@@ -120,26 +120,31 @@ function knock(c, dest, t, vol = 1, pitch = 1) {              // a small hard "t
   ring(c, dest, t, 2350 * pitch, 0.07 * vol, 0.03);
 }
 
-// the cap: grip and creak, a hollow pop, a small knock when it is clear
+// the cap: a metal cap on a glass neck is a friction fit. Drawn off it makes a faint scrape, then the air that was
+// sealed in lets go with a muffled, hollow "pup" (a low, heavily damped resonance - no bright ringing), and the cap
+// edge gives a very small metallic tick as it leaves the glass collar. Every play varies a little, like a real hand.
 function playCap(c, dest, t) {
-  // 1. creak/friction while the cap is drawn off the neck: filtered noise that swells in uneven little steps
-  const dur = 0.13, s = c.createBufferSource(); s.buffer = noiseBuf;
-  const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 3.2;
-  bp.frequency.setValueAtTime(1500, t); bp.frequency.exponentialRampToValueAtTime(2700, t + dur);
-  const g = c.createGain();
-  g.gain.setValueAtTime(0.0001, t);
-  for (let i = 1; i <= 8; i++) g.gain.linearRampToValueAtTime(0.02 + (i / 8) * 0.13 * rnd(0.6, 1.2), t + (dur * i) / 8);
-  g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.006);
+  const v = rnd(0.92, 1.08), vol = rnd(0.9, 1.1);
+  // 1. the scrape: soft, wide-band, uneven, quiet
+  const dur = rnd(0.07, 0.09), s = c.createBufferSource(); s.buffer = noiseBuf;
+  const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 0.9;
+  bp.frequency.setValueAtTime(900 * v, t); bp.frequency.linearRampToValueAtTime(1500 * v, t + dur);
+  const g = c.createGain(); g.gain.setValueAtTime(0.0001, t);
+  for (let i = 1; i <= 6; i++) g.gain.linearRampToValueAtTime((0.015 + (i / 6) * 0.07) * rnd(0.5, 1.3) * vol, t + (dur * i) / 6);
+  g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.004);
   s.connect(bp); bp.connect(g); g.connect(dest); s.start(t, rnd(0, 2), dur + 0.05);
-  // 2. the release: air rushes into the cap and its cavity rings (a hollow "pop"), plus the glass neck's thump
+  // 2. the pop: air rushes into the vacuum under the cap. A short soft transient, then a low hollow body whose pitch
+  //    falls as the pressure equalises; a second, quieter mode gives it the cavity colour of a cap
   const p = t + dur;
-  noiseHit(c, dest, p, { dur: 0.02, freq: 1900, Q: 0.9, vol: 0.35, attack: 0.001 });
-  ring(c, dest, p, 1020, 0.30, 0.085, 0.86);      // cavity resonance, sagging a little as the air escapes
-  ring(c, dest, p, 1930, 0.13, 0.05);              // the plastic/metal skin
-  ring(c, dest, p, 3150, 0.05, 0.03);
-  ring(c, dest, p, 235, 0.26, 0.07, 0.7);          // thump of the neck letting go
-  // 3. a small knock as the cap comes clear of the bottle
-  knock(c, dest, p + 0.1, 0.5, 1.12);
+  noiseHit(c, dest, p, { dur: 0.012, type: "lowpass", freq: 2600, Q: 0.7, vol: 0.28 * vol, attack: 0.0008 });
+  ring(c, dest, p, 980 * v, 0.34 * vol, 0.055, 0.5);        // main hollow body, sagging from ~980 to ~490 Hz
+  ring(c, dest, p, 1560 * v, 0.1 * vol, 0.03, 0.7);          // cavity colour, dies fast
+  ring(c, dest, p, 300 * v, 0.14 * vol, 0.045, 0.75);        // the weight of it in the hand
+  // 3. the edge of the cap clears the glass collar: a tiny, dull metal tick
+  const k = p + 0.052;
+  ring(c, dest, k, 2900 * v, 0.03 * vol, 0.035);
+  ring(c, dest, k, 2900 * v * 2.76, 0.016 * vol, 0.022);
+  noiseHit(c, dest, k, { dur: 0.006, type: "bandpass", freq: 3300, Q: 1, vol: 0.05 * vol, attack: 0.0006 });
 }
 
 // pump click when the atomiser is pressed, and the softer one when it springs back
