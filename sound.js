@@ -124,7 +124,7 @@ function knock(c, dest, t, vol = 1, pitch = 1) {              // a small hard "t
 // a dry "tk" (a short noise transient - no ringing, nothing hollow), and the cap
 // edge gives a very small metallic tick as it leaves the glass collar. Every play varies a little, like a real hand.
 function playCap(c, dest, t) {
-  const v = rnd(0.92, 1.08), vol = rnd(0.9, 1.1);
+  const v = rnd(0.92, 1.08), vol = rnd(1.55, 1.8);
   // 1. the scrape: soft, wide-band, uneven, quiet
   const dur = rnd(0.07, 0.09), s = c.createBufferSource(); s.buffer = noiseBuf;
   const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 0.9;
