@@ -314,6 +314,7 @@
               <span>${cart[id]}</span>
               <button data-inc="${esc(id)}" aria-label="${esc(t("more"))}">+</button>
             </div>
+            <button class="trash" data-del="${esc(id)}" aria-label="${esc(t("removeItem"))}" title="${esc(t("removeItem"))}"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg></button>
           </div>`;
         }).join("")
       : `<p class='small'>${esc(t("cartEmpty"))}</p>`;
@@ -482,6 +483,7 @@
     else if (t_.dataset.add) { change(t_.dataset.add, 1); $("cart").hidden = false; }
     else if (t_.dataset.inc) change(t_.dataset.inc, 1);
     else if (t_.dataset.dec) change(t_.dataset.dec, -1);
+    else if (t_.dataset.del) { delete cart[t_.dataset.del]; renderCart(); }
   });
   $("lang-btn").addEventListener("click", () => showGate(false));
   $("pd-back").addEventListener("click", closeDetail);
