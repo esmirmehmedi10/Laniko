@@ -43,7 +43,7 @@ export function pickHit(results, space) {
     if (!pose) continue;
     const m = pose.transform.matrix;                   // column-major; m[5] = how much the surface normal points up
     const flat = m[5] > FLAT;
-    const h = { x: m[12], y: m[13], z: m[14], flat };
+    const h = { x: m[12], y: m[13], z: m[14], flat, r };
     if (flat) return h;
     if (!rough) rough = h;
   }
@@ -129,6 +129,7 @@ export async function startAR(url, L, opts = {}) {
   let hit = null, lastHitAt = 0, popAt = 0, hintKey = "";
   const t0 = performance.now();
   let hitSource = null, viewerSpace = null, ended = false;
+  let weakSince = 0, weakShown = false;
   let anchor = null, wantAnchor = null;           // an anchor keeps the bottle glued to the spot even when the phone corrects its map
   const cm = model.userData.cm || 10.4;
   const MIN = 0.3, MAX = 4;
@@ -143,7 +144,7 @@ export async function startAR(url, L, opts = {}) {
     stage.visible = on || mode === "placed";
     ui.scan.hidden = mode !== "scan";
   }
-  function place(h) {
+  function place(h, result) {
     mode = "placed";
     stage.position.set(h.x, h.y, h.z);
     const c = camera.matrixWorld.elements;                      // turn the front of the bottle towards the visitor
@@ -156,12 +157,19 @@ export async function startAR(url, L, opts = {}) {
     ui.now.hidden = true;
     ui.size.hidden = false;
     wantAnchor = { x: h.x, y: h.y, z: h.z };
+    if (result && result.createAnchor) {                      // best: tie the bottle to the surface the phone itself detected
+      const w = wantAnchor; wantAnchor = null;
+      try { result.createAnchor().then((a) => { if (mode === "placed" && !ended) anchor = a; else a.delete(); }).catch(() => { wantAnchor = w; }); }
+      catch { wantAnchor = w; }
+    }
     sizeLabel();
     try { navigator.vibrate && navigator.vibrate(14); } catch { /* not supported */ }
   }
-  function onSelect() {
+  function onSelect(e) {
     if (mode === "placed" || !hit) return;
-    place(hit);
+    let picked = null;                                         // look at the surface exactly at the moment of the tap
+    try { if (e && e.frame && hitSource) picked = pickHit(e.frame.getHitTestResults(hitSource), renderer.xr.getReferenceSpace()); } catch { /* use the last ring position */ }
+    if (picked && (picked.flat || !hit.flat)) place(picked, picked.r); else place(hit);
   }
   function placeInFront() {
     if (mode === "placed") return;
@@ -232,6 +240,13 @@ export async function startAR(url, L, opts = {}) {
   function frame(time, xrFrame) {
     if (ended) return;
     const now = performance.now();
+    // the phone says when it has lost track of the room (dark, blurry or plain surfaces): tell the visitor instead of silently drifting
+    let weak = false;
+    try { const vp = xrFrame && xrFrame.getViewerPose && xrFrame.getViewerPose(renderer.xr.getReferenceSpace()); weak = !!(vp && vp.emulatedPosition); } catch { /* ignore */ }
+    if (weak) { weakSince = weakSince || now; } else weakSince = 0;
+    const weakNow = weak && now - weakSince > 500;
+    if (weakNow) { say("weak"); weakShown = true; }
+    else if (weakShown) { weakShown = false; hintKey = ""; if (mode === "placed") say("placed"); }
     if (xrFrame && hitSource && mode !== "placed") {
       const h = pickHit(xrFrame.getHitTestResults(hitSource), renderer.xr.getReferenceSpace());
       if (h) {
@@ -244,14 +259,14 @@ export async function startAR(url, L, opts = {}) {
         stage.position.set(hit.x, hit.y, hit.z);
         ringMat.color.setHex(hit.flat ? 0xd9b96a : 0xffffff);
         ringMat.opacity = hit.flat ? 0.95 : 0.7;
-        say(hit.flat ? "tap" : "tapRough");
+        if (!weakNow) say(hit.flat ? "tap" : "tapRough");
         show(true);
         const s = 1 + Math.sin(now / 260) * 0.05;                              // gentle pulse
         ring.scale.set(s, 1, s); halo.scale.set(1.08 - (s - 1), 1, 1.08 - (s - 1));
       } else if (mode === "ready" && now - lastHitAt > LOST_MS) {
         mode = "scan"; hit = null; say("scan"); show(false);
       }
-      if (mode === "scan" && now - t0 > SLOW_MS) { say("slow"); ui.now.hidden = false; }
+      if (mode === "scan" && now - t0 > SLOW_MS) { if (!weakNow) say("slow"); ui.now.hidden = false; }
     }
     if (mode === "placed" && xrFrame) {
       const space = renderer.xr.getReferenceSpace();
