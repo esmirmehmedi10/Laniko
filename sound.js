@@ -57,7 +57,7 @@ function build(c) {
   makeBuffers(c);
   const comp = c.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 3; comp.attack.value = 0.002; comp.release.value = 0.12;
   const m = c.createGain(); m.gain.value = 0.9; m.connect(comp); comp.connect(c.destination);
-  const r = makeRoom(c), wet = c.createGain(); wet.gain.value = 0.09; r.connect(wet); wet.connect(m);
+  const r = makeRoom(c), wet = c.createGain(); wet.gain.value = 0.12; r.connect(wet); wet.connect(m);
   const bus = c.createGain(); bus.connect(m); bus.connect(r);
   master = bus; room = r;
 
@@ -120,31 +120,33 @@ function knock(c, dest, t, vol = 1, pitch = 1) {              // a small hard "t
   ring(c, dest, t, 2350 * pitch, 0.07 * vol, 0.03);
 }
 
-// the cap: a metal cap on a glass neck is a friction fit. Drawn off it makes a faint scrape, then it snaps free with
-// a dry "tk" (a short noise transient - no ringing, nothing hollow), and the cap
-// edge gives a very small metallic tick as it leaves the glass collar. Every play varies a little, like a real hand.
+// the cap: a quality metal cap on a glass neck. It glides off smoothly (a soft, even friction), lets go with a solid
+// "thock" (weight and body, damped so it never booms), and the heavy metal shell answers with a short, clean, slightly
+// bell-like ring that fades in about a tenth of a second. Every play varies a little, like a real hand.
 function playCap(c, dest, t) {
-  const v = rnd(0.92, 1.08), vol = rnd(1.55, 1.8);
-  // 1. the scrape: soft, wide-band, uneven, quiet
-  const dur = rnd(0.07, 0.09), s = c.createBufferSource(); s.buffer = noiseBuf;
-  const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 0.9;
-  bp.frequency.setValueAtTime(900 * v, t); bp.frequency.linearRampToValueAtTime(1500 * v, t + dur);
+  const v = rnd(0.95, 1.05), vol = rnd(0.95, 1.05);
+  // 1. the glide: smooth, close-fitting parts slide with a fine, even rub that firms up just before release
+  const dur = rnd(0.085, 0.1), s = c.createBufferSource(); s.buffer = noiseBuf;
+  const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 1.1;
+  bp.frequency.setValueAtTime(1100 * v, t); bp.frequency.linearRampToValueAtTime(2000 * v, t + dur);
   const g = c.createGain(); g.gain.setValueAtTime(0.0001, t);
-  for (let i = 1; i <= 6; i++) g.gain.linearRampToValueAtTime((0.015 + (i / 6) * 0.07) * rnd(0.5, 1.3) * vol, t + (dur * i) / 6);
+  g.gain.linearRampToValueAtTime(0.05 * vol, t + dur * 0.5);
+  g.gain.linearRampToValueAtTime(0.11 * vol, t + dur);
   g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.004);
   s.connect(bp); bp.connect(g); g.connect(dest); s.start(t, rnd(0, 2), dur + 0.05);
-  // 2. the release: a dry, tight "tk" - the cap's skin snapping free of the glass. Short decays and no pitch sweep, so
-  //    nothing hollow or bloopy: mostly a crisp noise transient with a little body behind it
+  // 2. the release: a solid, dense thock - hard transient, then a firm body. Short decays keep it tight
   const p = t + dur;
-  noiseHit(c, dest, p, { dur: 0.016, type: "bandpass", freq: 2100 * v, Q: 0.9, vol: 0.34 * vol, attack: 0.0006 });
-  noiseHit(c, dest, p, { dur: 0.03, type: "bandpass", freq: 900 * v, Q: 0.8, vol: 0.2 * vol, attack: 0.0008 });
-  ring(c, dest, p, 1350 * v, 0.13 * vol, 0.016);
-  ring(c, dest, p, 640 * v, 0.09 * vol, 0.022);
-  // 3. the edge of the cap clears the glass collar: a tiny, dull metal tick
-  const k = p + 0.045;
-  ring(c, dest, k, 2900 * v, 0.03 * vol, 0.035);
-  ring(c, dest, k, 2900 * v * 2.76, 0.016 * vol, 0.022);
-  noiseHit(c, dest, k, { dur: 0.006, type: "bandpass", freq: 3300, Q: 1, vol: 0.05 * vol, attack: 0.0006 });
+  noiseHit(c, dest, p, { dur: 0.02, type: "lowpass", freq: 3200, Q: 0.7, vol: 0.5 * vol, attack: 0.0007 });
+  noiseHit(c, dest, p, { dur: 0.035, type: "bandpass", freq: 1000 * v, Q: 0.8, vol: 0.3 * vol, attack: 0.0008 });
+  ring(c, dest, p, 430 * v, 0.46 * vol, 0.06, 0.88);      // the body of the thock
+  ring(c, dest, p, 860 * v, 0.24 * vol, 0.04);             // firmness
+  ring(c, dest, p, 200 * v, 0.26 * vol, 0.07, 0.85);       // weight
+  // 3. the metal shell rings: inharmonic partials (like a small bell), soft and short - this is what says "metal"
+  const m = p + 0.004, f0 = 2150 * v;
+  ring(c, dest, m, f0, 0.11 * vol, 0.13);
+  ring(c, dest, m, f0 * 2.32, 0.065 * vol, 0.085);
+  ring(c, dest, m, f0 * 3.87, 0.035 * vol, 0.055);
+  ring(c, dest, m, f0 * 0.61, 0.07 * vol, 0.1);
 }
 
 // pump click when the atomiser is pressed, and the softer one when it springs back
