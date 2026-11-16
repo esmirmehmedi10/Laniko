@@ -389,6 +389,7 @@
     loadFont(l.code);
     document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
     document.querySelectorAll("[data-i18n-aria]").forEach((el) => { el.setAttribute("aria-label", t(el.dataset.i18nAria)); });
+    document.querySelectorAll("[data-i18n-ph]").forEach((el) => { el.placeholder = t(el.dataset.i18nPh); });
     const d = document.querySelector('meta[name="description"]'); if (d && S[cur].metaDesc) d.setAttribute("content", t("metaDesc"));
     if (document.documentElement.dataset.page === "thanks") document.title = t("thanksDoc"); else document.title = t("title");
   };

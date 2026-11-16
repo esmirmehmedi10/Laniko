@@ -16,11 +16,41 @@
     <a href="/" class="brand" aria-label="Laniko, home"><img src="/logo.svg" alt="Laniko" width="21" height="52"></a>
     <h1 style="font-family: var(--serif); font-weight: 600;" data-i18n="thanksTitle">Thank you for your order!</h1>
     <p data-i18n="thanksBody">Your payment went through. A receipt is on its way to your email.</p>
+    <div id="gift-send" class="gift-send" hidden>
+      <h2 data-i18n="giftSendTitle">Send your gift</h2>
+      <p data-i18n="giftSendSub">Share this link: your recipient opens a gift box with your message.</p>
+      <button id="gs-share" class="act gold" type="button" data-i18n="giftShare">Share the gift link</button>
+      <button id="gs-copy" class="act" type="button" data-i18n="giftCopy">Copy the link</button>
+      <a id="gs-open" class="act" data-i18n="giftSee">See how it looks</a>
+    </div>
     <p><a href="/" data-i18n="back">Back to the shop</a></p>
   </div>
   <script src="/i18n.js"></script>
+  <script src="/i18n-extra.js"></script>
+  <script src="/i18n-more.js"></script>
   <script>
-    try { localStorage.removeItem("shop-cart-v1"); } catch (e) {}
+    try { localStorage.removeItem("shop-cart-v1"); localStorage.removeItem("laniko-gift"); } catch (e) {}
+    window.I18N.applyStatic();
+    // a gift order: the link that opens the animated gift box (everything is inside the link itself)
+    (function () {
+      var g = null;
+      try { g = JSON.parse(localStorage.getItem("laniko-gift-last") || "null"); } catch (e) {}
+      if (!g || !g.i || !g.i.length) return;
+      var enc = btoa(unescape(encodeURIComponent(JSON.stringify(g)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      var url = location.origin + "/#/gift/" + enc;
+      var box = document.getElementById("gift-send");
+      box.hidden = false;
+      document.getElementById("gs-open").href = url;
+      var I = window.I18N;
+      document.getElementById("gs-copy").addEventListener("click", function (e) {
+        var b = e.currentTarget;
+        (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(function () { b.textContent = I.t("linkCopied"); }, function () { window.prompt(I.t("giftCopy"), url); });
+      });
+      document.getElementById("gs-share").addEventListener("click", function () {
+        if (navigator.share) navigator.share({ title: I.t("giftSendTitle"), text: I.t("giftShareText"), url: url }).catch(function () {});
+        else document.getElementById("gs-copy").click();
+      });
+    })();
   </script>
 </body>
 </html>

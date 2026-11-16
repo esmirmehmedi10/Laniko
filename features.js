@@ -2,7 +2,7 @@
 // app.js hands over a small context object: { I, products, esc, fmt, openDetail, change, byId, updateLock }.
 
 // ---------- scent notes ----------
-const NOTE_INFO = {   // family and a colour for the illustration (keys are the English note names used in products.json)
+export const NOTE_INFO = {   // family and a colour for the illustration (keys are the English note names used in products.json)
   "white rose": ["floral", "#f2e3cf"], "orchid": ["floral", "#d9a2cf"], "velvet rose": ["floral", "#b2304a"], "crimson rose": ["floral", "#c8142f"], "white jasmine": ["floral", "#f6f0e2"],
   "red grapefruit": ["citrus", "#ee5b43"],
   "saffron": ["spicy", "#ee8a1f"], "black pepper": ["spicy", "#8d8d86"],
@@ -14,7 +14,7 @@ const NOTE_INFO = {   // family and a colour for the illustration (keys are the 
 };
 const rot = (n, f) => Array.from({ length: n }, (_, i) => f(i, (360 / n) * i)).join("");
 
-const ART = {
+export const ART = {
   citrus: () => `
     <g class="na-spin"><circle cx="60" cy="60" r="42" fill="var(--nc)" fill-opacity=".22" stroke="var(--nc)" stroke-width="3"/>
     <circle cx="60" cy="60" r="35" fill="none" stroke="var(--nc)" stroke-opacity=".7" stroke-width="1.5"/>
@@ -151,14 +151,16 @@ export function openQuiz(ctx) {
         <p class="qz-price">${fmt(best.price)}</p>
         <button class="qz-main" data-qz-open="${esc(best.id)}">${esc(t("qzDiscover"))}</button>
         <button class="qz-sec" data-qz-add="${esc(best.id)}">${esc(t("add"))}</button>
+        <button class="qz-sec" data-qz-card="${esc(best.id)}">${esc(t("scardBtn"))}</button>
       </div>
       <p class="qz-also">${esc(t("qzAlso"))}</p>
       <div class="qz-others">${others.map((o) => `<button data-qz-open="${esc(o.id)}"><img src="${esc(o.image)}" alt=""><span>${esc(o.name)}</span></button>`).join("")}</div>
       <button class="qz-back-btn" data-qz="again">${esc(t("qzAgain"))}</button>`;
   };
-  box.addEventListener("click", (e) => {
+  box.addEventListener("click", async (e) => {
     const b = e.target.closest("button");
     if (!b) return;
+    if (b.dataset.qzCard) { b.disabled = true; try { await (await import("/extras.js")).shareScentCard(ctx, ctx.byId(b.dataset.qzCard)); } finally { b.disabled = false; } return; }
     if (b.dataset.qzA) { answers.push(b.dataset.qzA); step(); }
     else if (b.dataset.qz === "close") close();
     else if (b.dataset.qz === "back") { answers.pop(); step(); }

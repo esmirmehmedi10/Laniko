@@ -78,6 +78,7 @@ function ensure() {
 }
 
 export const isEnabled = () => enabled;
+export function wake() { if (enabled) ensure(); }
 export function setEnabled(on) {
   enabled = !!on;
   try { localStorage.setItem(KEY, enabled ? "1" : "0"); } catch { /* ignore */ }

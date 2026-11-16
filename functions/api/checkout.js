@@ -24,9 +24,9 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Shop is not configured yet (missing STRIPE_SECRET_KEY)." }, 500);
   }
 
-  let items, lang;
+  let items, lang, gift;
   try {
-    ({ items, lang } = await request.json());
+    ({ items, lang, gift } = await request.json());
   } catch {
     return json({ error: "Invalid request." }, 400);
   }
@@ -68,7 +68,8 @@ export async function onRequestPost({ request, env }) {
     params.set(`${p}[price_data][unit_amount]`, String(Math.round(product.price * 100)));
     params.set(`${p}[price_data][product_data][name]`, product.name);
     if (product.description) {
-      params.set(`${p}[price_data][product_data][description]`, `Extrait de Parfum, 50 ml. ${product.description}`);
+      const prefix = product.kind === "set" ? "" : "Extrait de Parfum, 50 ml. ";
+      params.set(`${p}[price_data][product_data][description]`, `${prefix}${product.description}`);
     }
     if (product.image) {
       const imageUrl = product.image.startsWith("/") ? origin + product.image : product.image;
@@ -77,6 +78,24 @@ export async function onRequestPost({ request, env }) {
       }
     }
     n++;
+  }
+
+  // the Discovery Set is credited on a full bottle: the customer types the code from the card in the box at checkout
+  // (create a coupon + promotion code for it in the Stripe dashboard)
+  params.set("allow_promotion_codes", "true");
+
+  // gift: the wrapping and the message travel with the order, so they can be packed with it
+  if (gift && typeof gift === "object") {
+    const clean = (v, n) => String(v ?? "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, n);
+    const wrap = ["ivory", "noir", "rouge"].includes(gift.wrap) ? gift.wrap : "ivory";
+    params.set("metadata[gift]", "yes");
+    params.set("metadata[gift_wrap]", wrap);
+    params.set("metadata[gift_from]", clean(gift.from, 40));
+    params.set("metadata[gift_message]", clean(gift.message, 240));
+    params.set("payment_intent_data[metadata][gift]", "yes");
+    params.set("payment_intent_data[metadata][gift_wrap]", wrap);
+    params.set("payment_intent_data[metadata][gift_from]", clean(gift.from, 40));
+    params.set("payment_intent_data[metadata][gift_message]", clean(gift.message, 240));
   }
 
   const res = await fetch("https://api.stripe.com/v1/checkout/sessions", {

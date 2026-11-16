@@ -38,6 +38,18 @@ Test with card `4242 4242 4242 4242`, any future date and any CVC.
 2. Add your own domain under the Pages project → Custom domains.
 3. Add your legal pages (imprint, terms, returns, privacy) before taking real orders.
 
+## Optional extras
+
+- **Mood finder (AI):** the "Describe your mood" button always works with built-in keyword matching. For smarter,
+  free-text answers in every language, add a secret named `ANTHROPIC_API_KEY` in Cloudflare Pages
+  (Settings > Variables and Secrets). The shop then asks Claude (`functions/api/mood.js`); without the key, or if it
+  fails, it silently falls back to the built-in matching. Each AI answer costs a small amount of API credit.
+- **Discovery Set credit:** the set (5 x 2 ml, EUR 29, edit `products.json`) is credited on a full bottle through a
+  Stripe promotion code: in the Stripe dashboard create a coupon (EUR 29 off, ideally one use) with a promotion code, and
+  print that code on the card in the box. Checkout already accepts promotion codes.
+- **Gifts:** gift orders carry the wrapping, sender name and message in the Stripe order's metadata
+  (`gift_wrap`, `gift_from`, `gift_message`). The buyer gets a link that opens the animated gift box.
+
 ## Editing the shop
 
 - **Products:** edit `products.json` (`id` must be unique, `price` in euros). Commit and Cloudflare redeploys automatically.

@@ -524,6 +524,8 @@ export function createBottleViewer(container, product) {
   let zoom = 1, zoomTarget = 1, panX = 0, panY = 0, panTX = 0, panTY = 0;
   let swayYaw = 0, zoomSent = 1;
   // fixed pose for the scroll-animation frames: { yaw, pitch, lift, slide, tilt, press, zoom, panX, panY, roll }   (lengths in body widths)
+  const fx = { lift: 0, slide: 0, tilt: 0, press: 0 };          // the spray burst (shake to spray) moves the cap and the nozzle on top of the pose
+  let burst = null;
   let pose = null, capNode = null, capNodeR = null, nozNode = null, nozNodeR = null, capBase = 0, nozBase = 0;
   const ptrs = new Map();
   let pinchD = 0, pinchMx = 0, pinchMy = 0, dragMode = "rotate", lastTap = 0, lastTapX = 0, lastTapY = 0, moved = 0;
@@ -649,8 +651,8 @@ export function createBottleViewer(container, product) {
       else pitchShown += ((interacted ? pitch : 0) - pitchShown) * Math.min(1, dt * 12);
       rig.rotation.x = pitchShown + (pose ? 0 : tiltPitch);
       {
-        const L = pose ? (pose.lift || 0) * 0.06 : 0, X = pose ? -(pose.slide || 0) * 0.06 : 0, Z = pose ? pose.tilt || 0 : 0;
-        const Pr = pose ? (pose.press || 0) * 0.03 * 0.06 : 0;
+        const L = ((pose ? pose.lift || 0 : 0) + fx.lift) * 0.06, X = -((pose ? pose.slide || 0 : 0) + fx.slide) * 0.06, Z = (pose ? pose.tilt || 0 : 0) + fx.tilt;
+        const Pr = ((pose ? pose.press || 0 : 0) + fx.press) * 0.03 * 0.06;
         [[capNode, capBase], [capNodeR, capBase]].forEach(([n, b]) => { if (n) { n.position.set(X, b + L, 0); n.rotation.z = Z; } });
         [[nozNode, nozBase], [nozNodeR, nozBase]].forEach(([n, b]) => { if (n) n.position.y = b - Pr; });
       }
@@ -674,6 +676,7 @@ export function createBottleViewer(container, product) {
       reflU.uStrength.value = 0.5 * stand;
       if (blob) blob.material.opacity = stand;
 
+      stepBurst(dt);
       renderer.clear();
       renderer.render(scene, camera);
     } catch (err) {
@@ -686,10 +689,72 @@ export function createBottleViewer(container, product) {
       renderer.domElement.style.opacity = "1";
     }
   };
+
+  // --- spray burst: the cap comes off, the nozzle is pressed and a fine mist leaves it, then the cap goes back on
+  const mistCv = document.createElement("canvas");
+  mistCv.className = "vp-mist";
+  container.appendChild(mistCv);
+  const mctx = mistCv.getContext("2d");
+  let mistParts = [], mistW = 0, mistH = 0;
+  const sizeMist = () => {
+    const r = container.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2);
+    mistW = Math.max(1, Math.round(r.width * d)); mistH = Math.max(1, Math.round(r.height * d));
+    if (mistCv.width !== mistW || mistCv.height !== mistH) { mistCv.width = mistW; mistCv.height = mistH; }
+  };
+  const nozzleScreen = () => api.nozzleScreen();
+  const ev = (name, detail) => container.dispatchEvent(new CustomEvent(name, { detail }));
+  const ease = (x) => x * x * (3 - 2 * x);
+  const seg = (t, a, b) => clamp01((t - a) / (b - a));
+  const BURST_END = 3.0, SPRAY_A = 1.05, SPRAY_B = 1.85;
+  let lastSprayEv = 0;
+  function stepBurst(dt) {
+    if (burst) {
+      burst.t += dt;
+      const t = burst.t;
+      const off = ease(seg(t, 0.0, 0.5)) - ease(seg(t, 2.35, 2.95));     // 1 while the cap is away
+      fx.lift = 0.5 * off;
+      fx.slide = 0.7 * ease(seg(t, 0.3, 0.85)) * off;
+      fx.tilt = 0.6 * ease(seg(t, 0.3, 0.85)) * off;
+      fx.press = ease(seg(t, 0.85, 1.0)) - ease(seg(t, SPRAY_B + 0.05, SPRAY_B + 0.25));
+      if (!burst.capEv && t > 0.12) { burst.capEv = true; ev("vp-cap"); }
+      if (t > SPRAY_A && t < SPRAY_B) {
+        const n = nozzleScreen();
+        if (n) {
+          const k = Math.min(1, (t - SPRAY_A) / 0.12) * Math.min(1, (SPRAY_B - t) / 0.25);
+          for (let i = 0; i < Math.round(12 * k); i++) {
+            const sp = (0.6 + Math.random() * 0.9) * 460, spread = 0.3;
+            mistParts.push({
+              x: n.x * mistW, y: n.y * mistH,
+              vx: (n.ux + (Math.random() - 0.5) * spread * 2) * sp * 0.6 * (mistW / 800 + 0.4),
+              vy: (-n.uy + (Math.random() - 0.5) * spread * 2) * sp * 0.6 * (mistW / 800 + 0.4) - 12,
+              r: (3 + Math.random() * 6) * (mistW / 700 + 0.5), life: 0, max: 0.55 + Math.random() * 0.7,
+            });
+          }
+          if (t - lastSprayEv > 0.06) { lastSprayEv = t; ev("vp-spray", { amount: 0.1 * k + 0.02, power: 1.1 }); }
+        }
+      }
+      if (t >= BURST_END) { burst = null; fx.lift = fx.slide = fx.tilt = fx.press = 0; ev("vp-done"); }
+    }
+    if (mistParts.length || burst) {
+      sizeMist();
+      mctx.clearRect(0, 0, mistW, mistH);
+      mistParts = mistParts.filter((q) => (q.life += dt) < q.max);
+      for (const q of mistParts) {
+        const u = q.life / q.max, drag = Math.exp(-2.4 * dt);
+        q.vx *= drag; q.vy = q.vy * drag + 40 * dt;
+        q.x += q.vx * dt; q.y += q.vy * dt;
+        const a = (1 - u) * (1 - u) * 0.55, rr = q.r * (1 + u * 3.2);
+        const gr = mctx.createRadialGradient(q.x, q.y, 0, q.x, q.y, rr);
+        gr.addColorStop(0, `rgba(250,246,238,${a})`); gr.addColorStop(1, "rgba(250,246,238,0)");
+        mctx.fillStyle = gr; mctx.beginPath(); mctx.arc(q.x, q.y, rr, 0, TAU); mctx.fill();
+      }
+    }
+  }
+
   renderer.setAnimationLoop(() => loopTick());
 
 
-  return {
+  const api = {
     // used by tools/render_sequence.py: fix the bottle in a given pose, draw it, report where the spray nozzle is
     setPose(p) { pose = p; },
     pause() { renderer.setAnimationLoop(null); },
@@ -703,6 +768,11 @@ export function createBottleViewer(container, product) {
       const va = a.clone().applyMatrix4(camera.matrixWorldInverse), vb = b.clone().applyMatrix4(camera.matrixWorldInverse);
       const d = vb.sub(va).normalize();                       // spray direction in camera space (x right, y up, z towards the viewer)
       return { x: (v.x + 1) / 2, y: (1 - v.y) / 2, ux: d.x, uy: d.y, uz: d.z };
+    },
+    spray() {                // shake to spray: false when it is already going or the model has no cap
+      if (burst || !capNode || !nozNode || pose || failed || disposed) return false;
+      burst = { t: 0, capEv: false }; lastSprayEv = 0;
+      return true;
     },
     tilt(gamma, beta) {      // from the phone's orientation: gamma = left/right, beta = front/back (already relative to the start position)
       tiltYawT = Math.max(-1, Math.min(1, gamma / 35)) * 0.28;
@@ -730,4 +800,5 @@ export function createBottleViewer(container, product) {
       container.innerHTML = "";
     },
   };
+  return api;
 }

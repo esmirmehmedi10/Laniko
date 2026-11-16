@@ -14,10 +14,11 @@
     try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
   };
 
-  let products = [];
+  let products = [], sets = [];     // sets: the Discovery Set (not a perfume: no page, no quiz)
   let cart = loadJSON(CART_KEY, {}); // { [productId]: quantity }
   let wish = loadJSON(WISH_KEY, []); // [productId, ...]
-  const byId = (id) => products.find((p) => p.id === id);
+  const byId = (id) => products.find((p) => p.id === id) || sets.find((p) => p.id === id);
+  const nameOf = (p) => (p.kind === "set" ? t("setName") : p.name);
   const descOf = (p) => I.desc(p.id) || p.description;
 
   function esc(s) {
@@ -58,6 +59,7 @@
   // features that are loaded only when needed
   const featureCtx = () => ({ I, esc, products, fmt, byId, openDetail, change, updateLock });
   const loadFeatures = () => import("/features.js");
+  const loadExtras = () => import("/extras.js");
 
   // ---- pages: the home page is the plain address (/); the others are #/top-sellers and #/wishlist ----
   const ROUTES = {
@@ -97,11 +99,28 @@
       </article>`;
   }
 
+  function setCardHTML(s) {
+    return `
+      <article class="card set-card">
+        <div class="media">
+          <img src="${esc(s.image)}" alt="${esc(nameOf(s))}" loading="lazy">
+          <span class="set-chip">${esc(t("setChip"))}</span>
+        </div>
+        <div class="body">
+          <h3>${esc(nameOf(s))}</h3>
+          <p class="set-sub">${esc(t("setSub"))}</p>
+          <p class="set-credit">${esc(t("setCredit", { amount: fmt(s.credit || s.price) }))}</p>
+          <span class="price">${fmt(s.price)}</span>
+          <button class="add" data-add="${esc(s.id)}">${esc(t("add"))}</button>
+        </div>
+      </article>`;
+  }
+
   const ICON_SHARE = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 15V4M8 8l4-4 4 4M5 12v7h14v-7"/></svg>';
   function pageActions(route) {
     const el = $("page-actions");
     let h = "";
-    if (route === "perfumes") h = `<button class="act" data-act="quiz">${esc(t("findScent"))}</button><button class="act" data-act="compare">${esc(t("compareBtn"))}</button>`;
+    if (route === "perfumes") h = `<button class="act" data-act="quiz">${esc(t("findScent"))}</button><button class="act" data-act="mood">${esc(t("moodBtn"))}</button><button class="act" data-act="compare">${esc(t("compareBtn"))}</button>`;
     else if (route === "wishlist" && wish.length) h = `<button class="act" data-act="share">${ICON_SHARE}<span>${esc(t("shareWish"))}</span></button>`;
     else if (route === "shared" && sharedIds().length) h = `<button class="act gold" data-act="saveall">${esc(t("saveAllWish"))}</button>`;
     el.innerHTML = h;
@@ -125,7 +144,7 @@
       $("products").innerHTML = `<div class="empty"><p>${esc(t(cfg.empty))}</p>${cta}</div>`;
       return;
     }
-    $("products").innerHTML = list.map((p) => cardHTML(p, route)).join("");
+    $("products").innerHTML = list.map((p) => cardHTML(p, route)).join("") + (route === "perfumes" ? sets.map(setCardHTML).join("") : "");
     watchImages($("products"));
   }
 
@@ -152,10 +171,23 @@
     clearTimeout(scrollTimer);
     scrollTimer = setTimeout(() => { try { sessionStorage.setItem(SCROLL_KEY, JSON.stringify(scrollMem)); } catch {} }, 250);
   }, { passive: true });
+  // a gift link (#/gift/...) opens the unboxing on top of the shop
+  let giftShown = false;
+  function syncGift() {
+    const m = location.hash.match(/^#\/gift\/([\w-]+)/);
+    if (!m || !products.length || giftShown) return;
+    giftShown = true;
+    loadExtras().then((x) => {
+      const g = x.giftDecode(m[1]);
+      if (!g) { giftShown = false; return; }
+      x.openGift(featureCtx(), g, { onClose: () => { giftShown = false; history.replaceState(null, "", "/"); lastHref = location.href; renderPage(); } });
+    }).catch(() => { giftShown = false; });
+  }
   function onRoute() {
     if (location.href === lastHref) return;   // hashchange and popstate both fire: handle once
     lastHref = location.href;
     $("cart").hidden = true;
+    syncGift();
     const wasOpen = !!detailId;
     syncDetail();
     if (!detailId) {
@@ -262,6 +294,7 @@
       </section>
       <section class="pd-s"><h2>${esc(t("pdAbout"))}</h2><p class="pd-desc">${esc(descOf(p))}</p></section>
       ${notes ? `<section class="pd-s"><h2>${esc(t("pdNotes"))}</h2><ul class="pd-notes">${notes}</ul></section>` : ""}
+      ${notes ? `<section class="pd-s pd-evo" data-evo><h2>${esc(t("evoTitle"))}</h2><div class="evo-body"></div></section>` : ""}
       <section class="pd-s"><h2>${esc(t("pdDetails"))}</h2><dl class="pd-dl">
         ${row("pdConc", t("pdConcVal"))}${row("pdSize", t("pdSizeVal"))}${row("pdShip", t("pdShipVal", { price: fmt(5) }))}${row("pdPay", t("pdPayVal"))}
       </dl></section>
@@ -280,6 +313,8 @@
     if (detailObs) detailObs.disconnect();
     detailObs = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) e.target.classList.add("in"); }), { root: sc, threshold: 0.12 });
     $("pd-inner").querySelectorAll(".pd-s").forEach((el) => detailObs.observe(el));
+    const evo = $("pd-inner").querySelector("[data-evo]");
+    if (evo) loadExtras().then((m) => { if (detailId === p.id && evo.isConnected) m.mountEvolution(featureCtx(), evo, p); }).catch(() => {});
   }
 
   function showDetail(id) {
@@ -367,10 +402,12 @@
     const p = byId(id);
     if (!p) return;
     enableTilt();
+    enableShake();
     viewerProductId = id;
     $("viewer-title").textContent = p.name;
     $("viewer-price").textContent = fmt(p.price);
-    $("viewer-hint").textContent = t("viewerHint");
+    $("viewer-hint").textContent = t("viewerHint") + (window.matchMedia("(pointer: coarse)").matches && "DeviceMotionEvent" in window ? " · " + t("shakeHint") : "");
+    $("viewer-ar").hidden = true;
     const stage = $("viewer-stage");
     stage.innerHTML = "";
     // the description appears under the bottle, word by word (new elements, so the animation restarts on every open)
@@ -392,6 +429,10 @@
       if (viewerProductId !== id || $("viewer").hidden) return; // closed meanwhile
       viewer = mod.createBottleViewer(stage, p);
       stage.addEventListener("vp-zoom", (e) => desc.classList.toggle("zoomed", e.detail > 1.15));
+      stage.addEventListener("vp-cap", () => { if (snd) snd.cap(); });
+      stage.addEventListener("vp-spray", (e) => { if (snd) snd.spray(e.detail.amount, e.detail.power); });
+      if (soundWanted() && !snd) import("/sound.js").then((m) => { snd = m; }).catch(() => {});
+      setupAR(p);
     } catch (e) {
       console.error("3D viewer failed", e);
       stage.innerHTML = `<img src="${esc(p.image)}" alt="${esc(p.name)}">`;
@@ -401,6 +442,8 @@
 
   function closeViewer() {
     disableTilt();
+    disableShake();
+    teardownAR();
     if (viewer) { viewer.dispose(); viewer = null; }
     viewerProductId = null;
     $("viewer").hidden = true;
@@ -425,7 +468,7 @@
           return `
           <div class="line">
             <img src="${esc(p.image)}" alt="">
-            <div class="info"><strong>${esc(p.name)}</strong><br>${fmt(p.price)}</div>
+            <div class="info"><strong>${esc(nameOf(p))}</strong><br>${fmt(p.price)}</div>
             <div class="qty">
               <button data-dec="${esc(id)}" aria-label="${esc(t("less"))}">−</button>
               <span>${cart[id]}</span>
@@ -436,8 +479,32 @@
         }).join("")
       : `<p class='small'>${esc(t("cartEmpty"))}</p>`;
     watchImages($("cart-items"));
+    syncGiftUI();
     if (products.length) saveJSON(CART_KEY, cart);
   }
+
+  // ---- gift: wrapping and message are sent with the order; the buyer gets a link that opens an animated gift box ----
+  const GIFT_KEY = "laniko-gift", GIFT_LAST = "laniko-gift-last";
+  let gift = Object.assign({ on: false, from: "", msg: "", wrap: "ivory" }, loadJSON(GIFT_KEY, {}));
+  const giftData = () => ({
+    i: Object.keys(cart).filter((id) => byId(id)).slice(0, 5),
+    f: gift.from.trim().slice(0, 40), m: gift.msg.trim().slice(0, 240), w: gift.wrap, l: I.lang,
+  });
+  function syncGiftUI() {
+    const box = $("gift");
+    box.hidden = !Object.keys(cart).some((id) => byId(id));
+    $("gift-on").checked = gift.on;
+    $("gift-body").hidden = !gift.on;
+    if (document.activeElement !== $("gift-from")) $("gift-from").value = gift.from;
+    if (document.activeElement !== $("gift-msg")) $("gift-msg").value = gift.msg;
+    document.querySelectorAll('input[name="gift-wrap"]').forEach((r) => { r.checked = r.value === gift.wrap; });
+  }
+  function saveGift() { saveJSON(GIFT_KEY, gift); }
+  $("gift-on").addEventListener("change", (e) => { gift.on = e.target.checked; $("gift-body").hidden = !gift.on; saveGift(); });
+  $("gift-from").addEventListener("input", (e) => { gift.from = e.target.value; saveGift(); });
+  $("gift-msg").addEventListener("input", (e) => { gift.msg = e.target.value; saveGift(); });
+  document.querySelectorAll('input[name="gift-wrap"]').forEach((r) => r.addEventListener("change", () => { if (r.checked) { gift.wrap = r.value; saveGift(); } }));
+  $("gift-preview").addEventListener("click", () => loadExtras().then((m) => m.openGift(featureCtx(), giftData(), { preview: true })));
 
   function removeLine(id) {
     const q = cart[id];
@@ -462,10 +529,11 @@
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items, lang: I.lang }),
+        body: JSON.stringify({ items, lang: I.lang, gift: gift.on ? { from: gift.from, message: gift.msg, wrap: gift.wrap } : undefined }),
       });
       const data = await res.json();
       if (!res.ok || !data.url) throw new Error("checkout");
+      try { if (gift.on) localStorage.setItem(GIFT_LAST, JSON.stringify(giftData())); else localStorage.removeItem(GIFT_LAST); } catch {}
       window.location.href = data.url;
     } catch (e) {
       showStatus(t("checkoutFail"), true);
@@ -655,13 +723,74 @@
       };
       window.addEventListener("deviceorientation", tiltHandler);
     };
-    if (typeof D.requestPermission === "function") D.requestPermission().then((r) => { if (r === "granted") start(); }).catch(() => {});
+    if (typeof D.requestPermission === "function") D.requestPermission().then((r) => { if (r !== "denied") start(); }).catch(() => {});
     else start();
   }
   function disableTilt() {
     if (tiltHandler) window.removeEventListener("deviceorientation", tiltHandler);
     tiltHandler = null;
   }
+
+  // ---- shake to spray: three quick jolts make the bottle spray (the Spray button does the same without a phone) ----
+  let shakeHandler = null;
+  function enableShake() {
+    if (shakeHandler || !("DeviceMotionEvent" in window)) return;
+    const start = () => {
+      let last = null, spikeAt = 0, spikes = 0, firstAt = 0;
+      shakeHandler = (e) => {
+        const a = e.accelerationIncludingGravity;
+        if (!a || a.x == null || !viewer) return;
+        if (last) {
+          const d = Math.abs(a.x - last.x) + Math.abs(a.y - last.y) + Math.abs(a.z - last.z), now = performance.now();
+          if (d > 22 && now - spikeAt > 90) {
+            spikeAt = now;
+            if (now - firstAt > 900) { spikes = 0; firstAt = now; }
+            if (++spikes >= 3) { spikes = 0; viewer.spray(); }
+          }
+        }
+        last = { x: a.x, y: a.y, z: a.z };
+      };
+      window.addEventListener("devicemotion", shakeHandler);
+    };
+    const D = window.DeviceMotionEvent;
+    if (typeof D.requestPermission === "function") D.requestPermission().then((r) => { if (r !== "denied") start(); }).catch(() => {});
+    else start();
+  }
+  function disableShake() {
+    if (shakeHandler) window.removeEventListener("devicemotion", shakeHandler);
+    shakeHandler = null;
+  }
+
+  // ---- AR: the bottle in your own room, in real size. Google's <model-viewer> does the work (WebXR / Scene Viewer on
+  // Android, Quick Look on iPhone). The button appears only when the phone can really do it. ----
+  const AR_LIB = "https://cdn.jsdelivr.net/npm/@google/model-viewer@4.0.0/dist/model-viewer.min.js";
+  let arEl = null;
+  function teardownAR() { if (arEl) { arEl.remove(); arEl = null; } $("viewer-ar").hidden = true; }
+  async function setupAR(p) {
+    if (!p.model) return;
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
+    if (!coarse) return;                                    // AR is for phones and tablets
+    try {
+      if (!customElements.get("model-viewer")) await import(AR_LIB);
+      if (viewerProductId !== p.id || $("viewer").hidden) return;
+      const mv = document.createElement("model-viewer");
+      mv.setAttribute("src", new URL(p.model, location.origin).href);
+      mv.setAttribute("alt", p.name);
+      mv.setAttribute("ar", ""); mv.setAttribute("ar-modes", "webxr scene-viewer quick-look");
+      mv.setAttribute("ar-scale", "fixed"); mv.setAttribute("ar-placement", "floor");
+      mv.setAttribute("loading", "eager");
+      mv.style.cssText = "position:fixed;left:-20px;top:-20px;width:8px;height:8px;opacity:0;pointer-events:none";
+      document.body.appendChild(mv);
+      arEl = mv;
+      mv.addEventListener("load", () => { if (arEl === mv && mv.canActivateAR) $("viewer-ar").hidden = false; });
+    } catch (e) { console.warn("AR unavailable", e); }
+  }
+  $("viewer-ar").addEventListener("click", () => { if (arEl && arEl.canActivateAR) arEl.activateAR(); });
+  $("viewer-spray").addEventListener("click", () => {
+    if (!viewer) return;
+    if (snd) snd.wake();                          // a tap is what lets browsers start audio
+    viewer.spray();
+  });
 
   // ---- events ----
   document.addEventListener("click", (e) => {
@@ -676,6 +805,7 @@
     if (act) {
       const a = act.dataset.act;
       if (a === "quiz") loadFeatures().then((m) => m.openQuiz(featureCtx()));
+      else if (a === "mood") loadExtras().then((m) => m.openMood(featureCtx()));
       else if (a === "compare") { freshNav = true; location.hash = "#/compare"; }
       else if (a === "share") shareWishlist();
       else if (a === "saveall") { sharedIds().forEach((id) => { if (byId(id) && !wish.includes(id)) wish.push(id); }); saveJSON(WISH_KEY, wish); updateWishUI(); toast(t("savedAll")); }
@@ -741,17 +871,26 @@
 
     // first visit: the customer chooses the language before anything else; the advertisement follows
     applyTheme(root.dataset.theme || "light");
-    if (!I.hasChoice()) showIntro().then(() => showGate(true));
+    const gl = location.hash.match(/^#\/gift\/([\w-]+)/);
+    if (gl && !I.hasChoice()) {                       // a gift link: straight to the surprise, in the sender's language
+      try {
+        const g = JSON.parse(decodeURIComponent(escape(atob(gl[1].replace(/-/g, "+").replace(/_/g, "/")))));
+        if (g && g.l) I.setLang(g.l);
+      } catch {}
+    } else if (!I.hasChoice()) showIntro().then(() => showGate(true));
 
     try {
       const res = await fetch("/products.json", { cache: "no-cache" });
-      products = await res.json();
+      const all = await res.json();
+      products = all.filter((p) => !p.kind);
+      sets = all.filter((p) => p.kind === "set");
       // forget wishlist entries for products that no longer exist
       wish = wish.filter((id) => byId(id));
       saveJSON(WISH_KEY, wish);
       updateWishUI();
       renderPage();
       syncDetail();
+      syncGift();
       warmViewer();
       try {
         const nav = performance.getEntriesByType("navigation")[0];
@@ -764,7 +903,7 @@
     resolveProducts();
 
     // returning visitor: the advertisement once per visit
-    if (I.hasChoice()) {
+    if (I.hasChoice() && !gl) {
       let seen = false;
       try { seen = !!sessionStorage.getItem(PROMO_KEY); } catch {}
       if (!seen && !params.get("canceled")) setTimeout(showPromo, 1400);

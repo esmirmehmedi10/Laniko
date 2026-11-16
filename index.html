@@ -67,6 +67,20 @@
     </div>
     <div id="cart-items"></div>
     <div class="cart-foot">
+      <div id="gift" class="gift" hidden>
+        <label class="gift-toggle"><input type="checkbox" id="gift-on"><span class="gift-sw" aria-hidden="true"></span><span data-i18n="giftToggle">This is a gift</span></label>
+        <div id="gift-body" class="gift-body" hidden>
+          <input id="gift-from" type="text" maxlength="40" autocomplete="off" data-i18n-ph="giftFrom" data-i18n-aria="giftFrom" aria-label="Your name" placeholder="Your name">
+          <textarea id="gift-msg" rows="3" maxlength="240" data-i18n-ph="giftMsgPh" data-i18n-aria="giftMsg" aria-label="Your message" placeholder="Write a personal message"></textarea>
+          <fieldset class="gift-wraps"><legend data-i18n="giftWrap">Wrapping</legend>
+            <label><input type="radio" name="gift-wrap" value="ivory" checked><span class="sw sw-ivory"></span><em data-i18n="wrapIvory">Ivory</em></label>
+            <label><input type="radio" name="gift-wrap" value="noir"><span class="sw sw-noir"></span><em data-i18n="wrapNoir">Noir</em></label>
+            <label><input type="radio" name="gift-wrap" value="rouge"><span class="sw sw-rouge"></span><em data-i18n="wrapRouge">Rouge</em></label>
+          </fieldset>
+          <button id="gift-preview" class="act" type="button" data-i18n="giftPreview">Preview the unboxing</button>
+          <p class="small" data-i18n="giftNote">After you pay, you get a link to send: it opens an animated gift box with your message.</p>
+        </div>
+      </div>
       <p><span data-i18n="subtotal">Subtotal</span>: <strong id="cart-subtotal">€0.00</strong></p>
       <p class="small" data-i18n="shipNote">Shipping is calculated at checkout.</p>
       <button id="checkout-btn" class="primary" data-i18n="checkout" disabled>Checkout</button>
@@ -106,6 +120,10 @@
     </div>
     <div id="viewer-stage" class="viewer-stage"></div>
     <div id="viewer-desc" class="viewer-desc" aria-hidden="false"></div>
+    <div class="viewer-tools">
+      <button id="viewer-spray" class="act" type="button" data-i18n-aria="sprayAria" aria-label="Spray the perfume"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M5 12h6M4 8h5M4 16h5M13 7l3-2M13 12h4M13 17l3 2"/></svg><span data-i18n="sprayBtn">Spray</span></button>
+      <button id="viewer-ar" class="act" type="button" hidden><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg><span data-i18n="arBtn">See it in your room</span></button>
+    </div>
     <p id="viewer-hint" class="viewer-hint" data-i18n="viewerHint">Drag to rotate · pinch to zoom · two fingers to move</p>
     <div class="viewer-foot">
       <span id="viewer-price" class="price"></span>
@@ -121,6 +139,7 @@
   </footer>
   <script src="/i18n.js"></script>
   <script src="/i18n-extra.js"></script>
+  <script src="/i18n-more.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>
