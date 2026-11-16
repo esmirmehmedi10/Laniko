@@ -768,16 +768,17 @@
   let arEl = null;
   function teardownAR() { if (arEl) { arEl.remove(); arEl = null; } $("viewer-ar").hidden = true; }
   async function setupAR(p) {
-    if (!p.model) return;
+    if (!p.model && !p.arModel) return;
     const coarse = window.matchMedia("(pointer: coarse)").matches;
     if (!coarse) return;                                    // AR is for phones and tablets
     try {
       if (!customElements.get("model-viewer")) await import(AR_LIB);
       if (viewerProductId !== p.id || $("viewer").hidden) return;
       const mv = document.createElement("model-viewer");
-      mv.setAttribute("src", new URL(p.model, location.origin).href);
+      // a light copy of the model (small textures, no hidden parts) loads and starts much faster than the display model
+      mv.setAttribute("src", new URL(p.arModel || p.model, location.origin).href);
       mv.setAttribute("alt", p.name);
-      mv.setAttribute("ar", ""); mv.setAttribute("ar-modes", "webxr scene-viewer quick-look");
+      mv.setAttribute("ar", ""); mv.setAttribute("ar-modes", "scene-viewer quick-look webxr");   // Android: Google's native viewer first (finds surfaces fast); iPhone: Quick Look; WebXR only as a last resort
       mv.setAttribute("ar-scale", "fixed"); mv.setAttribute("ar-placement", "floor");
       mv.setAttribute("loading", "eager");
       mv.style.cssText = "position:fixed;left:-20px;top:-20px;width:8px;height:8px;opacity:0;pointer-events:none";

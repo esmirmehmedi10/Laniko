@@ -36,7 +36,8 @@
         "medium"
       ],
       "intensity": 2
-    }
+    },
+    "arModel": "/models/ar/blanc-royal-v1.glb"
   },
   {
     "id": "reve-paradoxe",
@@ -74,7 +75,8 @@
         "soft"
       ],
       "intensity": 3
-    }
+    },
+    "arModel": "/models/ar/reve-paradoxe-v1.glb"
   },
   {
     "id": "noir-prestige",
@@ -113,7 +115,8 @@
         "medium"
       ],
       "intensity": 5
-    }
+    },
+    "arModel": "/models/ar/noir-prestige-v1.glb"
   },
   {
     "id": "rouge-absolu",
@@ -152,7 +155,8 @@
         "medium"
       ],
       "intensity": 4
-    }
+    },
+    "arModel": "/models/ar/rouge-absolu-v1.glb"
   },
   {
     "id": "bleu-eternel",
@@ -191,7 +195,8 @@
         "soft"
       ],
       "intensity": 3
-    }
+    },
+    "arModel": "/models/ar/bleu-eternel-v1.glb"
   },
   {
     "id": "discovery-set",
