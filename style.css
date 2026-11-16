@@ -298,12 +298,11 @@ html[dir="rtl"] .pd-back svg { transform: scaleX(-1); }
 .pd-stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 16%; background: linear-gradient(rgba(0,0,0,0), var(--pd-bg)); pointer-events: none; z-index: 2; }
 .pd-pic { position: absolute; inset: 0; width: 100%; padding: 0; border: 0; border-radius: 0; background: none; cursor: pointer; display: block; }
 .pd-poster, .pd-canvas, .pd-mist { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.pd-canvas, .pd-mist { will-change: contents; transform: translateZ(0); }
 .pd-poster { object-fit: cover; object-position: 50% 12%; transition: opacity .4s ease; }
 .pd-mist { pointer-events: none; }
 .pd-3d { position: absolute; right: 14px; bottom: 28px; z-index: 3; background: rgba(0,0,0,.6); color: #f1e6cc; border: 1px solid rgba(217,185,106,.5); border-radius: 99px; padding: 3px 12px; font-size: .78rem; letter-spacing: .08em; }
 html[dir="rtl"] .pd-3d { right: auto; left: 14px; }
-.pd-hint { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 18px 6px; border-radius: 99px; background: rgba(8,6,4,.62); border: 1px solid rgba(217,185,106,.55); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); color: #f6ecd2; font-size: .8rem; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; white-space: nowrap; opacity: max(0, calc(1 - var(--p, 0) * 18)); pointer-events: none; text-shadow: 0 1px 6px rgba(0,0,0,.9); }
+.pd-hint { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 18px 6px; border-radius: 99px; background: rgba(8,6,4,.78); border: 1px solid rgba(217,185,106,.55); color: #f6ecd2; font-size: .8rem; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; white-space: nowrap; opacity: max(0, calc(1 - var(--p, 0) * 18)); pointer-events: none; text-shadow: 0 1px 6px rgba(0,0,0,.9); }
 .pd-hint svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; animation: pd-bob 1.8s ease-in-out infinite; }
 @keyframes pd-bob { 0%, 100% { transform: translateY(0); opacity: .5; } 50% { transform: translateY(5px); opacity: 1; } }
 .pd-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 24px calc(96px + env(safe-area-inset-bottom)); scrollbar-width: none; outline: none; }

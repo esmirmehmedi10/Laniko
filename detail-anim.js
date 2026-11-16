@@ -60,13 +60,23 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
     try { const r = await fetch(url(i)); if (r.ok) blobs[i] = await r.blob(); } catch { /* skip */ }
     if (blobs[i]) { if (Math.abs(i - cur) < 24 || i % KEY === 0) decode(i); if (!loadedFirst && i === 0) { loadedFirst = true; if (poster) poster.style.opacity = "0"; } kick(); }
   };
-  const order = [0];
-  for (let i = KEY; i < N; i += KEY) order.push(i);
-  for (let i = 1; i < N; i++) if (!order.includes(i)) order.push(i);
+  // load order: the first frame, then the key frames, then always the missing frame nearest to where the visitor is (ahead first)
+  const want = new Set();
+  for (let i = 0; i < N; i++) want.add(i);
+  const nextToLoad = () => {
+    for (const i of want) if (blobs[i]) want.delete(i);
+    if (!want.size) return -1;
+    if (want.has(0)) return 0;
+    let best = -1, bd = 1e9;
+    for (const i of want) {
+      const d = (i - cur) * (i >= cur ? 1 : 2.5) + (i % KEY === 0 ? -6 : 0);       // ahead is cheaper than behind; key frames first when equal
+      if (d < bd) { bd = d; best = i; }
+    }
+    return best;
+  };
   (async () => {
     await fetchFrame(0);
-    const queue = order.slice(1);
-    const worker = async () => { while (queue.length && !disposed) await fetchFrame(queue.shift()); };
+    const worker = async () => { for (;;) { if (disposed) return; const i = nextToLoad(); if (i < 0) return; want.delete(i); await fetchFrame(i); } };
     await Promise.all([worker(), worker(), worker(), worker()]);
   })();
 
@@ -94,11 +104,11 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
   const ctx = canvas.getContext("2d");
   const mctx = mist.getContext("2d");
   let cw = 1, ch = 1, dpr = 1, mdpr = 1, sc = 1, dx = 0, dy = 0, k = 1;
-  let range = 1;
+  let range = 1, quality = 0;                          // quality drops by itself when the device cannot keep up
   const layout = () => {
     cw = stage.clientWidth || 1; ch = stage.clientHeight || 1;
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
-    mdpr = Math.min(dpr, 1.25);                      // the mist is soft anyway: a smaller canvas is much cheaper
+    dpr = Math.min(window.devicePixelRatio || 1, [1.6, 1.25, 1][quality]);
+    mdpr = Math.min(dpr, quality ? 1 : 1.1);                      // the mist is soft anyway: a smaller canvas is much cheaper
     canvas.width = Math.round(cw * dpr); canvas.height = Math.round(ch * dpr);
     mist.width = Math.round(cw * mdpr); mist.height = Math.round(ch * mdpr);
     sc = Math.max(cw / FW, ch / FH);                  // the frame fills the stage (cover) ...
@@ -113,21 +123,18 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
   ro.observe(stage);
 
   let target = 0, shown = 0, p = 0, lastP = 0, lastT = 0, vel = 0, sprayed = 0, lastKey = "";
-  let raf = 0, lastTick = 0;
+  let raf = 0, lastTick = 0, slow = 0.016, ticks = 0;
 
   const draw = () => {
-    const i0 = clamp(Math.floor(shown), 0, N - 1), i1 = Math.min(N - 1, i0 + 1);
-    let a = shown - i0; if (a < 0.03) a = 0; else if (a > 0.97) a = 1;
-    const A = nearest(i0), B = a > 0 ? nearest(i1) : null;
-    const key = i0 + ":" + a.toFixed(2) + ":" + (A ? 1 : 0) + (B ? 1 : 0) + cw + ch;
+    // one picture per tick: with this many frames a cross-fade is not needed and drawing two big pictures costs twice as much
+    const i0 = clamp(Math.round(shown), 0, N - 1);
+    const A = nearest(i0);
+    const key = i0 + ":" + (A ? 1 : 0) + cw + ch;
     if (key === lastKey) return;
     lastKey = key;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, cw, ch);
-    if (!A) return;
-    ctx.globalAlpha = 1;
-    ctx.drawImage(A, dx, dy, FW * sc, FH * sc);
-    if (B && B !== A && a > 0) { ctx.globalAlpha = a; ctx.drawImage(B, dx, dy, FW * sc, FH * sc); ctx.globalAlpha = 1; }
+    if (A) ctx.drawImage(A, dx, dy, FW * sc, FH * sc);
   };
 
   // ---- mist. A real atomiser makes an almost invisible cone of tiny droplets that is dense on the axis, widens quickly,
@@ -144,7 +151,7 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
     g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
   }
   const parts = [];
-  const MAXP = 1700;
+  const MAXP = 900;
 
   // nozzle position, spray direction and zoom at the frame that is shown now
   const nozzleNow = () => {
@@ -169,8 +176,8 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
   };
   const emit = (amount, power) => {            // amount: share of the whole spray (0..1), power: how forcefully (scroll speed)
     const n = nozzleNow(), kk = k * Math.max(0.8, n.zoom / 2.6);
-    const room = MAXP - parts.length; if (room <= 0) return;
-    const cnt = (x) => Math.min(room, Math.max(1, Math.round(x * amount)));
+    const room = (MAXP >> quality) - parts.length; if (room <= 0) return;
+    const cnt = (x) => Math.min(room, Math.max(1, Math.round(x * amount * [0.5, 0.32, 0.2][quality])));
     const mk = (o) => {
       const d = coneDir(n, o.cone), sp = o.speed * kk * power * rnd(0.7, 1.2), st = rnd(0, 6) * kk;
       parts.push({
@@ -225,7 +232,12 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
   const tick = (ts) => {
     raf = 0;
     if (disposed) return;
-    const dt = Math.min(0.05, lastTick ? (ts - lastTick) / 1000 : 0.016);
+    const raw = lastTick ? (ts - lastTick) / 1000 : 0.016;
+    const dt = Math.min(0.05, raw);
+    if (lastTick && raw < 0.25) {            // measure how well the device keeps up while the picture is moving
+      slow = slow * 0.92 + raw * 0.08;
+      if (++ticks > 40 && slow > 0.027 && quality < 2) { quality++; slow = 0.016; ticks = 0; layout(); }
+    }
     lastTick = ts;
     // the picture follows the scroll position; the faster the page moves, the faster it follows
     const before = shown;
