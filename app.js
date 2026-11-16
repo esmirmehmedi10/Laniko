@@ -765,30 +765,58 @@
   // ---- AR: the bottle in your own room, in real size. Google's <model-viewer> does the work (WebXR / Scene Viewer on
   // Android, Quick Look on iPhone). The button appears only when the phone can really do it. ----
   const AR_LIB = "https://cdn.jsdelivr.net/npm/@google/model-viewer@4.0.0/dist/model-viewer.min.js";
-  let arEl = null;
-  function teardownAR() { if (arEl) { arEl.remove(); arEl = null; } $("viewer-ar").hidden = true; }
+  // AR. First choice: our own WebXR view (ar.js): live ring on any surface the camera finds, tap to place.
+  // Fallback: Google's <model-viewer> (iPhone Quick Look, or phones without WebXR).
+  let arEl = null, arNative = null;
+  function teardownAR() { if (arEl) { arEl.remove(); arEl = null; } arNative = null; $("viewer-ar").hidden = true; }
+  const arLabels = () => ({ scan: t("arScan"), tap: t("arTap"), tapRough: t("arTapRough"), placed: t("arPlaced"), move: t("arMove"), exit: t("arExit"), now: t("arNow"), slow: t("arSlow") });
+  async function setupModelViewer(p) {
+    if (!customElements.get("model-viewer")) await import(AR_LIB);
+    if (viewerProductId !== p.id || $("viewer").hidden) return;
+    const mv = document.createElement("model-viewer");
+    mv.setAttribute("src", new URL(p.arModel || p.model, location.origin).href);
+    mv.setAttribute("alt", p.name);
+    mv.setAttribute("ar", ""); mv.setAttribute("ar-modes", "webxr scene-viewer quick-look");
+    mv.setAttribute("ar-scale", "fixed"); mv.setAttribute("ar-placement", "floor");
+    mv.setAttribute("loading", "eager");
+    mv.style.cssText = "position:fixed;left:-20px;top:-20px;width:8px;height:8px;opacity:0;pointer-events:none";
+    document.body.appendChild(mv);
+    arEl = mv;
+    mv.addEventListener("load", () => { if (arEl === mv && mv.canActivateAR) $("viewer-ar").hidden = false; });
+  }
   async function setupAR(p) {
     if (!p.model && !p.arModel) return;
-    const coarse = window.matchMedia("(pointer: coarse)").matches;
-    if (!coarse) return;                                    // AR is for phones and tablets
+    if (!window.matchMedia("(pointer: coarse)").matches) return;      // AR is for phones and tablets
+    const url = new URL(p.arModel || p.model, location.origin).href;
     try {
-      if (!customElements.get("model-viewer")) await import(AR_LIB);
-      if (viewerProductId !== p.id || $("viewer").hidden) return;
-      const mv = document.createElement("model-viewer");
-      // a light copy of the model (small textures, no hidden parts) loads and starts faster than the display model
-      mv.setAttribute("src", new URL(p.arModel || p.model, location.origin).href);
-      mv.setAttribute("alt", p.name);
-      // WebXR first: this is the one that opens on the phones tested. Scene Viewer and Quick Look stay as fallbacks (iPhone uses Quick Look).
-      mv.setAttribute("ar", ""); mv.setAttribute("ar-modes", "webxr scene-viewer quick-look");
-      mv.setAttribute("ar-scale", "fixed"); mv.setAttribute("ar-placement", "floor");
-      mv.setAttribute("loading", "eager");
-      mv.style.cssText = "position:fixed;left:-20px;top:-20px;width:8px;height:8px;opacity:0;pointer-events:none";
-      document.body.appendChild(mv);
-      arEl = mv;
-      mv.addEventListener("load", () => { if (arEl === mv && mv.canActivateAR) $("viewer-ar").hidden = false; });
-    } catch (e) { console.warn("AR unavailable", e); }
+      const mod = await import("/ar.js");
+      if (await mod.supported()) {
+        await mod.prepare(url);                                       // load the light model first, so the tap can open AR at once
+        if (viewerProductId !== p.id || $("viewer").hidden) return;
+        arNative = { mod, url, p };
+        $("viewer-ar").hidden = false;
+        return;
+      }
+    } catch (e) { console.warn("Own AR view unavailable", e); }
+    try { await setupModelViewer(p); } catch (e) { console.warn("AR unavailable", e); }
   }
-  $("viewer-ar").addEventListener("click", () => { if (arEl && arEl.canActivateAR) arEl.activateAR(); });
+  $("viewer-ar").addEventListener("click", async () => {
+    if (arNative) {
+      const { mod, url, p } = arNative;
+      try { await mod.startAR(url, arLabels()); return; }
+      catch (e) {
+        console.warn("Own AR view failed, using the standard one", e);
+        arNative = null;
+        try {
+          await setupModelViewer(p);
+          if (arEl && !arEl.canActivateAR) await new Promise((res) => { arEl.addEventListener("load", res, { once: true }); setTimeout(res, 5000); });
+          if (arEl && arEl.canActivateAR) arEl.activateAR(); else $("viewer-ar").hidden = true;
+        } catch { $("viewer-ar").hidden = true; }
+        return;
+      }
+    }
+    if (arEl && arEl.canActivateAR) arEl.activateAR();
+  });
   $("viewer-spray").addEventListener("click", () => {
     if (!viewer) return;
     if (snd) snd.wake();                          // a tap is what lets browsers start audio
