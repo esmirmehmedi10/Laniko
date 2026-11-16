@@ -769,7 +769,7 @@
   // Fallback: Google's <model-viewer> (iPhone Quick Look, or phones without WebXR).
   let arEl = null, arNative = null;
   function teardownAR() { if (arEl) { arEl.remove(); arEl = null; } arNative = null; $("viewer-ar").hidden = true; }
-  const arLabels = () => ({ scan: t("arScan"), tap: t("arTap"), tapRough: t("arTapRough"), placed: t("arPlaced"), move: t("arMove"), exit: t("arExit"), now: t("arNow"), slow: t("arSlow") });
+  const arLabels = () => ({ scan: t("arScan"), tap: t("arTap"), tapRough: t("arTapRough"), placed: t("arPlaced"), move: t("arMove"), exit: t("arExit"), now: t("arNow"), slow: t("arSlow"), real: t("arReal") });
   async function setupModelViewer(p) {
     if (!customElements.get("model-viewer")) await import(AR_LIB);
     if (viewerProductId !== p.id || $("viewer").hidden) return;
