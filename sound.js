@@ -113,7 +113,7 @@ function knock(c, dest, t, vol = 1, pitch = 1) {              // a small hard "t
 // thock with real body) and a brief metal ring that is part of the same hit and gone within about 40 ms. Dry: no echo.
 // Every play varies a little, like a real hand.
 function playCap(c, dest, t) {
-  const v = rnd(0.95, 1.05), vol = rnd(0.95, 1.05);
+  const v = rnd(0.95, 1.05) * 1.4, vol = rnd(0.95, 1.05);     // v: overall pitch of the hit
   // a very short rub, so it reads as the start of the same sound and not as a separate one
   const dur = 0.022, s = c.createBufferSource(); s.buffer = noiseBuf;
   const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 1; bp.frequency.value = 1700 * v;
@@ -121,7 +121,7 @@ function playCap(c, dest, t) {
   g.gain.linearRampToValueAtTime(0.12 * vol, t + dur); g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.003);
   s.connect(bp); bp.connect(g); g.connect(dest); s.start(t, rnd(0, 2), dur + 0.05);
   const p = t + dur;
-  noiseHit(c, dest, p, { dur: 0.016, type: "lowpass", freq: 3200, Q: 0.7, vol: 0.5 * vol, attack: 0.0007 });
+  noiseHit(c, dest, p, { dur: 0.016, type: "lowpass", freq: 4600, Q: 0.7, vol: 0.5 * vol, attack: 0.0007 });
   noiseHit(c, dest, p, { dur: 0.028, type: "bandpass", freq: 1000 * v, Q: 0.8, vol: 0.28 * vol, attack: 0.0008 });
   ring(c, dest, p, 430 * v, 0.46 * vol, 0.045, 0.88);      // body of the thock
   ring(c, dest, p, 860 * v, 0.24 * vol, 0.032);
