@@ -29,7 +29,7 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
   const bmps = new Array(N).fill(null);
   const pending = new Set();
   const useBitmap = typeof createImageBitmap === "function";
-  const KEY = 8;                            // every 8th frame stays decoded
+  const KEY = 16;                           // every 16th frame stays decoded
   const url = (i) => `${base}/${String(i).padStart(2, "0")}.webp`;
   let cur = 0, dirn = 1;
   let loadedFirst = false;
@@ -48,17 +48,17 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
       im.onload = () => { URL.revokeObjectURL(u); done(im); }; im.onerror = () => pending.delete(i); im.src = u;
     }
   };
-  const keep = (i) => i % KEY === 0 || i === N - 1 || (i >= cur - 4 && i <= cur + 14) || !useBitmap;
+  const keep = (i) => i % KEY === 0 || i === N - 1 || (i >= cur - 5 && i <= cur + 18) || !useBitmap;
   const manage = () => {
     // decode what is about to be needed (more ahead of the scroll direction), release what is far away
-    const a = dirn >= 0 ? 4 : 14, b = dirn >= 0 ? 14 : 4;
+    const a = dirn >= 0 ? 5 : 18, b = dirn >= 0 ? 18 : 5;
     for (let i = Math.max(0, cur - a); i <= Math.min(N - 1, cur + b); i++) decode(i);
     if (useBitmap) for (let i = 0; i < N; i++) if (bmps[i] && !keep(i)) { bmps[i].close && bmps[i].close(); bmps[i] = null; }
   };
   const fetchFrame = async (i) => {
     if (blobs[i] || disposed) return;
     try { const r = await fetch(url(i)); if (r.ok) blobs[i] = await r.blob(); } catch { /* skip */ }
-    if (blobs[i]) { if (Math.abs(i - cur) < 18 || i % KEY === 0) decode(i); if (!loadedFirst && i === 0) { loadedFirst = true; if (poster) poster.style.opacity = "0"; } kick(); }
+    if (blobs[i]) { if (Math.abs(i - cur) < 24 || i % KEY === 0) decode(i); if (!loadedFirst && i === 0) { loadedFirst = true; if (poster) poster.style.opacity = "0"; } kick(); }
   };
   const order = [0];
   for (let i = KEY; i < N; i += KEY) order.push(i);
@@ -130,29 +130,21 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
     if (B && B !== A && a > 0) { ctx.globalAlpha = a; ctx.drawImage(B, dx, dy, FW * sc, FH * sc); ctx.globalAlpha = 1; }
   };
 
-  // ---- mist: three layers, all fake-3D (x, y in pixels, z towards the viewer)
-  //   jet      thin bright streaks that leave the nozzle at once and slow down quickly
-  //   cloud    big soft puffs that spread, swirl and linger
-  //   droplets small glinting drops with a little gravity
-  const softSprite = document.createElement("canvas");
-  softSprite.width = softSprite.height = 64;
+  // ---- mist. A real atomiser makes an almost invisible cone of tiny droplets that is dense on the axis, widens quickly,
+  // slows down within a hand's width and then hangs as a fine fog that swirls. Three layers, all fake-3D (x, y in pixels, z towards the viewer):
+  //   haze     thousands of tiny, very faint soft specks: together they make the smooth, widening cone
+  //   droplets crisp 1 px points / short streaks at the leading edge and around the cone
+  //   fog      a few big, very faint puffs that linger and drift
+  const fogSprite = document.createElement("canvas");
+  fogSprite.width = fogSprite.height = 64;
   {
-    const g = softSprite.getContext("2d");
+    const g = fogSprite.getContext("2d");
     const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-    gr.addColorStop(0, "rgba(250,226,176,1)"); gr.addColorStop(0.35, "rgba(232,190,116,.62)"); gr.addColorStop(1, "rgba(214,164,88,0)");   // amber-cream: shows on the white bottle top and on the dark background
+    [[0, 1], [0.2, 0.72], [0.42, 0.34], [0.65, 0.1], [0.85, 0.02], [1, 0]].forEach(([o, a]) => gr.addColorStop(o, `rgba(246,246,243,${a})`));
     g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
   }
-  const dropSprite = document.createElement("canvas");
-  dropSprite.width = dropSprite.height = 32;
-  {
-    const g = dropSprite.getContext("2d");
-    const gr = g.createRadialGradient(16, 16, 0, 16, 16, 16);
-    gr.addColorStop(0, "rgba(246,206,130,1)"); gr.addColorStop(0.5, "rgba(226,172,90,.9)"); gr.addColorStop(1, "rgba(190,130,60,0)");
-    g.fillStyle = gr; g.fillRect(0, 0, 32, 32);
-  }
   const parts = [];
-  const MAXP = 760;
-  let flash = 0, fx = 0, fy = 0;
+  const MAXP = 1700;
 
   // nozzle position, spray direction and zoom at the frame that is shown now
   const nozzleNow = () => {
@@ -161,7 +153,8 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
     return { x: dx + m(0) * FW * sc, y: dy + m(1) * FH * sc, ux: m(2), uy: m(3), uz: m(4), zoom: m(5) };
   };
   const rnd = (a, b) => a + Math.random() * (b - a);
-  // a random direction inside a cone (half angle in degrees) around the spray direction; denser in the middle
+  const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) / 1.5;      // roughly -1..1, bell shaped
+  // a random direction inside a cone (half angle in degrees) around the spray direction; dense on the axis
   const coneDir = (n, deg) => {
     let ux = n.ux, uy = -n.uy, uz = n.uz;                       // screen y points down
     const l = Math.hypot(ux, uy, uz) || 1; ux /= l; uy /= l; uz /= l;
@@ -169,9 +162,9 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
     let al = Math.hypot(ax, ay, az); if (al < 0.05) { ax = 0; ay = 1; az = 0; al = 1; }
     ax /= al; ay /= al; az /= al;
     const bx = uy * az - uz * ay, by = uz * ax - ux * az, bz = ux * ay - uy * ax;
-    const th = Math.tan(deg * Math.PI / 180 * Math.pow(Math.random(), 0.65)), ph = Math.random() * Math.PI * 2;
+    const th = Math.tan(deg * Math.PI / 180 * Math.abs(gauss())), ph = Math.random() * Math.PI * 2;
     const c = Math.cos(ph) * th, s = Math.sin(ph) * th;
-    let x = ux + ax * c + bx * s, y = uy + ay * c + by * s, z = uz + az * c + bz * s;
+    const x = ux + ax * c + bx * s, y = uy + ay * c + by * s, z = uz + az * c + bz * s;
     const m = Math.hypot(x, y, z); return [x / m, y / m, z / m];
   };
   const emit = (amount, power) => {            // amount: share of the whole spray (0..1), power: how forcefully (scroll speed)
@@ -179,31 +172,24 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
     const room = MAXP - parts.length; if (room <= 0) return;
     const cnt = (x) => Math.min(room, Math.max(1, Math.round(x * amount)));
     const mk = (o) => {
-      const d = coneDir(n, o.cone), sp = o.speed * kk * power * rnd(0.75, 1.25), st = rnd(0, 22) * kk;   // st: they start spread along the first bit of the cone
+      const d = coneDir(n, o.cone), sp = o.speed * kk * power * rnd(0.7, 1.2), st = rnd(0, 6) * kk;
       parts.push({
-        kind: o.kind, ox: n.x, oy: n.y, x: d[0] * st + rnd(-2, 2) * kk, y: d[1] * st + rnd(-2, 2) * kk, z: d[2] * st,
-        vx: d[0] * sp, vy: d[1] * sp, vz: d[2] * sp, drag: o.drag, grav: o.grav * kk, buoy: o.buoy * kk,
-        r0: o.r0 * kk, r1: o.r1 * kk, life: rnd(o.life[0], o.life[1]), age: -rnd(0, o.delay), a: o.a * rnd(0.8, 1.2),
-        w: o.w * kk, ph: Math.random() * 6.28, px: 0, py: 0,
+        kind: o.kind, ox: n.x, oy: n.y, x: d[0] * st, y: d[1] * st, z: d[2] * st,
+        vx: d[0] * sp, vy: d[1] * sp, vz: d[2] * sp, drag: o.drag * rnd(0.85, 1.15), grav: o.grav * kk, buoy: o.buoy * kk, turb: o.turb * kk,
+        r0: o.r0 * kk, r1: o.r1 * kk, life: rnd(o.life[0], o.life[1]), age: -rnd(0, o.delay), a: o.a * rnd(0.7, 1.25), ph: Math.random() * 6.28, px: 0, py: 0,
       });
     };
-    for (let i = cnt(100); i > 0; i--) mk({ kind: 0, cone: 4.5, speed: 1250, drag: 3.4, grav: 0, buoy: 0, r0: 0, r1: 0, life: [0.16, 0.34], delay: 0.22 * 1, a: 0.9, w: rnd(1.2, 2.4) });
-    for (let i = cnt(140); i > 0; i--) mk({ kind: 1, cone: 15, speed: 340, drag: 2.2, grav: 0, buoy: 22, r0: 4, r1: rnd(34, 84), life: [1.1, 2.1], delay: 0.35, a: 0.085, w: 0 });
-    for (let i = cnt(260); i > 0; i--) mk({ kind: 2, cone: 24, speed: 700, drag: 1.9, grav: 260, buoy: 0, r0: rnd(1.5, 3.6), r1: rnd(1.1, 2.6), life: [0.6, 1.6], delay: 0.3, a: 0.95, w: 0 });
-    flash = Math.max(flash, 0.55 * Math.min(1, amount * 8 + 0.3)); fx = n.x; fy = n.y;
+    for (let i = cnt(760); i > 0; i--) mk({ kind: 0, cone: 17, speed: 1050, drag: 2.5, grav: 0, buoy: 14, turb: 70, r0: rnd(3, 7), r1: rnd(24, 58), life: [0.8, 1.7], delay: 0.18, a: 0.1 });
+    for (let i = cnt(420); i > 0; i--) mk({ kind: 1, cone: 20, speed: 1250, drag: 2.0, grav: 90, buoy: 0, turb: 25, r0: rnd(0.8, 1.5), r1: 0, life: [0.3, 0.9], delay: 0.14, a: 0.7 });
+    for (let i = cnt(46); i > 0; i--) mk({ kind: 2, cone: 14, speed: 420, drag: 1.9, grav: 0, buoy: 26, turb: 110, r0: rnd(14, 24), r1: rnd(46, 90), life: [1.4, 2.6], delay: 0.22, a: 0.045 });
   };
   const stepMist = (dt) => {
-    if (!parts.length && flash <= 0.01) { if (mistDirty) { mctx.setTransform(1, 0, 0, 1, 0, 0); mctx.clearRect(0, 0, mist.width, mist.height); mistDirty = false; } return; }
+    if (!parts.length) { if (mistDirty) { mctx.setTransform(1, 0, 0, 1, 0, 0); mctx.clearRect(0, 0, mist.width, mist.height); mistDirty = false; } return; }
     mistDirty = true;
     mctx.setTransform(mdpr, 0, 0, mdpr, 0, 0);
     mctx.clearRect(0, 0, cw, ch);
-    mctx.lineCap = "round";
+    mctx.fillStyle = "rgb(252,252,250)";
     const ZC = 1100 * k;
-    if (flash > 0.01) {                         // a short glow at the nozzle when the spray starts
-      const r = 46 * k;
-      mctx.globalAlpha = flash; mctx.drawImage(softSprite, fx - r, fy - r, r * 2, r * 2);
-      flash *= Math.exp(-dt * 14);
-    }
     const t = performance.now() / 1000;
     for (let i = parts.length - 1; i >= 0; i--) {
       const q = parts[i];
@@ -213,29 +199,22 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
       if (u >= 1) { parts.splice(i, 1); continue; }
       const drag = Math.exp(-q.drag * dt);
       q.vx *= drag; q.vy *= drag; q.vz *= drag;
-      q.vy += q.grav * dt - q.buoy * dt;
-      if (q.kind === 1) {                       // the cloud swirls a little
-        q.vx += Math.sin(t * 3.1 + q.ph + q.y * 0.02) * 46 * k * dt;
-        q.vy += Math.cos(t * 2.3 + q.ph * 1.7 + q.x * 0.02) * 34 * k * dt;
-      }
+      // turbulence grows as the spray slows down and mixes with the air; a little warm air lifts the fog
+      const tb = q.turb * (0.25 + q.age * 1.8) * dt;
+      q.vx += Math.sin(t * 5.3 + q.ph + q.y * 0.045) * tb;
+      q.vy += (Math.cos(t * 4.1 + q.ph * 1.7 + q.x * 0.045) * tb) + (q.grav - q.buoy) * dt;
       q.px = q.x; q.py = q.y;
       q.x += q.vx * dt; q.y += q.vy * dt; q.z = Math.min(q.z + q.vz * dt, ZC * 0.8);
       const f = 1 / (1 - q.z / ZC);              // things that come towards the viewer get bigger and spread faster
       const sx = q.ox + q.x * f, sy = q.oy + q.y * f;
-      if (q.kind === 0) {                       // jet: a bright streak from where it was to where it is
-        const al = q.a * (1 - u) * (1 - u);
-        mctx.beginPath(); mctx.moveTo(q.ox + q.px * f, q.oy + q.py * f); mctx.lineTo(sx, sy);
-        mctx.globalAlpha = al * 0.7; mctx.strokeStyle = "rgba(214,160,80,1)"; mctx.lineWidth = q.w * f * 2.4; mctx.stroke();
-        mctx.globalAlpha = al; mctx.strokeStyle = "rgba(255,244,214,1)"; mctx.lineWidth = q.w * f; mctx.stroke();
-      } else if (q.kind === 1) {                // cloud puff
+      if (q.kind === 1) {                       // droplet: a crisp point, a short streak while it is fast
+        const r = Math.max(1, q.r0 * f * 1.3);                                         // a drop: a tiny bright square (cheap to draw, reads as a point)
+        mctx.globalAlpha = q.a * (1 - u);
+        mctx.fillRect(sx - r / 2, sy - r / 2, r, r);
+      } else {                                  // haze / fog: a very faint soft speck that grows as it spreads
         const r = (q.r0 + (q.r1 - q.r0) * Math.sqrt(u)) * f;
-        mctx.globalAlpha = q.a * Math.min(1, u * 5) * (1 - u) * (1 - u);
-        mctx.drawImage(softSprite, sx - r, sy - r, r * 2, r * 2);
-      } else {                                  // droplet, twinkling
-        const r = (q.r0 + (q.r1 - q.r0) * u) * f;
-        const tw = 0.65 + 0.35 * Math.sin(q.age * 26 + q.ph);
-        mctx.globalAlpha = q.a * tw * Math.min(1, (1 - u) * 2.5);
-        mctx.drawImage(dropSprite, sx - r * 1.7, sy - r * 1.7, r * 3.4, r * 3.4);
+        mctx.globalAlpha = q.a * Math.min(1, u * 8) * (1 - u) * (1 - u);
+        mctx.drawImage(fogSprite, sx - r, sy - r, r * 2, r * 2);
       }
     }
     mctx.globalAlpha = 1;
@@ -256,7 +235,7 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
     if (c !== cur) { dirn = shown >= before ? 1 : -1; cur = c; manage(); }
     draw();
     stepMist(dt);
-    if (shown !== target || parts.length || flash > 0.01) raf = requestAnimationFrame(tick);
+    if (shown !== target || parts.length) raf = requestAnimationFrame(tick);
     else lastTick = 0;
   };
   function kick() { if (!raf && !disposed) raf = requestAnimationFrame(tick); }

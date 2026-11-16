@@ -19,16 +19,20 @@ threading.Thread(target=srv.serve_forever, daemon=True).start()
 P = json.load(open(R + "/products.json"))
 only = [int(a) for a in sys.argv[1:]] or range(len(P))
 
-TURN, PUSH, LIFT, PRESS = 40, 18, 32, 12
+TURN, PUSH, LIFT, PRESS = 90, 40, 70, 40       # 240 frames in all
 sm = lambda u: u * u * (3 - 2 * u)
 mix = lambda a, b, u: a + (b - a) * u
-YAW0, YAW1, YAW2 = 0.0, -0.42, -0.58            # the bottle turns a little so that the nozzle points to the right and towards the viewer
-PIT1, PIT2 = 0.42, 0.56                        # looking down onto the cap
-ZOOM1, ZOOM2, ZOOM3 = 1.9, 2.8, 3.05
-NZ0, NZ1, NZ2 = (0.50, 0.375), (0.43, 0.42), (0.40, 0.45)   # where the nozzle sits in the picture (fractions)
+YAW0, YAW1, YAW2 = 0.0, 0.30, 0.42            # the bottle turns a little so that the nozzle points to the right and slightly away: the spray flies over the dark background
+PIT1, PIT2 = 0.40, 0.47                        # looking down onto the cap
+ZOOM1, ZOOM2, ZOOM3 = 1.9, 2.6, 2.85
+NZ0, NZ1, NZ2 = (0.50, 0.375), (0.42, 0.41), (0.33, 0.43)   # where the nozzle sits in the picture (fractions)
 LIFT_UP, LIFT_SIDE, LIFT_TILT = 1.9, 1.0, 1.1
-PRESS_CURVE = [0.3, 0.65, 1, 1, 1, 1, 0.85, 0.6, 0.4, 0.25, 0.12, 0.05]
-assert len(PRESS_CURVE) == PRESS
+def press_at(j):       # button goes down quickly, stays, then comes back up slowly
+    u = j / (PRESS - 1)
+    if u < 0.2: return sm(u / 0.2) * 0.97 + 0.03
+    if u < 0.5: return 1.0
+    return max(0.0, 1 - sm((u - 0.5) / 0.5)) * 0.97 + 0.03 * (1 - u)
+PRESS_CURVE = [press_at(j) for j in range(PRESS)]
 
 poses = []   # (pose dict, target nozzle position or None)
 for k in range(TURN): poses.append((dict(yaw=k * math.pi * 2 / TURN), None))
