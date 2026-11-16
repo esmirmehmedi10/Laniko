@@ -126,15 +126,22 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
   let raf = 0, lastTick = 0, slow = 0.016, ticks = 0;
 
   const draw = () => {
-    // one picture per tick: with this many frames a cross-fade is not needed and drawing two big pictures costs twice as much
-    const i0 = clamp(Math.round(shown), 0, N - 1);
-    const A = nearest(i0);
-    const key = i0 + ":" + (A ? 1 : 0) + cw + ch;
+    // Moving slowly, the picture glides between two neighbouring frames (cross-fade), so it never steps.
+    // Moving fast, or on a device that struggles, a single picture is drawn: the steps are too quick to see and it costs half as much.
+    const slowMove = quality === 0 && Math.abs(target - shown) < 1.5;
+    let i0 = clamp(slowMove ? Math.floor(shown) : Math.round(shown), 0, N - 1);
+    let a = slowMove ? shown - i0 : 0;
+    if (a > 0.96) { i0 = Math.min(N - 1, i0 + 1); a = 0; } else if (a < 0.04) a = 0;
+    const i1 = Math.min(N - 1, i0 + 1);
+    const A = nearest(i0), B = a > 0 ? nearest(i1) : null;
+    const key = i0 + ":" + a.toFixed(2) + ":" + (A ? 1 : 0) + (B ? 1 : 0) + cw + ch;
     if (key === lastKey) return;
     lastKey = key;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, cw, ch);
-    if (A) ctx.drawImage(A, dx, dy, FW * sc, FH * sc);
+    if (!A) return;
+    ctx.drawImage(A, dx, dy, FW * sc, FH * sc);
+    if (B && B !== A) { ctx.globalAlpha = a; ctx.drawImage(B, dx, dy, FW * sc, FH * sc); ctx.globalAlpha = 1; }
   };
 
   // ---- mist. A real atomiser makes an almost invisible cone of tiny droplets that is dense on the axis, widens quickly,
