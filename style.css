@@ -619,3 +619,7 @@ html[dir="rtl"] .gift-toggle input:checked + .gift-sw::after { transform: transl
 .gift-send h2 { margin: 0 0 6px; font-family: var(--serif); font-weight: 600; font-size: 1.5rem; }
 .gift-send p { margin: 0 0 12px; color: var(--muted); font-size: .92rem; }
 .gift-send .act { margin: 4px; }
+
+/* the three buttons on the Perfumes page always share one row, in every language: equal columns, the text may wrap inside */
+.page-actions.row { flex-wrap: nowrap; gap: 8px; max-width: 560px; }
+.page-actions.row .act { flex: 1 1 0; min-width: 0; justify-content: center; text-align: center; white-space: normal; padding: 9px 6px; font-size: .66rem; letter-spacing: .04em; line-height: 1.25; overflow-wrap: anywhere; }

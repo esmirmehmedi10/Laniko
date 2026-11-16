@@ -123,6 +123,7 @@
     if (route === "perfumes") h = `<button class="act" data-act="quiz">${esc(t("findScent"))}</button><button class="act" data-act="mood">${esc(t("moodBtn"))}</button><button class="act" data-act="compare">${esc(t("compareBtn"))}</button>`;
     else if (route === "wishlist" && wish.length) h = `<button class="act" data-act="share">${ICON_SHARE}<span>${esc(t("shareWish"))}</span></button>`;
     else if (route === "shared" && sharedIds().length) h = `<button class="act gold" data-act="saveall">${esc(t("saveAllWish"))}</button>`;
+    el.className = "page-actions" + (route === "perfumes" ? " row" : "");
     el.innerHTML = h;
   }
 
