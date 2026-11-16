@@ -88,7 +88,8 @@ export async function startAR(url, L, opts = {}) {
   renderer.xr.setReferenceSpaceType("local");
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera();
+  // the default near plane (10 cm) slices the bottle open when the phone gets close; 1 cm lets you hold the phone right up to it
+  const camera = new THREE.PerspectiveCamera(70, 1, 0.01, 100);
   if (!opts.noEnv) {
     try {
       const pm = new THREE.PMREMGenerator(renderer);
