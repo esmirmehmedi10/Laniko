@@ -10,7 +10,7 @@
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 
-export async function createScrollAnimation({ stage, canvas, mist, poster, scroller, base, reduce }) {
+export async function createScrollAnimation({ stage, canvas, mist, poster, scroller, base, reduce, hooks = {} }) {
   let meta = null;
   try {
     const r = await fetch(base + "/meta.json");
@@ -270,12 +270,15 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
     vel = vel * 0.5 + v * 0.5;
     if (!reduce) {
       if (p < 0.62) sprayed = 0;                              // scrolled back up: it can spray again
+      if (p > S2 + 0.03 && lastP <= S2 + 0.03 && hooks.onCap) hooks.onCap();   // the cap starts to lift
       if (p > lastP && p > SPRAY_A) {
         const from = Math.max(lastP, SPRAY_A), to = Math.min(p, SPRAY_B);
         if (to > from && sprayed < 1) {
           const frac = (to - from) / (SPRAY_B - SPRAY_A);
           sprayed += frac;
-          emit(Math.min(1, frac), 0.7 + clamp(vel, 0, 3) * 0.35);   // amount scrolled -> amount of mist, speed -> force
+          const pw = 0.7 + clamp(vel, 0, 3) * 0.35;
+          emit(Math.min(1, frac), pw);   // amount scrolled -> amount of mist, speed -> force
+          if (hooks.onSpray) hooks.onSpray(Math.min(1, frac), pw);
         }
       }
     }

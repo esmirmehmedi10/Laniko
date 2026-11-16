@@ -37,22 +37,37 @@
     });
   }
 
-  // ---- toast ----
+  // ---- toast (optionally with one action button, e.g. "View cart" or "Undo") ----
   let toastTimer;
-  function toast(msg) {
+  function toast(msg, action) {
     const el = $("toast");
-    el.textContent = msg;
+    el.textContent = "";
+    const span = document.createElement("span"); span.textContent = msg; el.appendChild(span);
+    if (action) {
+      const b = document.createElement("button");
+      b.className = "toast-act"; b.textContent = action.label;
+      b.addEventListener("click", () => { el.hidden = true; clearTimeout(toastTimer); action.fn(); });
+      el.appendChild(b);
+    }
     el.hidden = false;
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { el.hidden = true; }, 1800);
+    toastTimer = setTimeout(() => { el.hidden = true; }, action ? 4600 : 1800);
   }
+  const addedToast = () => toast(t("addedToCart"), { label: t("viewCart"), fn: () => { $("cart").hidden = false; } });
+
+  // features that are loaded only when needed
+  const featureCtx = () => ({ I, esc, products, fmt, byId, openDetail, change, updateLock });
+  const loadFeatures = () => import("/features.js");
 
   // ---- pages: the home page is the plain address (/); the others are #/top-sellers and #/wishlist ----
   const ROUTES = {
     "perfumes": { title: "collectionTitle", sub: "collectionSub", list: () => products, empty: "emptyPerfumes" },
     "top-sellers": { title: "topTitle", sub: "topSub", list: () => products.filter((p) => p.rank).sort((a, b) => a.rank - b.rank), empty: "emptyTop" },
     "wishlist": { title: "wishTitle", sub: "wishSub", list: () => wish.map(byId).filter(Boolean), empty: "emptyWish" },
+    "compare": { title: "cmpTitle", sub: "cmpSub", list: () => products, empty: "emptyPerfumes", custom: true },
+    "shared": { title: "sharedTitle", sub: "sharedSub", list: () => sharedIds().map(byId).filter(Boolean), empty: "emptyWish" },
   };
+  const sharedIds = () => { const m = location.hash.match(/^#\/shared\/([\w,-]+)/); return m ? m[1].split(",").filter(Boolean).slice(0, 12) : []; };
 
   function currentRoute() {
     const m = location.hash.match(/^#\/([\w-]+)/);
@@ -82,6 +97,16 @@
       </article>`;
   }
 
+  const ICON_SHARE = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 15V4M8 8l4-4 4 4M5 12v7h14v-7"/></svg>';
+  function pageActions(route) {
+    const el = $("page-actions");
+    let h = "";
+    if (route === "perfumes") h = `<button class="act" data-act="quiz">${esc(t("findScent"))}</button><button class="act" data-act="compare">${esc(t("compareBtn"))}</button>`;
+    else if (route === "wishlist" && wish.length) h = `<button class="act" data-act="share">${ICON_SHARE}<span>${esc(t("shareWish"))}</span></button>`;
+    else if (route === "shared" && sharedIds().length) h = `<button class="act gold" data-act="saveall">${esc(t("saveAllWish"))}</button>`;
+    el.innerHTML = h;
+  }
+
   function renderPage() {
     const route = currentRoute();
     const cfg = ROUTES[route];
@@ -92,6 +117,8 @@
     $("page-title").textContent = t(cfg.title);
     $("page-sub").textContent = t(cfg.sub);
     if (!products.length) return;
+    pageActions(route);
+    if (cfg.custom) { loadFeatures().then((m) => { if (currentRoute() === route) m.renderCompare(featureCtx(), $("products")); }); return; }
     const list = cfg.list();
     if (!list.length) {
       const cta = route === "wishlist" ? `<p><a class="link-btn" href="/">${esc(t("browse"))}</a></p>` : "";
@@ -102,8 +129,29 @@
     watchImages($("products"));
   }
 
+  async function shareWishlist() {
+    const url = location.origin + "/#/shared/" + wish.join(",");
+    const data = { title: t("shareTitle"), text: t("shareText"), url };
+    try {
+      if (navigator.share) { await navigator.share(data); return; }
+    } catch (e) { if (e && e.name === "AbortError") return; }
+    try { await navigator.clipboard.writeText(url); toast(t("linkCopied")); }
+    catch { window.prompt(t("shareWish"), url); }
+  }
+
   // navigation without reloading; "/" and "#/perfumes" are the same page; #/perfume/<id> is a product page
   let lastHref = location.href;
+  // each list page remembers how far it was scrolled; going back (history) restores it, tapping a tab starts at the top
+  let freshNav = false, curKey = /^#\/perfume\//.test(location.hash) ? "/" : (location.hash || "/"), scrollTimer = 0;
+  const SCROLL_KEY = "laniko-scroll";
+  let scrollMem = {};
+  try { scrollMem = JSON.parse(sessionStorage.getItem(SCROLL_KEY)) || {}; } catch {}
+  window.addEventListener("scroll", () => {
+    if (detailId || !$("viewer").hidden) return;
+    scrollMem[curKey] = window.scrollY;
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => { try { sessionStorage.setItem(SCROLL_KEY, JSON.stringify(scrollMem)); } catch {} }, 250);
+  }, { passive: true });
   function onRoute() {
     if (location.href === lastHref) return;   // hashchange and popstate both fire: handle once
     lastHref = location.href;
@@ -112,10 +160,15 @@
     syncDetail();
     if (!detailId) {
       renderPage();
-      if (!wasOpen) window.scrollTo(0, 0);
+      if (!wasOpen) {
+        curKey = location.hash || "/";
+        window.scrollTo(0, freshNav ? 0 : (scrollMem[curKey] || 0));
+      }
     }
+    freshNav = false;
   }
   function goHome() {
+    freshNav = true;
     if (detailId) hideDetail();
     if (location.hash || location.pathname !== "/") history.pushState(null, "", "/");
     onRoute();
@@ -153,13 +206,38 @@
   }
 
   // ---- product page ----
-  let detailId = null, detailAnim = null, detailPushed = false, detailObs = null;
+  let detailId = null, detailAnim = null, detailPushed = false, detailObs = null, restorePd = true, snd = null;
+  const closeNoteSheet = () => { const b = document.querySelector('#detail .ns-back'); if (b) b.remove(); };
   const detailIdFromHash = () => { const m = location.hash.match(/^#\/perfume\/([\w-]+)/); return m ? m[1] : null; };
 
-  function openDetail(id) {          // from a click: a new history entry, so the back button closes it
+  let flyImg = null;
+  function openDetail(id, fromImg) {          // from a click: a new history entry, so the back button closes it
     if (!byId(id)) return;
+    flyImg = fromImg || null;
     detailPushed = true;
     location.hash = "#/perfume/" + id;
+  }
+  // the card's picture grows into the product page's picture
+  function flyIn() {
+    const img = flyImg; flyImg = null;
+    if (!img || !img.isConnected || window.matchMedia("(prefers-reduced-motion: reduce)").matches || !img.animate) return;
+    const from = img.getBoundingClientRect();
+    if (from.width < 20 || from.bottom < 0 || from.top > innerHeight) return;
+    const wrap = $("detail");
+    wrap.classList.add("fly");
+    const to = $("pd-stage").getBoundingClientRect();
+    const c = document.createElement("img");
+    c.src = img.currentSrc || img.src; c.alt = ""; c.className = "fly-img";
+    Object.assign(c.style, { left: from.left + "px", top: from.top + "px", width: from.width + "px", height: from.height + "px" });
+    document.body.appendChild(c);
+    const a = c.animate([
+      { left: from.left + "px", top: from.top + "px", width: from.width + "px", height: from.height + "px", borderRadius: "12px", objectPosition: "50% 50%" },
+      { left: to.left + "px", top: to.top + "px", width: to.width + "px", height: to.height + "px", borderRadius: "0px", objectPosition: "50% 12%" },
+    ], { duration: 640, easing: "cubic-bezier(.2,.8,.2,1)", fill: "forwards" });
+    const end = () => { c.remove(); wrap.classList.remove("fly"); };
+    a.onfinish = () => { const f = c.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 240, fill: "forwards" }); f.onfinish = end; };
+    a.oncancel = end;
+    setTimeout(end, 1500);
   }
   function closeDetail() {
     if (!detailId) return;
@@ -172,7 +250,9 @@
   }
 
   function detailHTML(p) {
-    const notes = (p.notes || []).map((n) => `<li>${esc(I.noteName(n))}</li>`).join("");
+    const notes = (p.notes || []).map((n) => `<li><button class="note-chip" data-note="${esc(n)}">${esc(I.noteName(n))}</button></li>`).join("");
+    const others = products.filter((o) => o.id !== p.id);
+    const related = others.length ? `<section class="pd-s pd-rel"><h2>${esc(t("alsoLike"))}</h2><div class="rel-row">${others.map((o) => `<button class="rel" data-rel="${esc(o.id)}"><img src="${esc(o.image)}" alt="" loading="lazy"><span>${esc(o.name)}</span><em>${fmt(o.price)}</em></button>`).join("")}</div></section>` : "";
     const row = (k, v) => `<div><dt>${esc(t(k))}</dt><dd>${esc(v)}</dd></div>`;
     return `
       <section class="pd-s pd-intro">
@@ -185,6 +265,7 @@
       <section class="pd-s"><h2>${esc(t("pdDetails"))}</h2><dl class="pd-dl">
         ${row("pdConc", t("pdConcVal"))}${row("pdSize", t("pdSizeVal"))}${row("pdShip", t("pdShipVal", { price: fmt(5) }))}${row("pdPay", t("pdPayVal"))}
       </dl></section>
+      ${related}
       <section class="pd-s pd-end"><img src="/logo.svg" alt="Laniko" width="18" height="44"></section>`;
   }
 
@@ -219,16 +300,31 @@
     poster.onerror = () => { poster.onerror = null; poster.src = p.image; };
     poster.src = `/images/seq/${p.id}/00.webp`;
     fillDetail(p);
+    updateSndBtn();
+    flyIn();
     requestAnimationFrame(() => d.classList.add("on"));
+    if (restorePd) {                                   // after a reload: back to where the visitor was reading
+      restorePd = false;
+      try { const y = +sessionStorage.getItem("laniko-pd-" + id); if (y > 0) $("pd-scroll").scrollTop = y; } catch {}
+    }
     if (p.model) fetch(p.model).catch(() => {});          // the 3D model is fetched while the customer reads
     import("/detail-anim.js").then((m) => m.createScrollAnimation({
       stage: $("pd-stage"), canvas: $("pd-canvas"), mist: $("pd-mist"), poster, scroller: $("pd-scroll"),
       base: `/images/seq/${p.id}`, reduce: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+      hooks: { onCap: () => snd && snd.cap(), onSpray: (a, pw) => snd && snd.spray(a, pw) },
     })).then((a) => { if (detailId !== id) { if (a) a.dispose(); return; } detailAnim = a; }).catch((e) => console.warn("scroll animation unavailable", e));
   }
+  let pdSaveTimer = 0;
+  $("pd-scroll").addEventListener("scroll", () => {
+    if (!detailId) return;
+    clearTimeout(pdSaveTimer);
+    pdSaveTimer = setTimeout(() => { try { sessionStorage.setItem("laniko-pd-" + detailId, String($("pd-scroll").scrollTop)); } catch {} }, 250);
+  }, { passive: true });
   function hideDetail() {
     if (!detailId) return;
+    try { sessionStorage.setItem("laniko-pd-" + detailId, String($("pd-scroll").scrollTop)); } catch {}
     detailId = null;
+    closeNoteSheet();
     if (detailAnim) { detailAnim.dispose(); detailAnim = null; }
     if (detailObs) { detailObs.disconnect(); detailObs = null; }
     const d = $("detail");
@@ -239,6 +335,25 @@
     $("pd-inner").innerHTML = "";
     updateLock();
   }
+  // ---- sound and haptics (off until the visitor turns them on) ----
+  const soundWanted = () => { try { return localStorage.getItem("laniko-sound") === "1"; } catch { return false; } };
+  function updateSndBtn() {
+    const on = soundWanted();
+    const b = $("snd-btn");
+    b.setAttribute("aria-pressed", String(on));
+    b.setAttribute("aria-label", t(on ? "soundOnAria" : "soundOffAria"));
+    b.classList.toggle("on", on);
+    if (on && !snd) import("/sound.js").then((m) => { snd = m; }).catch(() => {});
+  }
+  async function toggleSound() {
+    try {
+      const m = await import("/sound.js");
+      snd = m;
+      m.setEnabled(!m.isEnabled());
+    } catch (e) { console.warn("sound unavailable", e); }
+    updateSndBtn();
+  }
+
   // the page behind must not scroll while a window is open
   function updateLock() {
     document.body.style.overflow = (detailId || !$("viewer").hidden || gate || promo) ? "hidden" : "";
@@ -251,6 +366,7 @@
   async function openViewer(id) {
     const p = byId(id);
     if (!p) return;
+    enableTilt();
     viewerProductId = id;
     $("viewer-title").textContent = p.name;
     $("viewer-price").textContent = fmt(p.price);
@@ -284,6 +400,7 @@
   }
 
   function closeViewer() {
+    disableTilt();
     if (viewer) { viewer.dispose(); viewer = null; }
     viewerProductId = null;
     $("viewer").hidden = true;
@@ -320,6 +437,14 @@
       : `<p class='small'>${esc(t("cartEmpty"))}</p>`;
     watchImages($("cart-items"));
     if (products.length) saveJSON(CART_KEY, cart);
+  }
+
+  function removeLine(id) {
+    const q = cart[id];
+    if (!q) return;
+    delete cart[id];
+    renderCart();
+    toast(t("removedFromCart"), { label: t("undo"), fn: () => { cart[id] = q; renderCart(); } });
   }
 
   function change(id, delta) {
@@ -415,6 +540,8 @@
 
   function applyLanguage() {
     $("lang-short").textContent = I.info.short;
+    applyTheme(root.dataset.theme || "light");
+    updateSndBtn();
     renderPage();
     renderCart();
     if (detailId) { fillDetail(byId(detailId)); if (detailAnim) detailAnim.refresh(); }
@@ -458,7 +585,7 @@
       if (!b) return;
       if (b.classList.contains("promo-x") || b.dataset.promo === "close") closePromo();
       else if (b.dataset.promo === "discover") { closePromo(); setTimeout(() => openDetail(p.id), 250); }
-      else if (b.dataset.promo === "add") { change(p.id, 1); closePromo(); $("cart").hidden = false; }
+      else if (b.dataset.promo === "add") { change(p.id, 1); closePromo(); addedToast(); }
     });
     promo.querySelector(".promo-cta").focus({ preventScroll: true });
   }
@@ -470,25 +597,106 @@
     updateLock();
   }
 
+  // ---- light / dark mode: follows the phone until the visitor chooses ----
+  const root = document.documentElement;
+  function applyTheme(mode) {
+    root.dataset.theme = mode;
+    const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute("content", mode === "dark" ? "#0f0e0c" : "#fafaf8");
+    $("theme-btn").setAttribute("aria-label", t(mode === "dark" ? "toLight" : "toDark"));
+  }
+  $("theme-btn").addEventListener("click", () => {
+    const next = root.dataset.theme === "dark" ? "light" : "dark";
+    try { localStorage.setItem("laniko-theme", next); } catch {}
+    applyTheme(next);
+  });
+  try {
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
+      if (!localStorage.getItem("laniko-theme")) applyTheme(e.matches ? "dark" : "light");
+    });
+  } catch {}
+
+  // ---- intro: the logo draws itself on the very first visit ----
+  function showIntro() {
+    return new Promise(async (resolve) => {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return resolve();
+      let svg = "";
+      try { svg = await (await fetch("/logo.svg")).text(); } catch { return resolve(); }
+      const el = document.createElement("div");
+      el.className = "intro";
+      el.innerHTML = svg.replace("<svg", '<svg class="intro-logo" aria-hidden="true"');
+      const path = el.querySelector("path");
+      if (!path) return resolve();
+      path.setAttribute("pathLength", "1");
+      document.body.appendChild(el);
+      document.body.style.overflow = "hidden";
+      let done = false;
+      const finish = () => {
+        if (done) return; done = true;
+        el.classList.add("out");
+        setTimeout(() => { el.remove(); updateLock(); resolve(); }, 650);
+      };
+      requestAnimationFrame(() => el.classList.add("go"));
+      el.addEventListener("click", finish);
+      setTimeout(finish, 3400);
+    });
+  }
+
+  // ---- phone tilt moves the light on the 3D bottle (iPhone asks for permission once) ----
+  let tiltHandler = null;
+  function enableTilt() {
+    const D = window.DeviceOrientationEvent;
+    if (!D || tiltHandler) return;
+    const start = () => {
+      let base = null;
+      tiltHandler = (e) => {
+        if (e.gamma == null || e.beta == null || !viewer) return;
+        if (base === null) base = e.beta;
+        viewer.tilt(e.gamma, e.beta - base);
+      };
+      window.addEventListener("deviceorientation", tiltHandler);
+    };
+    if (typeof D.requestPermission === "function") D.requestPermission().then((r) => { if (r === "granted") start(); }).catch(() => {});
+    else start();
+  }
+  function disableTilt() {
+    if (tiltHandler) window.removeEventListener("deviceorientation", tiltHandler);
+    tiltHandler = null;
+  }
+
   // ---- events ----
   document.addEventListener("click", (e) => {
+    if (e.target.closest(".tabs a, .brand")) freshNav = true;
     const link = e.target.closest("a[data-route='perfumes'], a.link-btn[href='/']");
     if (link && !e.metaKey && !e.ctrlKey && !e.shiftKey) { e.preventDefault(); goHome(); return; }
+    const nb = e.target.closest("[data-note]");
+    if (nb) { const p = byId(detailId); loadFeatures().then((m) => m.openNote(featureCtx(), nb.dataset.note, p && p.notes)); return; }
+    const rl = e.target.closest("[data-rel]");
+    if (rl) { history.replaceState(null, "", "#/perfume/" + rl.dataset.rel); lastHref = location.href; syncDetail(); return; }
+    const act = e.target.closest("[data-act]");
+    if (act) {
+      const a = act.dataset.act;
+      if (a === "quiz") loadFeatures().then((m) => m.openQuiz(featureCtx()));
+      else if (a === "compare") { freshNav = true; location.hash = "#/compare"; }
+      else if (a === "share") shareWishlist();
+      else if (a === "saveall") { sharedIds().forEach((id) => { if (byId(id) && !wish.includes(id)) wish.push(id); }); saveJSON(WISH_KEY, wish); updateWishUI(); toast(t("savedAll")); }
+      return;
+    }
     const op = e.target.closest("[data-open]");
-    if (op) { openDetail(op.dataset.open); return; }
+    if (op) { openDetail(op.dataset.open, (op.closest(".card") && op.closest(".card").querySelector(".media img")) || (op.querySelector && op.querySelector("img")) || op.closest(".cmp-head")?.querySelector("img")); return; }
     const t_ = e.target.closest("button");
     if (!t_) return;
     if (t_.dataset.view) openViewer(t_.dataset.view);
     else if (t_.dataset.wish) toggleWish(t_.dataset.wish);
-    else if (t_.dataset.add) { change(t_.dataset.add, 1); $("cart").hidden = false; }
+    else if (t_.dataset.add) { change(t_.dataset.add, 1); addedToast(); }
     else if (t_.dataset.inc) change(t_.dataset.inc, 1);
     else if (t_.dataset.dec) change(t_.dataset.dec, -1);
-    else if (t_.dataset.del) { delete cart[t_.dataset.del]; renderCart(); }
+    else if (t_.dataset.del) removeLine(t_.dataset.del);
   });
   $("lang-btn").addEventListener("click", () => showGate(false));
   $("pd-back").addEventListener("click", closeDetail);
+  $("snd-btn").addEventListener("click", toggleSound);
   $("pd-pic").addEventListener("click", () => { if (detailId) openViewer(detailId); });
-  $("pd-add").addEventListener("click", () => { if (detailId) { change(detailId, 1); $("cart").hidden = false; } });
+  $("pd-add").addEventListener("click", () => { if (detailId) { change(detailId, 1); addedToast(); } });
   $("cart-btn").addEventListener("click", () => { $("cart").hidden = !$("cart").hidden; });
   $("cart-close").addEventListener("click", () => { $("cart").hidden = true; });
   $("checkout-btn").addEventListener("click", checkout);
@@ -496,7 +704,7 @@
   $("viewer-add").addEventListener("click", () => {
     if (viewerProductId) change(viewerProductId, 1);
     closeViewer();
-    $("cart").hidden = false;
+    addedToast();
   });
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
@@ -532,7 +740,8 @@
     $("page-sub").textContent = t(ROUTES[currentRoute()].sub);
 
     // first visit: the customer chooses the language before anything else; the advertisement follows
-    if (!I.hasChoice()) showGate(true);
+    applyTheme(root.dataset.theme || "light");
+    if (!I.hasChoice()) showIntro().then(() => showGate(true));
 
     try {
       const res = await fetch("/products.json", { cache: "no-cache" });
@@ -544,6 +753,10 @@
       renderPage();
       syncDetail();
       warmViewer();
+      try {
+        const nav = performance.getEntriesByType("navigation")[0];
+        if (nav && (nav.type === "reload" || nav.type === "back_forward") && !detailId && scrollMem[curKey]) window.scrollTo(0, scrollMem[curKey]);
+      } catch {}
     } catch {
       $("products").textContent = t("loadFail");
     }

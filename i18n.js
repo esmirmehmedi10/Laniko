@@ -402,6 +402,7 @@
   };
 
   window.I18N = {
+    add: (pack) => Object.keys(pack).forEach((c) => { if (S[c]) Object.assign(S[c], pack[c]); }),
     LANGS, t, phrase: (code, key) => (S[code] && S[code][key]) || S.en[key], desc, noteName, fmtMoney, splitWords, setLang, applyStatic, hasChoice, guess,
     get lang() { return cur; }, get info() { return byCode(cur); },
     onChange: (f) => listeners.push(f),

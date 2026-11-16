@@ -21,7 +21,22 @@
       "orchid",
       "Bourbon vanilla",
       "golden resin"
-    ]
+    ],
+    "profile": {
+      "when": [
+        "special",
+        "day"
+      ],
+      "feel": [
+        "warm",
+        "fresh"
+      ],
+      "power": [
+        "soft",
+        "medium"
+      ],
+      "intensity": 2
+    }
   },
   {
     "id": "reve-paradoxe",
@@ -44,7 +59,22 @@
       "red grapefruit",
       "velvet rose",
       "saffron"
-    ]
+    ],
+    "profile": {
+      "when": [
+        "day",
+        "special"
+      ],
+      "feel": [
+        "fresh",
+        "dark"
+      ],
+      "power": [
+        "medium",
+        "soft"
+      ],
+      "intensity": 3
+    }
   },
   {
     "id": "noir-prestige",
@@ -68,7 +98,22 @@
       "black pepper",
       "dark vanilla",
       "amber"
-    ]
+    ],
+    "profile": {
+      "when": [
+        "evening",
+        "special"
+      ],
+      "feel": [
+        "dark",
+        "warm"
+      ],
+      "power": [
+        "bold",
+        "medium"
+      ],
+      "intensity": 5
+    }
   },
   {
     "id": "rouge-absolu",
@@ -92,7 +137,22 @@
       "ripe raspberry",
       "precious woods",
       "amber"
-    ]
+    ],
+    "profile": {
+      "when": [
+        "evening",
+        "special"
+      ],
+      "feel": [
+        "warm",
+        "dark"
+      ],
+      "power": [
+        "bold",
+        "medium"
+      ],
+      "intensity": 4
+    }
   },
   {
     "id": "bleu-eternel",
@@ -116,6 +176,21 @@
       "dark berries",
       "smooth wood",
       "amber"
-    ]
+    ],
+    "profile": {
+      "when": [
+        "day",
+        "evening"
+      ],
+      "feel": [
+        "fresh",
+        "dark"
+      ],
+      "power": [
+        "medium",
+        "soft"
+      ],
+      "intensity": 3
+    }
   }
 ]

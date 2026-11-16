@@ -519,6 +519,7 @@ export function createBottleViewer(container, product) {
   let interacted = false;
   const PITCH_MIN = -1.75, PITCH_MAX = 0.75, ZOOM_MAX = 6;   // the bottle can be turned until its base faces you
   let yawFree = 0, yawVel = 0, pitch = 0, pitchShown = 0;
+  let tiltYaw = 0, tiltPitch = 0, tiltYawT = 0, tiltPitchT = 0;     // the phone's tilt turns the bottle a little, so the gold glints move
   // zoom + pan: the view is  position = rest position + pan  at scale `zoom`; targets are eased every frame
   let zoom = 1, zoomTarget = 1, panX = 0, panY = 0, panTX = 0, panTY = 0;
   let swayYaw = 0, zoomSent = 1;
@@ -642,10 +643,11 @@ export function createBottleViewer(container, product) {
         yawFree += yawVel * dt;
         yawVel *= Math.exp(-2.6 * dt);
       }
-      rig.rotation.y = pose ? pose.yaw : (interacted ? yawFree : swayYaw) + (interacted ? 0 : spin);
+      tiltYaw += (tiltYawT - tiltYaw) * Math.min(1, dt * 6); tiltPitch += (tiltPitchT - tiltPitch) * Math.min(1, dt * 6);
+      rig.rotation.y = pose ? pose.yaw : (interacted ? yawFree : swayYaw) + (interacted ? 0 : spin) + tiltYaw;
       if (pose) pitchShown = pose.pitch || 0;
       else pitchShown += ((interacted ? pitch : 0) - pitchShown) * Math.min(1, dt * 12);
-      rig.rotation.x = pitchShown;
+      rig.rotation.x = pitchShown + (pose ? 0 : tiltPitch);
       {
         const L = pose ? (pose.lift || 0) * 0.06 : 0, X = pose ? -(pose.slide || 0) * 0.06 : 0, Z = pose ? pose.tilt || 0 : 0;
         const Pr = pose ? (pose.press || 0) * 0.03 * 0.06 : 0;
@@ -701,6 +703,10 @@ export function createBottleViewer(container, product) {
       const va = a.clone().applyMatrix4(camera.matrixWorldInverse), vb = b.clone().applyMatrix4(camera.matrixWorldInverse);
       const d = vb.sub(va).normalize();                       // spray direction in camera space (x right, y up, z towards the viewer)
       return { x: (v.x + 1) / 2, y: (1 - v.y) / 2, ux: d.x, uy: d.y, uz: d.z };
+    },
+    tilt(gamma, beta) {      // from the phone's orientation: gamma = left/right, beta = front/back (already relative to the start position)
+      tiltYawT = Math.max(-1, Math.min(1, gamma / 35)) * 0.28;
+      tiltPitchT = Math.max(-1, Math.min(1, beta / 35)) * 0.14;
     },
     dispose() {
       disposed = true;
