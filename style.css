@@ -629,8 +629,8 @@ html[dir="rtl"] .gift-toggle input:checked + .gift-sw::after { transform: transl
 .ar-ui { position: fixed; inset: 0; z-index: 9999; pointer-events: none; touch-action: none; color: #fff; font-family: inherit; }
 .ar-ui > * { pointer-events: auto; }
 .ar-x { position: absolute; top: calc(14px + env(safe-area-inset-top)); inset-inline-end: 14px; width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,.55); background: rgba(0,0,0,.5); color: #fff; font-size: 18px; line-height: 1; cursor: pointer; }
-.ar-hint { position: absolute; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translateX(-50%); margin: 0; width: max-content; max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 999px; background: rgba(0,0,0,.6); font-size: 14px; line-height: 1.35; text-align: center; pointer-events: none; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-.ar-row { position: absolute; left: 0; right: 0; bottom: calc(28px + env(safe-area-inset-bottom)); display: flex; justify-content: center; gap: 10px; padding: 0 16px; pointer-events: none; }
+.ar-hint { position: absolute; left: 50%; bottom: calc(176px + env(safe-area-inset-bottom)); transform: translateX(-50%); margin: 0; width: max-content; max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 999px; background: rgba(0,0,0,.6); font-size: 14px; line-height: 1.35; text-align: center; pointer-events: none; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.ar-row { position: absolute; left: 0; right: 0; bottom: calc(104px + env(safe-area-inset-bottom)); display: flex; justify-content: center; gap: 10px; padding: 0 16px; pointer-events: none; }
 .ar-b { pointer-events: auto; padding: 12px 20px; border-radius: 999px; border: 1px solid #d9b96a; background: rgba(0,0,0,.6); color: #f1e6cc; font-size: 15px; cursor: pointer; }
 .ar-b:active { background: #d9b96a; color: #1d1d1b; }
 .ar-b[hidden], .ar-scan[hidden] { display: none; }
