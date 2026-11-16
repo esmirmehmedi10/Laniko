@@ -29,7 +29,7 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
   const bmps = new Array(N).fill(null);
   const pending = new Set();
   const useBitmap = typeof createImageBitmap === "function";
-  const KEY = 16;                           // every 16th frame stays decoded
+  const KEY = 24;                           // every 24th frame stays decoded
   const url = (i) => `${base}/${String(i).padStart(2, "0")}.webp`;
   let cur = 0, dirn = 1;
   let loadedFirst = false;
@@ -48,10 +48,10 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
       im.onload = () => { URL.revokeObjectURL(u); done(im); }; im.onerror = () => pending.delete(i); im.src = u;
     }
   };
-  const keep = (i) => i % KEY === 0 || i === N - 1 || (i >= cur - 5 && i <= cur + 18) || !useBitmap;
+  const keep = (i) => i % KEY === 0 || i === N - 1 || (i >= cur - 4 && i <= cur + 13) || !useBitmap;
   const manage = () => {
     // decode what is about to be needed (more ahead of the scroll direction), release what is far away
-    const a = dirn >= 0 ? 5 : 18, b = dirn >= 0 ? 18 : 5;
+    const a = dirn >= 0 ? 4 : 13, b = dirn >= 0 ? 13 : 4;
     for (let i = Math.max(0, cur - a); i <= Math.min(N - 1, cur + b); i++) decode(i);
     if (useBitmap) for (let i = 0; i < N; i++) if (bmps[i] && !keep(i)) { bmps[i].close && bmps[i].close(); bmps[i] = null; }
   };
@@ -107,8 +107,8 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
   let range = 1, quality = 0;                          // quality drops by itself when the device cannot keep up
   const layout = () => {
     cw = stage.clientWidth || 1; ch = stage.clientHeight || 1;
-    dpr = Math.min(window.devicePixelRatio || 1, [1.6, 1.25, 1][quality]);
-    mdpr = Math.min(dpr, quality ? 1 : 1.1);                      // the mist is soft anyway: a smaller canvas is much cheaper
+    dpr = Math.min(window.devicePixelRatio || 1, 3);                // the picture always keeps the screen's full resolution: lowering it made the bottle blurry
+    mdpr = Math.min(dpr, quality ? 1 : 1.1);                         // only the soft mist is drawn smaller                      // the mist is soft anyway: a smaller canvas is much cheaper
     canvas.width = Math.round(cw * dpr); canvas.height = Math.round(ch * dpr);
     mist.width = Math.round(cw * mdpr); mist.height = Math.round(ch * mdpr);
     sc = Math.max(cw / FW, ch / FH);                  // the frame fills the stage (cover) ...
@@ -243,7 +243,7 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
     const dt = Math.min(0.05, raw);
     if (lastTick && raw < 0.25) {            // measure how well the device keeps up while the picture is moving
       slow = slow * 0.92 + raw * 0.08;
-      if (++ticks > 40 && slow > 0.027 && quality < 2) { quality++; slow = 0.016; ticks = 0; layout(); }
+      if (++ticks > 70 && slow > 0.03 && quality < 2) { quality++; slow = 0.016; ticks = 0; layout(); }
     }
     lastTick = ts;
     // the picture follows the scroll position; the faster the page moves, the faster it follows

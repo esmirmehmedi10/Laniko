@@ -10,7 +10,7 @@ import cv2
 from playwright.sync_api import sync_playwright
 R = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 T = os.environ.get("THREE_DIR", "/home/claude/mrdoob/three.js/")
-DPR = 1.2
+DPR = 1.5
 PORT = int(os.environ.get("PORT", "8851"))
 class H(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *a): pass
@@ -95,7 +95,7 @@ with sync_playwright() as p:
             pg.evaluate("new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))")
             pg.locator("#seqbox").screenshot(path=tmp)
             img = cv2.imread(tmp)
-            cv2.imwrite(f"{d}/{n:02d}.webp", img, [cv2.IMWRITE_WEBP_QUALITY, 78])
+            cv2.imwrite(f"{d}/{n:02d}.webp", img, [cv2.IMWRITE_WEBP_QUALITY, 82])
         for f in os.listdir(d):
             if f.endswith(".webp") and int(f[:2]) >= NF: os.remove(f"{d}/{f}")
         json.dump({"v": 2, "frames": NF, "turn": TURN, "push": PUSH, "lift": LIFT, "press": PRESS, "nz": nzs}, open(d + "/meta.json", "w"))
