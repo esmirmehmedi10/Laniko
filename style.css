@@ -622,4 +622,5 @@ html[dir="rtl"] .gift-toggle input:checked + .gift-sw::after { transform: transl
 
 /* the three buttons on the Perfumes page always share one row, in every language: equal columns, the text may wrap inside */
 .page-actions.row { flex-wrap: nowrap; gap: 8px; max-width: 560px; }
-.page-actions.row .act { flex: 1 1 0; min-width: 0; justify-content: center; text-align: center; white-space: normal; padding: 9px 6px; font-size: .66rem; letter-spacing: .04em; line-height: 1.25; overflow-wrap: anywhere; }
+.page-actions.row .act { flex: 1 1 0; min-width: 0; justify-content: center; text-align: center; white-space: normal; padding: 9px 6px; font-size: .66rem; letter-spacing: .04em; line-height: 1.25; overflow-wrap: normal; hyphens: manual; }
+@media (max-width: 380px) { .page-actions.row { gap: 6px; padding: 0 12px; } .page-actions.row .act { font-size: .58rem; letter-spacing: 0; padding: 9px 3px; } }
