@@ -466,19 +466,6 @@ html[data-theme="dark"] .theme-btn .ico-sun { display: block; }
 .pd-snd .ico-on, .pd-snd.on .ico-off { display: none; }
 .pd-snd svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .pd-snd.on { background: rgba(217,185,106,.22); }
-/* slow golden dust drifting up in front of the picture (compositor only: costs nothing) */
-.pd-stage::before {
-  content: ""; position: absolute; left: 0; right: 0; top: 0; height: calc(100% + 420px); z-index: 1; pointer-events: none; opacity: .5;
-  background-image:
-    radial-gradient(circle, rgba(232,205,140,.9) 0 1.2px, transparent 2px),
-    radial-gradient(circle, rgba(232,205,140,.7) 0 .9px, transparent 1.6px),
-    radial-gradient(circle, rgba(255,240,200,.85) 0 1.6px, transparent 2.6px);
-  background-size: 130px 210px, 90px 140px, 210px 420px;
-  background-position: 10px 20px, 50px 90px, 100px 160px;
-  animation: pd-dust 80s linear infinite;
-}
-@keyframes pd-dust { to { transform: translateY(-420px); } }
-
 /* ---------- first visit: the logo draws itself ---------- */
 .intro { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at 50% 40%, #2c2010, #0a0805 70%); transition: opacity .6s ease; cursor: pointer; }
 .intro.out { opacity: 0; pointer-events: none; }
@@ -488,6 +475,6 @@ html[data-theme="dark"] .theme-btn .ico-sun { display: block; }
 @keyframes intro-draw { to { stroke-dashoffset: 0; } }
 @keyframes intro-fill { to { fill-opacity: 1; stroke-width: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .pd-stage::before, .na-spin, .na-bloom, .na-drop, .na-twinkle, .na-sway, .na-ring, .na-wisp, .na-glow, .na-fall, .na-bob { animation: none; }
+  .na-spin, .na-bloom, .na-drop, .na-twinkle, .na-sway, .na-ring, .na-wisp, .na-glow, .na-fall, .na-bob { animation: none; }
   .na-ring { stroke-dashoffset: 0; }
 }
