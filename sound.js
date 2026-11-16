@@ -120,8 +120,8 @@ function knock(c, dest, t, vol = 1, pitch = 1) {              // a small hard "t
   ring(c, dest, t, 2350 * pitch, 0.07 * vol, 0.03);
 }
 
-// the cap: a metal cap on a glass neck is a friction fit. Drawn off it makes a faint scrape, then the air that was
-// sealed in lets go with a muffled, hollow "pup" (a low, heavily damped resonance - no bright ringing), and the cap
+// the cap: a metal cap on a glass neck is a friction fit. Drawn off it makes a faint scrape, then it snaps free with
+// a dry "tk" (a short noise transient - no ringing, nothing hollow), and the cap
 // edge gives a very small metallic tick as it leaves the glass collar. Every play varies a little, like a real hand.
 function playCap(c, dest, t) {
   const v = rnd(0.92, 1.08), vol = rnd(0.9, 1.1);
@@ -133,15 +133,15 @@ function playCap(c, dest, t) {
   for (let i = 1; i <= 6; i++) g.gain.linearRampToValueAtTime((0.015 + (i / 6) * 0.07) * rnd(0.5, 1.3) * vol, t + (dur * i) / 6);
   g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.004);
   s.connect(bp); bp.connect(g); g.connect(dest); s.start(t, rnd(0, 2), dur + 0.05);
-  // 2. the pop: air rushes into the vacuum under the cap. A short soft transient, then a low hollow body whose pitch
-  //    falls as the pressure equalises; a second, quieter mode gives it the cavity colour of a cap
+  // 2. the release: a dry, tight "tk" - the cap's skin snapping free of the glass. Short decays and no pitch sweep, so
+  //    nothing hollow or bloopy: mostly a crisp noise transient with a little body behind it
   const p = t + dur;
-  noiseHit(c, dest, p, { dur: 0.012, type: "lowpass", freq: 2600, Q: 0.7, vol: 0.28 * vol, attack: 0.0008 });
-  ring(c, dest, p, 980 * v, 0.34 * vol, 0.055, 0.5);        // main hollow body, sagging from ~980 to ~490 Hz
-  ring(c, dest, p, 1560 * v, 0.1 * vol, 0.03, 0.7);          // cavity colour, dies fast
-  ring(c, dest, p, 300 * v, 0.14 * vol, 0.045, 0.75);        // the weight of it in the hand
+  noiseHit(c, dest, p, { dur: 0.016, type: "bandpass", freq: 2100 * v, Q: 0.9, vol: 0.34 * vol, attack: 0.0006 });
+  noiseHit(c, dest, p, { dur: 0.03, type: "bandpass", freq: 900 * v, Q: 0.8, vol: 0.2 * vol, attack: 0.0008 });
+  ring(c, dest, p, 1350 * v, 0.13 * vol, 0.016);
+  ring(c, dest, p, 640 * v, 0.09 * vol, 0.022);
   // 3. the edge of the cap clears the glass collar: a tiny, dull metal tick
-  const k = p + 0.052;
+  const k = p + 0.045;
   ring(c, dest, k, 2900 * v, 0.03 * vol, 0.035);
   ring(c, dest, k, 2900 * v * 2.76, 0.016 * vol, 0.022);
   noiseHit(c, dest, k, { dur: 0.006, type: "bandpass", freq: 3300, Q: 1, vol: 0.05 * vol, attack: 0.0006 });
