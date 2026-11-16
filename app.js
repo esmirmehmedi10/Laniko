@@ -765,36 +765,21 @@
   // ---- AR: the bottle in your own room, in real size. Google's <model-viewer> does the work (WebXR / Scene Viewer on
   // Android, Quick Look on iPhone). The button appears only when the phone can really do it. ----
   const AR_LIB = "https://cdn.jsdelivr.net/npm/@google/model-viewer@4.0.0/dist/model-viewer.min.js";
-  let arEl = null, arTarget = null;
-  const IS_ANDROID = /Android/i.test(navigator.userAgent);
-  function teardownAR() { if (arEl) { arEl.remove(); arEl = null; } arTarget = null; $("viewer-ar").hidden = true; }
-  // Android: open Google's own AR viewer (Scene Viewer) straight from a link. No library, no waiting for anything to load:
-  // the button is there at once and the tap opens AR. Phones without AR support get the normal 3D view of the same model.
-  function openSceneViewer(url, title) {
-    const params = new URLSearchParams({ file: url, mode: "ar_preferred", resizable: "false", title, link: location.href.split("#")[0] });
-    const intent = "intent://arvr.google.com/scene-viewer/1.0?" + params.toString() +
-      "#Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;" +
-      "S.browser_fallback_url=" + encodeURIComponent("https://arvr.google.com/scene-viewer/1.0?" + params.toString()) + ";end;";
-    const a = document.createElement("a");
-    a.href = intent; a.rel = "noopener";
-    document.body.appendChild(a); a.click(); a.remove();
-    // if the page is still in front a moment later, nothing opened: tell the person instead of failing silently
-    setTimeout(() => { if (document.visibilityState === "visible" && arTarget) toast(t("arFail")); }, 2500);
-  }
+  let arEl = null;
+  function teardownAR() { if (arEl) { arEl.remove(); arEl = null; } $("viewer-ar").hidden = true; }
   async function setupAR(p) {
     if (!p.model && !p.arModel) return;
     const coarse = window.matchMedia("(pointer: coarse)").matches;
     if (!coarse) return;                                    // AR is for phones and tablets
-    arTarget = { url: new URL(p.arModel || p.model, location.origin).href, name: p.name };
-    if (IS_ANDROID) { $("viewer-ar").hidden = false; return; }
-    // iPhone / iPad: <model-viewer> prepares the file for Apple's AR Quick Look; the button appears when it is ready
     try {
       if (!customElements.get("model-viewer")) await import(AR_LIB);
       if (viewerProductId !== p.id || $("viewer").hidden) return;
       const mv = document.createElement("model-viewer");
-      mv.setAttribute("src", arTarget.url);
+      // a light copy of the model (small textures, no hidden parts) loads and starts faster than the display model
+      mv.setAttribute("src", new URL(p.arModel || p.model, location.origin).href);
       mv.setAttribute("alt", p.name);
-      mv.setAttribute("ar", ""); mv.setAttribute("ar-modes", "quick-look scene-viewer webxr");
+      // WebXR first: this is the one that opens on the phones tested. Scene Viewer and Quick Look stay as fallbacks (iPhone uses Quick Look).
+      mv.setAttribute("ar", ""); mv.setAttribute("ar-modes", "webxr scene-viewer quick-look");
       mv.setAttribute("ar-scale", "fixed"); mv.setAttribute("ar-placement", "floor");
       mv.setAttribute("loading", "eager");
       mv.style.cssText = "position:fixed;left:-20px;top:-20px;width:8px;height:8px;opacity:0;pointer-events:none";
@@ -803,11 +788,7 @@
       mv.addEventListener("load", () => { if (arEl === mv && mv.canActivateAR) $("viewer-ar").hidden = false; });
     } catch (e) { console.warn("AR unavailable", e); }
   }
-  $("viewer-ar").addEventListener("click", () => {
-    if (!arTarget) return;
-    if (IS_ANDROID) openSceneViewer(arTarget.url, arTarget.name);
-    else if (arEl && arEl.canActivateAR) arEl.activateAR();
-  });
+  $("viewer-ar").addEventListener("click", () => { if (arEl && arEl.canActivateAR) arEl.activateAR(); });
   $("viewer-spray").addEventListener("click", () => {
     if (!viewer) return;
     if (snd) snd.wake();                          // a tap is what lets browsers start audio
