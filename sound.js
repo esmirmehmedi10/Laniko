@@ -7,7 +7,7 @@
 // noise, bright, with fast random flutter and a low body of air) that lasts as long as the visitor keeps scrolling
 // through the spray, and a soft click of the pump springing back.
 const KEY = "laniko-sound";
-let ctx = null, master = null, room = null, enabled = false, lastBuzz = 0;
+let ctx = null, master = null, enabled = false, lastBuzz = 0;
 let noiseBuf = null, flutterBuf = null;
 let air = null;                         // the always-running spray chain {gain, bright, body, flutter}
 let spraying = false, sprayStart = 0, sprayTimer = 0;
@@ -38,16 +38,6 @@ function makeBuffers(c) {
   for (let i = 0; i < f.length; i++) f[i] /= peak;
 }
 
-function makeRoom(c) {                     // a tiny, dry room so the sounds do not float in a void
-  const len = Math.floor(c.sampleRate * 0.28), ir = c.createBuffer(2, len, c.sampleRate);
-  for (let ch = 0; ch < 2; ch++) {
-    const d = ir.getChannelData(ch);
-    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2) * (i < 120 ? i / 120 : 1);
-  }
-  const conv = c.createConvolver(); conv.buffer = ir;
-  return conv;
-}
-
 function loopSource(c, buf, offset) {
   const s = c.createBufferSource(); s.buffer = buf; s.loop = true; s.start(0, offset); return s;
 }
@@ -57,9 +47,8 @@ function build(c) {
   makeBuffers(c);
   const comp = c.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 3; comp.attack.value = 0.002; comp.release.value = 0.12;
   const m = c.createGain(); m.gain.value = 0.9; m.connect(comp); comp.connect(c.destination);
-  const r = makeRoom(c), wet = c.createGain(); wet.gain.value = 0.12; r.connect(wet); wet.connect(m);
-  const bus = c.createGain(); bus.connect(m); bus.connect(r);
-  master = bus; room = r;
+  const bus = c.createGain(); bus.connect(m);      // dry: no room, no reverb
+  master = bus;
 
   // --- the atomiser: bright rush + low body of air, both fluttering, behind one gain
   const gain = c.createGain(); gain.gain.value = 0;
@@ -120,33 +109,27 @@ function knock(c, dest, t, vol = 1, pitch = 1) {              // a small hard "t
   ring(c, dest, t, 2350 * pitch, 0.07 * vol, 0.03);
 }
 
-// the cap: a quality metal cap on a glass neck. It glides off smoothly (a soft, even friction), lets go with a solid
-// "thock" (weight and body, damped so it never booms), and the heavy metal shell answers with a short, clean, slightly
-// bell-like ring that fades in about a tenth of a second. Every play varies a little, like a real hand.
+// the cap: one short, solid metal "tock". A tiny rub as it starts to slide leads straight into the release (a dense
+// thock with real body) and a brief metal ring that is part of the same hit and gone within about 40 ms. Dry: no echo.
+// Every play varies a little, like a real hand.
 function playCap(c, dest, t) {
   const v = rnd(0.95, 1.05), vol = rnd(0.95, 1.05);
-  // 1. the glide: smooth, close-fitting parts slide with a fine, even rub that firms up just before release
-  const dur = rnd(0.085, 0.1), s = c.createBufferSource(); s.buffer = noiseBuf;
-  const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 1.1;
-  bp.frequency.setValueAtTime(1100 * v, t); bp.frequency.linearRampToValueAtTime(2000 * v, t + dur);
+  // a very short rub, so it reads as the start of the same sound and not as a separate one
+  const dur = 0.022, s = c.createBufferSource(); s.buffer = noiseBuf;
+  const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 1; bp.frequency.value = 1700 * v;
   const g = c.createGain(); g.gain.setValueAtTime(0.0001, t);
-  g.gain.linearRampToValueAtTime(0.05 * vol, t + dur * 0.5);
-  g.gain.linearRampToValueAtTime(0.11 * vol, t + dur);
-  g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.004);
+  g.gain.linearRampToValueAtTime(0.12 * vol, t + dur); g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.003);
   s.connect(bp); bp.connect(g); g.connect(dest); s.start(t, rnd(0, 2), dur + 0.05);
-  // 2. the release: a solid, dense thock - hard transient, then a firm body. Short decays keep it tight
   const p = t + dur;
-  noiseHit(c, dest, p, { dur: 0.02, type: "lowpass", freq: 3200, Q: 0.7, vol: 0.5 * vol, attack: 0.0007 });
-  noiseHit(c, dest, p, { dur: 0.035, type: "bandpass", freq: 1000 * v, Q: 0.8, vol: 0.3 * vol, attack: 0.0008 });
-  ring(c, dest, p, 430 * v, 0.46 * vol, 0.06, 0.88);      // the body of the thock
-  ring(c, dest, p, 860 * v, 0.24 * vol, 0.04);             // firmness
-  ring(c, dest, p, 200 * v, 0.26 * vol, 0.07, 0.85);       // weight
-  // 3. the metal shell rings: inharmonic partials (like a small bell), soft and short - this is what says "metal"
-  const m = p + 0.004, f0 = 2150 * v;
-  ring(c, dest, m, f0, 0.11 * vol, 0.13);
-  ring(c, dest, m, f0 * 2.32, 0.065 * vol, 0.085);
-  ring(c, dest, m, f0 * 3.87, 0.035 * vol, 0.055);
-  ring(c, dest, m, f0 * 0.61, 0.07 * vol, 0.1);
+  noiseHit(c, dest, p, { dur: 0.016, type: "lowpass", freq: 3200, Q: 0.7, vol: 0.5 * vol, attack: 0.0007 });
+  noiseHit(c, dest, p, { dur: 0.028, type: "bandpass", freq: 1000 * v, Q: 0.8, vol: 0.28 * vol, attack: 0.0008 });
+  ring(c, dest, p, 430 * v, 0.46 * vol, 0.045, 0.88);      // body of the thock
+  ring(c, dest, p, 860 * v, 0.24 * vol, 0.032);
+  ring(c, dest, p, 200 * v, 0.26 * vol, 0.055, 0.85);      // weight
+  const f0 = 2150 * v;                                      // the metal in the same hit: short, inharmonic
+  ring(c, dest, p, f0, 0.1 * vol, 0.045);
+  ring(c, dest, p, f0 * 2.32, 0.055 * vol, 0.03);
+  ring(c, dest, p, f0 * 3.87, 0.03 * vol, 0.02);
 }
 
 // pump click when the atomiser is pressed, and the softer one when it springs back
