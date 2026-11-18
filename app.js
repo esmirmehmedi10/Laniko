@@ -564,11 +564,11 @@
   // ---- language and country: asked once on the first visit, changeable any time (language button, or "Change" in the cart) ----
   const COUNTRY_KEY = "laniko-country";
   const SHIP_TO = ["LU", "BE", "FR", "DE", "NL"];       // keep in step with SHIPPING_COUNTRIES in functions/api/checkout.js
-  const COUNTRIES = [...SHIP_TO, "AT", "CH", "IT", "ES", "PT", "IE", "GB", "DK", "SE", "FI", "NO", "PL", "CZ", "GR", "US", "CA", "AE", "SA"];
+  const COUNTRIES = SHIP_TO;                              // the countries offered in the shop: only where we deliver
   let country = "";
   try { country = localStorage.getItem(COUNTRY_KEY) || ""; } catch {}
+  if (country && !COUNTRIES.includes(country)) { country = ""; try { localStorage.removeItem(COUNTRY_KEY); } catch {} }   // an old choice that is no longer offered: ask again
   const countryName = (c) => {
-    if (c === "other") return t("ctryOther");
     try { return new Intl.DisplayNames([I.lang], { type: "region" }).of(c) || c; } catch { return c; }
   };
   function guessCountry() {                              // from the phone's region setting, e.g. de-LU
@@ -582,8 +582,7 @@
     const el = $("cart-country");
     if (!country) { el.hidden = true; return; }
     el.hidden = false;
-    el.innerHTML = `${esc(t("ctryLine"))}: <strong>${esc(countryName(country))}</strong> · <button type="button" class="linklike" data-ctry-change>${esc(t("ctryChange"))}</button>` +
-      (SHIP_TO.includes(country) ? "" : `<span class="ctry-warn">${esc(t("ctryNo"))}</span>`);
+    el.innerHTML = `${esc(t("ctryLine"))}: <strong>${esc(countryName(country))}</strong> · <button type="button" class="linklike" data-ctry-change>${esc(t("ctryChange"))}</button>`;
   }
   function setCountry(c) {
     country = c;
@@ -620,11 +619,11 @@
     try { enNames = new Intl.DisplayNames(["en"], { type: "region" }); } catch {}
     const enName = (c) => { try { return enNames ? enNames.of(c) || "" : ""; } catch { return ""; } };
     const countryMatches = (q) => {
-      const all = [...COUNTRIES, "other"], nq = norm(q);
+      const all = COUNTRIES, nq = norm(q);
       if (!nq) return all;
       const pre = [], mid = [];
       for (const c of all) {
-        const a = norm(countryName(c)), b = c === "other" ? "" : norm(enName(c));
+        const a = norm(countryName(c)), b = norm(enName(c));
         if (a.startsWith(nq) || b.startsWith(nq)) pre.push(c); else if (a.includes(nq) || b.includes(nq)) mid.push(c);
       }
       return [...pre, ...mid];

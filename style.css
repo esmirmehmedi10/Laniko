@@ -736,9 +736,7 @@ html.has-welcome .welcome { display: block; }
 .ctry { font-size: .98rem; }
 .cart-country { margin: 4px 0 8px; line-height: 1.5; }
 .linklike { padding: 0; border: 0; background: none; color: var(--gold); text-decoration: underline; font: inherit; cursor: pointer; }
-.ctry-warn { display: block; margin-top: 4px; color: #8a2f2f; }
-html[data-theme="dark"] .ctry-warn { color: #e0a0a0; }
-@media (orientation: landscape) { .wl-enter { bottom: max(1.5vh, calc(8px + env(safe-area-inset-bottom))); gap: 6px; } .wl-enter i { height: 22px; } }
+html[data-theme="dark"] @media (orientation: landscape) { .wl-enter { bottom: max(1.5vh, calc(8px + env(safe-area-inset-bottom))); gap: 6px; } .wl-enter i { height: 22px; } }
 
 /* the logo on the welcome screen is the vector file (sharp at any size), one copy per door so it splits with them */
 .wl-logo { position: absolute; left: 50%; top: 46%; height: min(56svh, 560px); width: auto; aspect-ratio: 631 / 1595; transform: translate(-50%, -50%); overflow: visible;
