@@ -1,0 +1,11 @@
+name: Probe
+on:
+  push:
+    paths: ['.github/workflows/probe.yml']
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          sleep 50
+          curl -sS -m 90 https://laniko.pages.dev/api/probe
