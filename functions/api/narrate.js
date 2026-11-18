@@ -86,7 +86,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
     } else {
       bytes = await toBytes(await env.AI.run("@cf/myshell-ai/melotts", { prompt: text, lang: MELO[lang] }));
     }
-  } catch (e) { return err(502, "voice failed"); }
+  } catch (e) { return err(502, "voice failed: " + String((e && e.message) || e).slice(0, 200)); }
 
   const wav = bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46;            // MeloTTS answers with WAV, Aura with MP3
   const res = new Response(bytes, { headers: { "Content-Type": wav ? "audio/wav" : "audio/mpeg", "Cache-Control": "public, max-age=31536000, immutable" } });
