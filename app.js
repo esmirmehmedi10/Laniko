@@ -403,7 +403,7 @@
 
   // the page behind must not scroll while a window is open
   function updateLock() {
-    document.body.style.overflow = (detailId || !$("viewer").hidden || gate || promo) ? "hidden" : "";
+    document.body.style.overflow = (detailId || !$("viewer").hidden || gate || promo || welcomeEl) ? "hidden" : "";
   }
 
   // ---- 3D viewer ----
@@ -541,7 +541,7 @@
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items, lang: I.lang, gift: gift.on ? { from: gift.from, message: gift.msg, wrap: gift.wrap } : undefined }),
+        body: JSON.stringify({ items, lang: I.lang, country: country || undefined, gift: gift.on ? { from: gift.from, message: gift.msg, wrap: gift.wrap } : undefined }),
       });
       const data = await res.json();
       if (!res.ok || !data.url) throw new Error("checkout");
@@ -561,54 +561,104 @@
     el.hidden = false;
   }
 
-  // ---- language: first-visit gate + switcher ----
-  let gate = null;
-  function showGate(first) {
+  // ---- language and country: asked once on the first visit, changeable any time (language button, or "Change" in the cart) ----
+  const COUNTRY_KEY = "laniko-country";
+  const SHIP_TO = ["LU", "BE", "FR", "DE", "NL"];       // keep in step with SHIPPING_COUNTRIES in functions/api/checkout.js
+  const COUNTRIES = [...SHIP_TO, "AT", "CH", "IT", "ES", "PT", "IE", "GB", "DK", "SE", "FI", "NO", "PL", "CZ", "GR", "US", "CA", "AE", "SA"];
+  let country = "";
+  try { country = localStorage.getItem(COUNTRY_KEY) || ""; } catch {}
+  const countryName = (c) => {
+    if (c === "other") return t("ctryOther");
+    try { return new Intl.DisplayNames([I.lang], { type: "region" }).of(c) || c; } catch { return c; }
+  };
+  const shipList = () => {
+    const n = SHIP_TO.map(countryName);
+    try { return new Intl.ListFormat(I.lang, { style: "long", type: "conjunction" }).format(n); } catch { return n.join(", "); }
+  };
+  function guessCountry() {                              // from the phone's region setting, e.g. de-LU
+    for (const l of navigator.languages || [navigator.language]) {
+      const m = /[-_]([A-Za-z]{2})$/.exec(l || "");
+      if (m && COUNTRIES.includes(m[1].toUpperCase())) return m[1].toUpperCase();
+    }
+    return "LU";
+  }
+  function renderCountryLine() {
+    const el = $("cart-country");
+    if (!country) { el.hidden = true; return; }
+    el.hidden = false;
+    el.innerHTML = `${esc(t("ctryLine"))}: <strong>${esc(countryName(country))}</strong> · <button type="button" class="linklike" data-ctry-change>${esc(t("ctryChange"))}</button>` +
+      (SHIP_TO.includes(country) ? "" : `<span class="ctry-warn">${esc(t("ctryShips").replace("{list}", shipList()))} ${esc(t("ctryNo"))}</span>`);
+  }
+  function setCountry(c) {
+    country = c;
+    try { localStorage.setItem(COUNTRY_KEY, c); } catch {}
+    renderCountryLine();
+  }
+  $("cart-country").addEventListener("click", (e) => { if (e.target.closest("[data-ctry-change]")) showGate(false); });
+
+  // mode: true = very first visit (language, then country) · "country" = only the country · false = both, with a close button
+  let gate = null, welcomeEl = null;
+  function showGate(mode, promoAfter) {
     if (gate) return;
-    const current = first ? I.guess() : I.lang;
+    const first = mode === true;
+    let step = first ? "lang" : mode === "country" ? "country" : "both";
     gate = document.createElement("div");
     gate.className = "lang-gate";
     gate.setAttribute("role", "dialog");
     gate.setAttribute("aria-modal", "true");
-    gate.innerHTML = `
-      ${first ? "" : `<button class="gate-x" aria-label="${esc(t("closeLang"))}">✕</button>`}
-      <img class="gate-logo" src="/logo.svg" alt="Laniko" width="30" height="74">
-      <h1 class="gate-title"${first ? ' aria-label="Choose your language"' : ""}>${first ? '<span class="gate-cycle" lang="en">Choose your language</span>' : esc(t("chooseLang"))}</h1>
-      ${first ? "" : `<p class="gate-sub">${esc(t("chooseSub"))}</p>`}
-      <div class="gate-list">
-        ${I.LANGS.map((l, i) => `<button class="gate-btn${!first && l.code === I.lang ? " on" : ""}" data-lang="${l.code}" lang="${l.code}" dir="${l.dir}" style="--i:${i}">${esc(l.name)}</button>`).join("")}
-      </div>`;
     document.body.appendChild(gate);
     document.body.style.overflow = "hidden";
-    if (first) {
-      // the title says "choose your language" in every language, one after the other
+    let timer = 0;
+    const logo = '<img class="gate-logo" src="/logo.svg" alt="Laniko" width="30" height="74">';
+    const closeBtn = () => `<button class="gate-x" aria-label="${esc(t("closeLang"))}">✕</button>`;
+    const langList = () => `<div class="gate-list">${I.LANGS.map((l, i) => `<button class="gate-btn${step === "both" && l.code === I.lang ? " on" : ""}" data-lang="${l.code}" lang="${l.code}" dir="${l.dir}" style="--i:${i}">${esc(l.name)}</button>`).join("")}</div>`;
+    const ctryBlock = () => {
+      const sel = country || (step === "both" ? "" : guessCountry());
+      return `<p class="gate-sub">${esc(t("ctryShips").replace("{list}", shipList()))}</p><div class="gate-list ctry-list">${[...COUNTRIES, "other"].map((c, i) =>
+        `<button class="gate-btn ctry${c === sel ? " on" : ""}" data-country="${c}"${SHIP_TO.includes(c) ? " data-ship" : ""} style="--i:${Math.min(i, 10)}">${esc(countryName(c))}</button>`).join("")}</div>`;
+    };
+    const render = () => {
+      clearInterval(timer);
+      if (step === "lang") gate.innerHTML = `${logo}<h1 class="gate-title" aria-label="Choose your language"><span class="gate-cycle" lang="en">Choose your language</span></h1>${langList()}`;
+      else if (step === "country") gate.innerHTML = `${closeBtn()}${logo}<h1 class="gate-title">${esc(t("ctryTitle"))}</h1>${ctryBlock()}`;
+      else gate.innerHTML = `${closeBtn()}${logo}<h1 class="gate-title">${esc(t("chooseLang"))}</h1><p class="gate-sub">${esc(t("chooseSub"))}</p>${langList()}<h2 class="gate-title gate-title2">${esc(t("ctryTitle"))}</h2>${ctryBlock()}`;
       const cyc = gate.querySelector(".gate-cycle");
-      let n = 0;
-      const timer = setInterval(() => {
-        if (!gate || !cyc.isConnected) { clearInterval(timer); return; }
-        cyc.classList.add("swap");
-        setTimeout(() => {
-          n = (n + 1) % I.LANGS.length;
-          const l = I.LANGS[n];
-          cyc.textContent = I.phrase(l.code, "chooseLang"); cyc.lang = l.code; cyc.dir = l.dir;
-          cyc.classList.remove("swap");
-        }, 380);
-      }, 1900);
-    }
-    const pick = (code) => {
-      I.setLang(code);
+      if (cyc) {
+        // the title says "choose your language" in every language, one after the other
+        let n = 0;
+        timer = setInterval(() => {
+          if (!gate || !cyc.isConnected) { clearInterval(timer); return; }
+          cyc.classList.add("swap");
+          setTimeout(() => {
+            n = (n + 1) % I.LANGS.length;
+            const l = I.LANGS[n];
+            cyc.textContent = I.phrase(l.code, "chooseLang"); cyc.lang = l.code; cyc.dir = l.dir;
+            cyc.classList.remove("swap");
+          }, 380);
+        }, 1900);
+      }
+      const target = gate.querySelector(".on") || gate.querySelector(".gate-btn");
+      if (target) target.focus({ preventScroll: true });
+    };
+    const finish = () => {
+      clearInterval(timer);
       closeGate();
-      if (first) productsReady.then(() => setTimeout(showPromo, 650));
+      if (promoAfter) productsReady.then(() => setTimeout(showPromo, 650));
     };
     gate.addEventListener("click", (e) => {
       const b = e.target.closest("button");
       if (!b) return;
-      if (b.dataset.lang) pick(b.dataset.lang);
-      else closeGate();
+      if (b.dataset.lang) {
+        I.setLang(b.dataset.lang);
+        if (step === "lang") { if (country) finish(); else { step = "country"; render(); } }
+        else render();                                           // the window itself switches to the new language
+      } else if (b.dataset.country) {
+        setCountry(b.dataset.country);
+        if (step === "both") gate.querySelectorAll(".ctry").forEach((x) => x.classList.toggle("on", x === b));
+        else finish();
+      } else { clearInterval(timer); closeGate(); }
     });
-    if (!first) gate.addEventListener("keydown", (e) => { if (e.key === "Escape") closeGate(); });
-    const target = gate.querySelector(`[data-lang="${current}"]`) || gate.querySelector(".gate-btn");
-    if (target) target.focus({ preventScroll: true });
+    render();
   }
   function closeGate() {
     if (!gate) return;
@@ -624,6 +674,7 @@
     updateSndBtn();
     renderPage();
     renderCart();
+    renderCountryLine();
     if (detailId) { fillDetail(byId(detailId)); if (detailAnim) detailAnim.refresh(); }
     if (!$("status").hidden && $("status").dataset.canceled) showStatus(t("canceled"), true);
   }
@@ -695,29 +746,65 @@
     });
   } catch {}
 
-  // ---- intro: the logo draws itself on the very first visit ----
-  function showIntro() {
-    return new Promise(async (resolve) => {
-      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return resolve();
-      let svg = "";
-      try { svg = await (await fetch("/logo.svg")).text(); } catch { return resolve(); }
-      const el = document.createElement("div");
-      el.className = "intro";
-      el.innerHTML = svg.replace("<svg", '<svg class="intro-logo" aria-hidden="true"');
-      const path = el.querySelector("path");
-      if (!path) return resolve();
-      path.setAttribute("pathLength", "1");
-      document.body.appendChild(el);
-      document.body.style.overflow = "hidden";
-      let done = false;
-      const finish = () => {
-        if (done) return; done = true;
-        el.classList.add("out");
-        setTimeout(() => { el.remove(); updateLock(); resolve(); }, 650);
+  // ---- welcome: every visit starts with the golden doors; a tap opens them. Tilting the phone (or moving the mouse) moves the light. ----
+  function showWelcome(onEnter) {
+    return new Promise((resolve) => {
+      window.__lanikoReady = true;
+      const el = $("welcome");
+      if (!el || !document.documentElement.classList.contains("has-welcome")) { onEnter(); return resolve(); }
+      welcomeEl = el;
+      updateLock();
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const label = $("wl-enter-t");
+      let cyc = 0;
+      if (I.hasChoice()) label.textContent = t("welEnter");
+      else {                                                   // first visit: the word appears in every language in turn
+        let n = 0;
+        cyc = setInterval(() => {
+          n = (n + 1) % I.LANGS.length;
+          const l = I.LANGS[n];
+          label.textContent = I.phrase(l.code, "welEnter"); label.lang = l.code; label.dir = l.dir;
+        }, 1900);
+      }
+      // parallax: phone tilt (Android) or mouse / finger drag; eased so it never jumps
+      let tx = 0, ty = 0, gx = 0, gy = 0, raf = 0, base = null;
+      const step = () => {
+        raf = 0;
+        tx += (gx - tx) * 0.12; ty += (gy - ty) * 0.12;
+        el.style.setProperty("--tx", tx.toFixed(1) + "px"); el.style.setProperty("--ty", ty.toFixed(1) + "px");
+        if (Math.abs(gx - tx) > 0.1 || Math.abs(gy - ty) > 0.1) raf = requestAnimationFrame(step);
       };
-      requestAnimationFrame(() => el.classList.add("go"));
-      el.addEventListener("click", finish);
-      setTimeout(finish, 3400);
+      const aim = (x, y) => { gx = x; gy = y; if (!raf) raf = requestAnimationFrame(step); };
+      const onMove = (e) => aim(-(e.clientX / innerWidth - 0.5) * 26, -(e.clientY / innerHeight - 0.5) * 18);
+      const onTilt = (e) => {
+        if (e.gamma == null || e.beta == null) return;
+        if (base === null) base = e.beta;
+        aim(-Math.max(-30, Math.min(30, e.gamma)) / 30 * 14, -Math.max(-25, Math.min(25, e.beta - base)) / 25 * 10);
+      };
+      const D = window.DeviceOrientationEvent;
+      const tiltOn = !reduced && D && typeof D.requestPermission !== "function";   // iPhone would need a permission pop-up: it uses finger drag instead
+      if (!reduced) el.addEventListener("pointermove", onMove);
+      if (tiltOn) window.addEventListener("deviceorientation", onTilt);
+      let opened = false;
+      const open = () => {
+        if (opened) return; opened = true;
+        try { sessionStorage.setItem("laniko-welcome", "1"); } catch {}
+        clearInterval(cyc);
+        el.classList.add("open");
+        onEnter();                                             // the first-visit window appears right behind the opening doors
+        setTimeout(() => {
+          document.removeEventListener("keydown", onKey);
+          if (tiltOn) window.removeEventListener("deviceorientation", onTilt);
+          if (raf) cancelAnimationFrame(raf);
+          el.remove(); welcomeEl = null;
+          document.documentElement.classList.remove("has-welcome");
+          updateLock();
+          resolve();
+        }, reduced ? 650 : 1750);
+      };
+      el.addEventListener("click", open);
+      const onKey = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } };     // keyboard users: Enter or Space
+      document.addEventListener("keydown", onKey);
     });
   }
 
@@ -919,7 +1006,14 @@
         const g = JSON.parse(decodeURIComponent(escape(atob(gl[1].replace(/-/g, "+").replace(/_/g, "/")))));
         if (g && g.l) I.setLang(g.l);
       } catch {}
-    } else if (!I.hasChoice()) showIntro().then(() => showGate(true));
+    }
+    // every visit starts with the welcome doors; language and country are asked only while they are not known yet
+    const askChoices = () => {
+      if (gl) return;
+      if (!I.hasChoice()) showGate(true, true);
+      else if (!country) showGate("country", true);
+    };
+    const welcomed = showWelcome(askChoices);
 
     try {
       const res = await fetch("/products.json", { cache: "no-cache" });
@@ -942,13 +1036,14 @@
       $("products").textContent = t("loadFail");
     }
     renderCart();
+    renderCountryLine();
     resolveProducts();
 
-    // returning visitor: the advertisement once per visit
-    if (I.hasChoice() && !gl) {
+    // returning visitor: the advertisement once per visit, after the doors have opened
+    if (I.hasChoice() && country && !gl) {
       let seen = false;
       try { seen = !!sessionStorage.getItem(PROMO_KEY); } catch {}
-      if (!seen && !params.get("canceled")) setTimeout(showPromo, 1400);
+      if (!seen && !params.get("canceled")) welcomed.then(() => setTimeout(showPromo, 1400));
     }
   }
   init();

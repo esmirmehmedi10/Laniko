@@ -24,9 +24,9 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Shop is not configured yet (missing STRIPE_SECRET_KEY)." }, 500);
   }
 
-  let items, lang, gift;
+  let items, lang, gift, country;
   try {
-    ({ items, lang, gift } = await request.json());
+    ({ items, lang, gift, country } = await request.json());
   } catch {
     return json({ error: "Invalid request." }, 400);
   }
@@ -47,7 +47,9 @@ export async function onRequestPost({ request, env }) {
   params.set("billing_address_collection", "auto");
   params.set("locale", STRIPE_LOCALES[lang] || "auto");
   params.set("phone_number_collection[enabled]", "true");
-  SHIPPING_COUNTRIES.forEach((c, i) =>
+  // the customer chose a country in the shop: only that country is offered for delivery (if we deliver there)
+  const ship = SHIPPING_COUNTRIES.includes(country) ? [country] : SHIPPING_COUNTRIES;
+  ship.forEach((c, i) =>
     params.set(`shipping_address_collection[allowed_countries][${i}]`, c)
   );
   params.set("shipping_options[0][shipping_rate_data][type]", "fixed_amount");

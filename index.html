@@ -12,6 +12,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&display=swap">
+  <script>try{if(location.search.indexOf("canceled")<0&&!/^#\/gift\//.test(location.hash)&&!sessionStorage.getItem("laniko-welcome")){document.documentElement.classList.add("has-welcome");setTimeout(function(){if(!window.__lanikoReady)document.documentElement.classList.remove("has-welcome")},7000)}}catch(e){}</script>
+  <link rel="preload" as="image" href="/images/welcome-tall.webp" media="(orientation: portrait)">
+  <link rel="preload" as="image" href="/images/welcome-wide.webp" media="(orientation: landscape)">
   <script>try{var _t=localStorage.getItem("laniko-theme");document.documentElement.dataset.theme=(_t==="dark"||(_t!=="light"&&window.matchMedia("(prefers-color-scheme: dark)").matches))?"dark":"light";}catch(e){}</script>
   <link rel="stylesheet" href="/style.css">
   <script type="importmap">
@@ -24,6 +27,15 @@
   </script>
 </head>
 <body>
+  <!-- welcome: the golden doors, on screen in the very first frame; a tap opens them -->
+  <div id="welcome" class="welcome" role="dialog" aria-modal="true" aria-label="Laniko">
+    <div class="wl-door wl-l"><div class="wl-img"></div></div>
+    <div class="wl-door wl-r"><div class="wl-img"></div></div>
+    <div class="wl-shine"></div>
+    <div class="wl-seam"></div>
+    <div class="wl-bottom"></div>
+    <button id="wl-enter" class="wl-enter" type="button"><span id="wl-enter-t">Enter</span><i aria-hidden="true"></i></button>
+  </div>
   <div class="chrome">
     <header class="top">
       <a href="/" class="brand" data-route="perfumes" data-i18n-aria="brandAria" aria-label="Laniko, home">
@@ -84,6 +96,7 @@
         </div>
       </div>
       <p><span data-i18n="subtotal">Subtotal</span>: <strong id="cart-subtotal">€0.00</strong></p>
+      <p id="cart-country" class="small cart-country" hidden></p>
       <p class="small" data-i18n="shipNote">Shipping is calculated at checkout.</p>
       <button id="checkout-btn" class="primary" data-i18n="checkout" disabled>Checkout</button>
     </div>
