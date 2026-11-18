@@ -105,36 +105,13 @@ export function mountStory(ctx, el) {
   }, { threshold: [0, 0.3, 0.6] });
   scenes.forEach((s) => io.observe(s));
 
-  // ---- narration: a voice reads each scene aloud as it comes into view (the browser's own speech, no download) ----
-  const synth = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window ? window.speechSynthesis : null;
-  const LANG = { en: "en-US", de: "de-DE", fr: "fr-FR", pt: "pt-PT", it: "it-IT", es: "es-ES", ar: "ar-SA", zh: "zh-CN" };
-  let voiceOn = false, spoken = -1, timer = 0, btn = null, noteT = 0, lastScene = -1, musicOn = false;
+  // ---- narration: a natural AI voice (through /api/narrate) reads each scene aloud as it comes into view ----
+  // Only languages that have a realistic voice get the Listen button; the phone's own robotic voice is never used.
+  let voiceOn = false, spoken = -1, timer = 0, btn = null, noteT = 0, alive = true;
   const music = createMusic();
-  // all voices of the site language, best first: natural / network / female-sounding voices before robotic local ones
-  const FEMALE = /female|woman|samantha|karen|moira|serena|tessa|ava|allison|susan|zira|aria|jenny|libby|hazel|sonia|amelie|am[eé]lie|marie|audrey|anna|helena|petra|joana|maria|luciana|alice|elsa|federica|paola|paulina|monica|m[oó]nica|laura|helga|katja|amala|conchita|lucia|elvira|salma|zariyah|laila|ting|mei|tian|xiao|hui|yao|huihui|yunxi|x-(?:iob|iog|tpc|tpf|sfg|gba|gbc|gbg|frc|fra|dea|dec|ita|itb|esa|esc|ptb|ptc|cmn-cn-ccc)/i;
-  const MALE = /\bmale\b|daniel|alex|fred|david|mark|james|george|thomas|diego|jorge|luca|paul|stefan|hans|maged|tarik|yunyang|kangkang|x-(?:iol|iom|tpd|gbb|gbd|frb|frd|ded|deb|itc|itd|esd|ptd)/i;
-  const voiceList = () => {
-    const base = (LANG[I.lang] || "en-US").slice(0, 2).toLowerCase(), want = (LANG[I.lang] || "en-US").toLowerCase();
-    const sc = (v) => { const l = v.lang.toLowerCase().replace("_", "-"), n = v.name + " " + (v.voiceURI || "");
-      return (l === want ? 3 : 0) + (/natural|neural|premium|enhanced|siri|online/i.test(n) ? 6 : 0) + (/google/i.test(n) ? 2 : 0) + (v.localService ? 0 : 2) + (/network/i.test(n) ? 3 : 0)
-        + (MALE.test(n) ? -8 : FEMALE.test(n) ? 5 : 0) - (/compact|espeak|robot/i.test(n) ? 6 : 0); };
-    return (synth.getVoices() || []).filter((v) => v.lang.toLowerCase().replace("_", "-").startsWith(base)).sort((x, y) => sc(y) - sc(x));
-  };
-  const saveKey = () => "laniko-voice-" + I.lang;
-  const pickVoice = () => {
-    const vs = voiceList(); let saved = ""; try { saved = localStorage.getItem(saveKey()) || ""; } catch {}
-    return vs.find((v) => v.voiceURI === saved || v.name === saved) || vs[0] || null;
-  };
-  // the name must be said as one word, never spelled out: "Laniko" (title case), or the local script
-  const NAME = { ar: "لانيكو", zh: "拉尼科" };
-  const speakable = (t) => t.replace(/laniko/gi, NAME[I.lang] || "Laniko").replace(/[—–]/g, ", ").replace(/\s+/g, " ").trim();
-  const sceneText = (sc) => speakable([...sc.querySelectorAll(".st-tag, .st-text, .st-line")].map((n) => n.textContent.trim()).filter(Boolean).join(I.lang === "zh" ? "" : " "));
-  // ---- the natural voice (Cloudflare Workers AI, through /api/narrate); the phone's own voice is only the fallback ----
-  const NEURAL = ["en", "de", "fr", "pt", "it", "es", "ar", "zh"];                  // the server decides which languages have a narrator (it answers 400/501 if not)
+  const sceneIds = (i) => { const id = scenes[i].dataset.id; return id === "hero" ? ["abTag"] : id === "end" ? ["abEnd1", "abEnd2"] : [SCENES[+id.slice(1)].key]; };
   const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
   const player = new Audio(); player.preload = "auto"; try { player.preservesPitch = true; } catch {}
-  let mode = NEURAL.includes(I.lang) ? null : "phone";                         // decided once per visit: the same narrator reads every scene ("ai"), or, if there is none, the phone's voice does ("phone")
-  const sceneIds = (i) => { const id = scenes[i].dataset.id; return id === "hero" ? ["abTag"] : id === "end" ? ["abEnd1", "abEnd2"] : [SCENES[+id.slice(1)].key]; };
   // every recording starts with a little breath before the first word: find where the voice really begins and start there
   const onset = async (blob) => {
     try {
@@ -165,35 +142,21 @@ export function mountStory(ctx, el) {
   const resumeOnTouch = () => { if (blocked && voiceOn && player.src) { blocked = false; player.play().catch(() => { blocked = true; }); } };
   document.addEventListener("touchend", resumeOnTouch, { passive: true }); document.addEventListener("pointerup", resumeOnTouch, { passive: true });
   const hush = () => { try { player.pause(); player.currentTime = 0; } catch {} };
-  const sayBrowser = (i) => {
-    if (!synth) return;
-    synth.cancel();
-    const txt = sceneText(scenes[i]); if (!txt) return;
-    setTimeout(() => {                                                       // Chrome and Brave skip a speak() that comes right after a cancel()
-      if (!voiceOn || spoken !== i) return;
-      const v = pickVoice();
-      (txt.match(/[^.!?。！？؟]+[.!?。！？؟]*/g) || [txt]).forEach((part) => {     // every sentence is queued at once: the browser reads them one after the other (waiting for "onend" stalls on some phones)
-        const u = new SpeechSynthesisUtterance(part.trim());
-        u.lang = (v && v.lang) || LANG[I.lang] || "en-US"; if (v) u.voice = v;
-        u.rate = I.lang === "zh" ? .85 : .84; u.pitch = 1.02; u.volume = .9;
-        u.onerror = (e) => { if (e.error && e.error !== "canceled" && e.error !== "interrupted") fail(); };
-        synth.speak(u);
-      });
-    }, 90);
-  };
+  const label = (txt) => { btn.querySelector(".st-voice-t").textContent = txt; };
+  const note = (txt) => { label(txt); btn.classList.add("note"); clearTimeout(noteT); noteT = setTimeout(() => { btn.classList.remove("note"); label(I.t(voiceOn ? "abStop" : "abListen")); }, 3200); };
+  const off = () => { voiceOn = false; spoken = -1; hush(); music.stop(); btn.classList.remove("on"); btn.setAttribute("aria-pressed", "false"); label(I.t("abListen")); };
   const say = (i) => {
     if (!voiceOn || i === spoken) return;
-    spoken = i; hush(); if (synth) synth.cancel();
-    if (mode === "phone") return sayBrowser(i);
+    spoken = i; hush();
     const go = (tries) => clip(i).then(({ url, start }) => {
       if (!voiceOn || spoken !== i) return;
-      mode = "ai"; player.src = url; player.onloadedmetadata = () => { try { player.currentTime = start; } catch {} }; player.playbackRate = .94; player.volume = .85; blocked = false;
+      player.src = url; player.onloadedmetadata = () => { try { player.currentTime = start; } catch {} }; player.playbackRate = .94; player.volume = .85; blocked = false;
       player.play().catch(() => { blocked = true; });                                 // if the browser refuses, the next touch starts it
       for (const j of [i + 1, i + 2]) if (j < scenes.length) clip(j).catch(() => {});      // fetch the next recordings while this one plays
     }).catch((e) => {
       if (!voiceOn || spoken !== i) return;
-      if (mode === null && (tries >= 1 || [400, 403, 404, 501].includes(e && e.status))) { mode = "phone"; return sayBrowser(i); }         // no narrator at all: the phone reads, the same way from the first scene on
-      if (tries < 8) setTimeout(() => { if (voiceOn && spoken === i) go(tries + 1); }, 1500 + tries * 500);   // a hiccup: try again, but never swap voices in the middle of the story
+      if ([400, 403, 404, 501].includes(e && e.status)) { off(); return note(I.t("abNoVoice")); }   // the server has no narrator for this language
+      if (tries < 8) setTimeout(() => { if (voiceOn && spoken === i) go(tries + 1); }, 1500 + tries * 500);   // a hiccup: try again
     });
     go(0);
   };
@@ -202,32 +165,24 @@ export function mountStory(ctx, el) {
     scenes.forEach((s, i) => { const r = s.getBoundingClientRect(), v = Math.min(r.bottom, h) - Math.max(r.top, 0); if (v > bv) { bv = v; best = i; } });
     return best;
   };
-  const label = (txt) => { btn.querySelector(".st-voice-t").textContent = txt; };
-  const note = (txt) => { label(txt); btn.classList.add("note"); clearTimeout(noteT); noteT = setTimeout(() => { btn.classList.remove("note"); label(I.t(voiceOn ? "abStop" : "abListen")); }, 3200); };
-  const fail = () => { voiceOn = false; btn.classList.remove("on"); btn.setAttribute("aria-pressed", "false"); note(I.t("abNoVoice")); };
   const toggle = () => {
-    if (!synth && !NEURAL.includes(I.lang)) return fail();
-    voiceOn = !voiceOn; spoken = -1; clearTimeout(timer);
-    btn.classList.toggle("on", voiceOn); btn.setAttribute("aria-pressed", String(voiceOn)); label(I.t(voiceOn ? "abStop" : "abListen"));
-    if (voiceOn) {
-      musicOn = true; music.level(.4); music.start();                                // the story and its quiet music begin together
-      try { player.src = SILENT; player.play().catch(() => {}); } catch {}         // the tap unlocks the audio player for the rest of the visit
-      try { synth && synth.resume(); } catch {} say(current());
-    } else { hush(); if (synth) synth.cancel(); musicOn = false; music.stop(); }    // the tap itself is what lets the browser start the voice
+    if (voiceOn) { off(); return; }
+    voiceOn = true; spoken = -1; clearTimeout(timer);
+    btn.classList.add("on"); btn.setAttribute("aria-pressed", "true"); label(I.t("abStop"));
+    music.level(.4); music.start();                                          // the story and its quiet music begin together
+    try { player.src = SILENT; player.play().catch(() => {}); } catch {}      // the tap unlocks the audio player for the rest of the visit
+    say(current());
   };
-  if (synth || NEURAL.includes(I.lang)) {
+  // does this language have a realistic narrator? (the server knows which voices it has)
+  fetch("/api/narrate?lang=" + encodeURIComponent(I.lang)).then((r) => r.ok ? r.json() : { voice: false }).catch(() => ({ voice: false })).then((j) => {
+    if (!alive || !j.voice) return;
     btn = document.createElement("button");
     btn.type = "button"; btn.className = "st-voice"; btn.setAttribute("aria-pressed", "false"); btn.setAttribute("aria-label", I.t("abListen"));
     btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/><path class="w1" d="M15 9.2a4 4 0 0 1 0 5.6"/><path class="w2" d="M17.4 6.8a7.4 7.4 0 0 1 0 10.4"/></svg><span class="st-voice-t"></span>';
     label(I.t("abListen")); btn.addEventListener("click", toggle); el.appendChild(btn);
-    if (synth) synth.getVoices();                                           // some browsers only fill the voice list after the first call
-  }
-  const onSpeechScroll = () => {
-    if (!voiceOn) return;
-    clearTimeout(timer);
-    timer = setTimeout(() => { const i = current(); if (i !== lastScene) { lastScene = i; } say(i); }, 380);     // new scene: a soft celesta chime, then the voice
-  };
-  const onHide = () => { if (document.hidden) { hush(); if (synth) synth.cancel(); spoken = -1; music.pause(); } else music.resume(); };
+  });
+  const onSpeechScroll = () => { if (!voiceOn) return; clearTimeout(timer); timer = setTimeout(() => say(current()), 380); };
+  const onHide = () => { if (document.hidden) { hush(); spoken = -1; music.pause(); } else music.resume(); };
   window.addEventListener("scroll", onSpeechScroll, { passive: true });
   document.addEventListener("visibilitychange", onHide);
 
@@ -243,5 +198,5 @@ export function mountStory(ctx, el) {
   const onScroll = () => { if (!raf) raf = requestAnimationFrame(upd); };
   window.addEventListener("scroll", onScroll, { passive: true });
   upd();
-  stop = () => { voiceOn = false; hush(); music.dispose(); clearTimeout(timer); clearTimeout(noteT); if (synth) synth.cancel(); window.removeEventListener("scroll", onSpeechScroll); document.removeEventListener("visibilitychange", onHide); document.removeEventListener("touchend", resumeOnTouch); document.removeEventListener("pointerup", resumeOnTouch); io.disconnect(); window.removeEventListener("scroll", onScroll); if (raf) cancelAnimationFrame(raf); el.innerHTML = ""; };
+  stop = () => { alive = false; voiceOn = false; hush(); music.dispose(); clearTimeout(timer); clearTimeout(noteT); window.removeEventListener("scroll", onSpeechScroll); document.removeEventListener("visibilitychange", onHide); document.removeEventListener("touchend", resumeOnTouch); document.removeEventListener("pointerup", resumeOnTouch); io.disconnect(); window.removeEventListener("scroll", onScroll); if (raf) cancelAnimationFrame(raf); el.innerHTML = ""; };
 }

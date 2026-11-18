@@ -2,9 +2,8 @@
 // A natural neural voice reads the "About us" story.
 //  1. Best: OpenAI "gpt-4o-mini-tts", ONE soft storyteller voice for all 8 languages. It needs the secret OPENAI_API_KEY
 //     (Cloudflare Pages > laniko > Settings > Variables and Secrets, type Secret).
-//  2. Otherwise Cloudflare Workers AI (binding named AI): Deepgram Aura-2 for English and Spanish, MeloTTS for French and
-//     Chinese (Cloudflare retires MeloTTS on 2026-11-20).
-//  3. Otherwise this answers 501/400 and the page falls back to the phone's own voice.
+//  2. Otherwise Cloudflare Workers AI (binding named AI): Deepgram Aura-2 for English and Spanish only (no other realistic voice there).
+//  3. Languages without a realistic voice get no Listen button: GET /api/narrate?lang=xx tells the page whether one exists.
 //
 // Only the story's own sentences can be read: the browser sends the text KEYS (ab1, abTag ...), and the sentences are
 // looked up here in i18n-about.js. Every finished recording is stored at the edge for a year, so each sentence is
@@ -16,7 +15,6 @@ const MOOD = { abTag: "a soft, hushed opening, like the first line of a fairytal
   ab4: "gentle and emotional, slightly breathy", ab5: "calm and grounded, proud but soft", ab6: "curious and a little playful, then gentle", ab7: "soft and quietly defiant, with a small smile in the voice",
   ab8: "deeply moved, touched and tender", ab9: "soft and precise, almost reverent", ab10: "calm and certain", ab11: "dreamy and wistful, full of wonder", ab12: "warm and proud, confident but gentle",
   ab13: "hushed and mysterious, like sharing a secret", abEnd1: "radiant and uplifting, a soft smile in the voice", abEnd2: "tender and final, a warm, lingering close" };
-const MELO = { fr: "fr", zh: "zh" };                                                       // MeloTTS (French, Chinese)
 const ALL = ["en", "de", "fr", "pt", "it", "es", "ar", "zh"], LANG_NAME = { en: "English", de: "German", fr: "French", pt: "European Portuguese", it: "Italian", es: "Spanish (neutral Latin-American/Spain)", ar: "Modern Standard Arabic", zh: "Mandarin Chinese" };
 const OPENAI_VOICE = "shimmer";                                                           // OpenAI's soft, light, higher female voice
 const KEY_OK = /^ab(?:\d{1,2}|Tag|End1|End2)$/;
@@ -46,6 +44,12 @@ async function toBytes(out) {
   throw new Error("unexpected audio output");
 }
 
+const supported = (env) => env.OPENAI_API_KEY ? ALL : env.AI ? ["en", "es"] : [];
+export async function onRequestGet({ request, env }) {
+  const lang = new URL(request.url).searchParams.get("lang");
+  return new Response(JSON.stringify({ voice: supported(env).includes(lang) }), { headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
+}
+
 export async function onRequestPost({ request, env, waitUntil }) {
   if (!env.AI && !env.OPENAI_API_KEY) return err(501, "not configured");
   const origin = new URL(request.url).origin, from = request.headers.get("Origin");
@@ -54,7 +58,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
   let lang, ids;
   try { ({ lang, ids } = await request.json()); } catch { return err(400, "bad request"); }
   const hasOpenAI = !!env.OPENAI_API_KEY;
-  if (!(hasOpenAI ? ALL : ["en", "es", "fr", "zh"]).includes(lang) || !Array.isArray(ids) || !ids.length || ids.length > 3 || !ids.every((k) => KEY_OK.test(k))) return err(400, "bad request");
+  if (!supported(env).includes(lang) || !Array.isArray(ids) || !ids.length || ids.length > 3 || !ids.every((k) => KEY_OK.test(k))) return err(400, "bad request");
   const voice = hasOpenAI ? OPENAI_VOICE : VOICE[lang] || "default";
 
   const cache = typeof caches !== "undefined" ? caches.default : null;
@@ -80,18 +84,13 @@ export async function onRequestPost({ request, env, waitUntil }) {
         }),
       });
       if (r.ok) bytes = new Uint8Array(await r.arrayBuffer());
-      else if (r.status === 401 || r.status === 403) { if (!env.AI || !["en", "es", "fr", "zh"].includes(lang)) return err(501, "voice key rejected"); usedAI = true; fallback = true; }    // bad key: use Cloudflare's voices instead (and do not store them under the OpenAI voice)
+      else if (r.status === 401 || r.status === 403) { if (!env.AI || !["en", "es"].includes(lang)) return err(501, "voice key rejected"); usedAI = true; fallback = true; }    // bad key: use Cloudflare's voices instead (and do not store them under the OpenAI voice)
       else return err(502, "voice failed");
     } catch { return err(502, "voice failed"); }
   }
   if (!bytes && usedAI) try {
-    if (lang === "en" || lang === "es") {
-      const run = (extra) => env.AI.run(lang === "en" ? "@cf/deepgram/aura-2-en" : "@cf/deepgram/aura-2-es", { text, encoding: "mp3", ...extra });
-      const aura = VOICE[lang];
-      try { bytes = await toBytes(await run({ speaker: aura })); } catch { bytes = await toBytes(await run({})); }       // unknown speaker name: use the model's default
-    } else {
-      bytes = await toBytes(await env.AI.run("@cf/myshell-ai/melotts", { prompt: text, lang: MELO[lang] }));
-    }
+    const run = (extra) => env.AI.run(lang === "en" ? "@cf/deepgram/aura-2-en" : "@cf/deepgram/aura-2-es", { text, encoding: "mp3", ...extra });
+    try { bytes = await toBytes(await run({ speaker: VOICE[lang] })); } catch { bytes = await toBytes(await run({})); }       // unknown speaker name: use the model's default
   } catch (e) { return err(502, "voice failed: " + String((e && e.message) || e).slice(0, 200)); }
 
   const wav = bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46;            // MeloTTS answers with WAV, Aura with MP3
