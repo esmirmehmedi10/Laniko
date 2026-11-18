@@ -608,10 +608,65 @@
     const logo = '<img class="gate-logo" src="/logo.svg" alt="Laniko" width="30" height="74">';
     const closeBtn = () => `<button class="gate-x" aria-label="${esc(t("closeLang"))}">✕</button>`;
     const langList = () => `<div class="gate-list">${I.LANGS.map((l, i) => `<button class="gate-btn${step === "both" && l.code === I.lang ? " on" : ""}" data-lang="${l.code}" lang="${l.code}" dir="${l.dir}" style="--i:${i}">${esc(l.name)}</button>`).join("")}</div>`;
-    const ctryBlock = () => {
-      const sel = country || (step === "both" ? "" : guessCountry());
-      return `<div class="gate-list ctry-list">${[...COUNTRIES, "other"].map((c, i) =>
-        `<button class="gate-btn ctry${c === sel ? " on" : ""}" data-country="${c}"${SHIP_TO.includes(c) ? " data-ship" : ""} style="--i:${Math.min(i, 10)}">${esc(countryName(c))}</button>`).join("")}</div>`;
+    const ctryBlock = () => `<div class="ctry-combo"><div class="ctry-bar">
+      <input class="ctry-input" type="text" role="combobox" aria-expanded="false" aria-controls="ctry-lb" aria-autocomplete="list" autocomplete="off" autocapitalize="off" spellcheck="false"
+        placeholder="${esc(t("ctryPh"))}" aria-label="${esc(t("ctryTitle"))}" value="${esc(country ? countryName(country) : "")}">
+      <button class="ctry-arrow" type="button" tabindex="-1" aria-label="${esc(t("ctryTitle"))}"></button></div>
+      <ul id="ctry-lb" class="ctry-lb" role="listbox" hidden></ul>
+    </div>`;
+    // the country bar: tap it to see the list, or type the first letters and the matching countries appear
+    const norm = (x) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    let enNames = null;
+    try { enNames = new Intl.DisplayNames(["en"], { type: "region" }); } catch {}
+    const enName = (c) => { try { return enNames ? enNames.of(c) || "" : ""; } catch { return ""; } };
+    const countryMatches = (q) => {
+      const all = [...COUNTRIES, "other"], nq = norm(q);
+      if (!nq) return all;
+      const pre = [], mid = [];
+      for (const c of all) {
+        const a = norm(countryName(c)), b = c === "other" ? "" : norm(enName(c));
+        if (a.startsWith(nq) || b.startsWith(nq)) pre.push(c); else if (a.includes(nq) || b.includes(nq)) mid.push(c);
+      }
+      return [...pre, ...mid];
+    };
+    let closeList = () => {};
+    const wireCombo = () => {
+      const input = gate.querySelector(".ctry-input"), ul = gate.querySelector(".ctry-lb"), arrow = gate.querySelector(".ctry-arrow");
+      if (!input) return;
+      let items = [], act = 0, open = false;
+      const paint = () => {
+        ul.innerHTML = items.length
+          ? items.map((c, k) => `<li role="option" id="co-${c}" data-country="${c}"${SHIP_TO.includes(c) ? " data-ship" : ""} class="${k === act ? "hl" : ""}${c === country ? " on" : ""}" aria-selected="${c === country}">${esc(countryName(c))}</li>`).join("")
+          : `<li class="none">${esc(t("ctryNone"))}</li>`;
+        const cur = ul.querySelector(".hl");
+        if (cur) { input.setAttribute("aria-activedescendant", cur.id); cur.scrollIntoView({ block: "nearest" }); } else input.removeAttribute("aria-activedescendant");
+      };
+      const show = (query) => {
+        items = countryMatches(query); act = 0;
+        open = true; ul.hidden = false; input.setAttribute("aria-expanded", "true"); paint();
+      };
+      closeList = () => { open = false; ul.hidden = true; input.setAttribute("aria-expanded", "false"); };
+      const choose = (c) => {
+        setCountry(c);
+        input.value = countryName(c);
+        closeList();
+        if (step !== "both") finish();
+      };
+      input.addEventListener("focus", () => { input.select(); show(""); setTimeout(() => ul.scrollIntoView({ block: "nearest" }), 250); });
+      input.addEventListener("click", () => { if (!open) show(""); });
+      input.addEventListener("input", () => show(input.value));
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+          e.preventDefault();
+          if (!open) show(input.value === (country ? countryName(country) : "") ? "" : input.value);
+          else { act = (act + (e.key === "ArrowDown" ? 1 : -1) + items.length) % Math.max(1, items.length); paint(); }
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          if (open && items[act]) choose(items[act]);
+        } else if (e.key === "Escape" && open) { e.stopPropagation(); closeList(); input.value = country ? countryName(country) : ""; }
+      });
+      arrow.addEventListener("click", () => { if (open) closeList(); else { input.focus(); show(""); } });
+      ul.addEventListener("click", (e) => { const li = e.target.closest("li[data-country]"); if (li) choose(li.dataset.country); });
     };
     const render = () => {
       clearInterval(timer);
@@ -633,7 +688,8 @@
           }, 380);
         }, 1900);
       }
-      const target = gate.querySelector(".on") || gate.querySelector(".gate-btn");
+      wireCombo();
+      const target = gate.querySelector(".gate-btn.on") || (step === "country" ? null : gate.querySelector(".gate-btn"));
       if (target) target.focus({ preventScroll: true });
     };
     const finish = () => {
@@ -642,16 +698,14 @@
       if (promoAfter) productsReady.then(() => setTimeout(showPromo, 650));
     };
     gate.addEventListener("click", (e) => {
+      if (e.target.closest(".ctry-combo")) return;               // the country bar handles its own clicks
+      closeList();
       const b = e.target.closest("button");
       if (!b) return;
       if (b.dataset.lang) {
         I.setLang(b.dataset.lang);
         if (step === "lang") { if (country) finish(); else { step = "country"; render(); } }
         else render();                                           // the window itself switches to the new language
-      } else if (b.dataset.country) {
-        setCountry(b.dataset.country);
-        if (step === "both") gate.querySelectorAll(".ctry").forEach((x) => x.classList.toggle("on", x === b));
-        else finish();
       } else { clearInterval(timer); closeGate(); }
     });
     render();

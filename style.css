@@ -744,3 +744,21 @@ html[data-theme="dark"] .ctry-warn { color: #e0a0a0; }
 /* the logo on the welcome screen is the vector file (sharp at any size), one copy per door so it splits with them */
 .wl-logo { position: absolute; left: 50%; top: 46%; height: min(56svh, 560px); width: auto; aspect-ratio: 631 / 1595; transform: translate(-50%, -50%); overflow: visible;
   filter: drop-shadow(0 0 16px rgba(255, 214, 130, .22)) drop-shadow(0 3px 4px rgba(0, 0, 0, .55)); }
+
+/* country bar: tap to open the list, or type the first letters */
+.ctry-combo { position: relative; width: min(100%, 340px); text-align: start; animation: rise .8s cubic-bezier(.2, .7, .2, 1) .45s both; }
+.ctry-input { width: 100%; padding: 15px 44px 15px 16px; border-radius: 10px; border: 1px solid rgba(217, 185, 106, .75); background: rgba(255, 255, 255, .05); color: #f1e6cc; font: inherit; font-size: 1.05rem; letter-spacing: .03em; }
+html[dir="rtl"] .ctry-input { padding: 15px 16px 15px 44px; }
+.ctry-input::placeholder { color: rgba(241, 230, 204, .55); }
+.ctry-input:focus { outline: none; border-color: #d9b96a; background: rgba(217, 185, 106, .1); }
+.ctry-bar { position: relative; }
+.ctry-arrow { position: absolute; top: 0; bottom: 0; inset-inline-end: 0; width: 44px; padding: 0; background: none; border: 0; cursor: pointer; }
+.ctry-arrow::before { content: ""; position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; margin: -6px 0 0 -4px; border-right: 1.5px solid #d9b96a; border-bottom: 1.5px solid #d9b96a; transform: rotate(45deg); }
+.ctry-input[aria-expanded="true"] ~ .ctry-arrow::before { transform: rotate(225deg); margin-top: -2px; }
+.ctry-lb { margin: 6px 0 0; padding: 4px; list-style: none; max-height: min(46svh, 320px); overflow: auto; border: 1px solid rgba(217, 185, 106, .5); border-radius: 10px; background: rgba(20, 15, 9, .97); }
+.ctry-lb li { padding: 12px 12px; border-radius: 7px; font-size: 1.02rem; color: #f1e6cc; cursor: pointer; }
+.ctry-lb li[data-ship]::after { content: ""; display: inline-block; width: 6px; height: 6px; margin-inline-start: 8px; border-radius: 50%; background: #d9b96a; vertical-align: middle; }
+.ctry-lb li.hl, .ctry-lb li:hover { background: rgba(217, 185, 106, .18); }
+.ctry-lb li.on { color: #e8c97a; font-weight: 600; }
+.ctry-lb li.none { color: rgba(241, 230, 204, .6); cursor: default; }
+.ctry-lb li.none:hover { background: none; }
