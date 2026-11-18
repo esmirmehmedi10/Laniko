@@ -771,6 +771,9 @@
   } catch {}
 
   // ---- welcome: every visit starts with the golden doors; a tap opens them. Tilting the phone (or moving the mouse) moves the light. ----
+  // the doors do not cut through the logo: they part along its right-hand outline, so the logo stays whole on the left door.
+  // points are (x, y) as fractions of the logo's width and height (computed from the logo's real shape plus a safety margin)
+  const DOOR_CUT = [[0.6437, -0.15], [0.6437, 0.1141], [0.9525, 0.4019], [0.972, 0.4301], [0.9984, 0.4451], [0.9984, 0.4583], [0.9889, 0.4658], [0.7994, 0.5448], [0.7851, 0.5542], [0.7989, 0.5636], [0.9968, 0.6483], [0.9984, 0.6953], [0.8717, 0.7423], [0.858, 0.7498], [0.8906, 0.7875], [0.9065, 0.8213], [0.9065, 0.8495], [0.8986, 0.8721], [0.8605, 0.9154], [0.8225, 0.9398], [0.7876, 0.9567], [0.6917, 0.9925], [0.6764, 1.0013], [0.496, 1.0671]];
   function showWelcome(onEnter) {
     return new Promise((resolve) => {
       window.__lanikoReady = true;
@@ -812,6 +815,17 @@
         if (opened) return; opened = true;
         try { sessionStorage.setItem("laniko-welcome", "1"); } catch {}
         clearInterval(cyc);
+        el.removeEventListener("pointermove", onMove);
+        if (tiltOn) window.removeEventListener("deviceorientation", onTilt);
+        if (raf) { cancelAnimationFrame(raf); raf = 0; }
+        // measure the logo where it is right now and cut the two doors along its outline
+        const lr = el.querySelector(".wl-logo").getBoundingClientRect(), Wd = el.clientWidth, Hd = el.clientHeight;
+        const mid = DOOR_CUT.slice(1).map(([u, v]) => [lr.left + u * lr.width, lr.top + v * lr.height]);
+        const line = [[lr.left + DOOR_CUT[0][0] * lr.width, 0], ...mid, [mid[mid.length - 1][0], Hd]];
+        const pts = line.map((p) => p[0].toFixed(1) + "px " + p[1].toFixed(1) + "px").join(", ");
+        el.querySelector(".wl-l").style.clipPath = `polygon(0px 0px, ${pts}, 0px ${Hd}px)`;
+        el.querySelector(".wl-r").style.clipPath = `polygon(${pts}, ${Wd}px ${Hd}px, ${Wd}px 0px)`;
+        el.insertAdjacentHTML("beforeend", `<svg class="wl-edge" width="${Wd}" height="${Hd}" viewBox="0 0 ${Wd} ${Hd}" aria-hidden="true"><polyline pathLength="1" points="${line.map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ")}"/></svg>`);
         el.classList.add("open");
         onEnter();                                             // the first-visit window appears right behind the opening doors
         setTimeout(() => {
