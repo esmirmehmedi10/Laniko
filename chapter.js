@@ -83,17 +83,35 @@ export function openChapter(ctx, p, { onClose } = {}) {
   dots.innerHTML = secs.map((_, i) => `<i data-i="${i}"></i>`).join("");
   const setDot = (i) => dots.querySelectorAll("i").forEach((d, k) => d.classList.toggle("on", k === i));
   setDot(0);
-  const io = new IntersectionObserver((es) => es.forEach((e) => {
-    if (e.isIntersecting && e.intersectionRatio >= 0.45) { e.target.classList.add("in"); setDot(secs.indexOf(e.target)); }
-  }), { root: sc, threshold: [0.2, 0.45, 0.7] });
+  const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) e.target.classList.add("in"); }), { root: sc, threshold: [0.12] });   // a page starts to appear as soon as it peeks in
   secs.forEach((s) => io.observe(s));
   requestAnimationFrame(() => secs[0].classList.add("in"));
+  // pages glide into one another: while scrolling, each page fades, drifts and shrinks a little as it leaves the middle of the screen
+  const still = reduced();
+  let raf = 0, cur = -1;
+  const glide = () => {
+    raf = 0;
+    const h = sc.clientHeight || 1, mid = sc.scrollTop + h / 2; let best = 0, bd = 1e9;
+    secs.forEach((s, i) => {
+      const d = (s.offsetTop + s.offsetHeight / 2 - mid) / h, a = Math.abs(d);                 // 0 = centred, 1 = one screen away
+      if (a < bd) { bd = a; best = i; }
+      if (still) return;
+      const k = Math.min(1, a * 1.15), e = k * k * (3 - 2 * k);                               // eased
+      s.style.opacity = String(1 - e * 0.95);
+      s.style.transform = `translate3d(0, ${(d * -26).toFixed(1)}px, 0) scale(${(1 - e * 0.05).toFixed(3)})`;
+    });
+    if (best !== cur) { cur = best; setDot(best); }
+  };
+  const onScroll = () => { if (!raf) raf = requestAnimationFrame(glide); };
+  sc.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll);
+  glide();
 
   let closed = false;
   const close = () => {
     if (closed) return; closed = true;
     document.removeEventListener("keydown", onKey);
-    io.disconnect();
+    io.disconnect(); sc.removeEventListener("scroll", onScroll); window.removeEventListener("resize", onScroll); if (raf) cancelAnimationFrame(raf);
     el.classList.add("out"); setTimeout(() => el.remove(), 380);
     ctx.updateLock(); if (onClose) onClose();
   };

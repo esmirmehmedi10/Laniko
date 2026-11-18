@@ -819,9 +819,9 @@ html:not([data-theme="dark"]) .st-voice:not(.on) { background: rgba(255, 252, 24
 .ch-dots i { position: relative; width: 5px; height: 5px; border-radius: 50%; border: 1px solid rgba(217,185,106,.6); transition: background .4s, transform .4s; cursor: pointer; }
 .ch-dots i::after { content: ""; position: absolute; inset: -8px; }
 .ch-dots i.on { background: #d9b96a; transform: scale(1.5); }
-.ch-scroll { position: absolute; inset: 0; overflow-y: auto; scroll-snap-type: y proximity; overscroll-behavior: contain; scrollbar-width: none; }
+.ch-scroll { position: absolute; inset: 0; overflow-y: auto; scroll-snap-type: y mandatory; overscroll-behavior: contain; scrollbar-width: none; scroll-behavior: smooth; }
 .ch-scroll::-webkit-scrollbar { display: none; }
-.ch-s { position: relative; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 84px 34px; scroll-snap-align: center; }
+.ch-s { position: relative; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 84px 34px; scroll-snap-align: center; scroll-snap-stop: always; will-change: opacity, transform; }
 .rv { opacity: 0; transform: translateY(18px); transition: opacity 1.2s ease var(--d, 0s), transform 1.2s cubic-bezier(.2,.7,.2,1) var(--d, 0s); }
 .in .rv { opacity: 1; transform: none; }
 .ch-kick { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: .68rem; letter-spacing: .38em; text-transform: uppercase; color: #d9b96a; }
