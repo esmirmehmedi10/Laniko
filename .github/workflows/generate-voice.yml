@@ -1,0 +1,62 @@
+name: Generate narrator voice files
+
+# Records the About-us story once per language with the site's narrator (/api/narrate), stores the mp3 files in the
+# repo under voice/<lang>/ and deploys. After that, listening costs nothing and every visitor hears the same recording.
+# It runs when .github/voice-jobs.txt changes (one language code per line) or by hand.
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/voice-jobs.txt']
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Record the story
+        run: |
+          set -u
+          fails=0
+          for lang in $(grep -v '^#' .github/voice-jobs.txt | tr -s ' \n' ' '); do
+            mkdir -p "voice/$lang"
+            for set in abTag ab1 ab2 ab3 ab4 ab5 ab6 ab7 ab8 ab9 ab10 ab11 ab12 ab13 "abEnd1 abEnd2"; do
+              name="${set// /-}"
+              ids=$(printf '%s\n' $set | jq -R . | jq -sc .)
+              ok=0
+              for try in 1 2 3 4; do
+                code=$(curl -sS -m 90 -o part.bin -w "%{http_code} %{content_type}" -X POST -H "content-type: application/json" -d "{\"lang\":\"$lang\",\"ids\":$ids}" https://laniko.pages.dev/api/narrate || echo "000 -")
+                size=$(stat -c %s part.bin)
+                if [[ "$code" == 200\ audio/* && "$size" -gt 3000 ]]; then ok=1; break; fi
+                echo "  retry $lang/$name ($code, ${size}B): $(head -c 200 part.bin | tr -d '\n')"; sleep 4
+              done
+              if [ "$ok" = 1 ]; then mv part.bin "voice/$lang/$name.mp3"; echo "ok   $lang/$name (${size}B)"; else fails=$((fails+1)); echo "FAIL $lang/$name"; fi
+            done
+          done
+          echo "failures: $fails"
+
+      - name: Store the recordings
+        run: |
+          git config user.name "laniko-voice"; git config user.email "voice@users.noreply.github.com"
+          git add voice
+          git diff --cached --quiet && { echo "nothing new"; exit 0; }
+          git commit -m "Narrator recordings (generated once, stored with the site)"
+          git pull --rebase origin main && git push origin HEAD:main
+
+      - name: Collect static files
+        run: |
+          mkdir dist
+          cp index.html success.html style.css pattern.svg i18n.js i18n-extra.js i18n-more.js i18n-about.js about.js music.js app.js features.js extras.js ar.js sound.js detail-anim.js viewer.js products.json logo.svg favicon.svg dist/
+          [ -d images ] && cp -r images dist/images || true
+          [ -d models ] && cp -r models dist/models || true
+          [ -d voice ] && cp -r voice dist/voice || true
+
+      - name: Deploy (static files + functions/)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=laniko --branch=main

@@ -19,6 +19,7 @@ jobs:
           cp index.html success.html style.css pattern.svg i18n.js i18n-extra.js i18n-more.js i18n-about.js about.js music.js app.js features.js extras.js ar.js sound.js detail-anim.js viewer.js products.json logo.svg favicon.svg dist/
           [ -d images ] && cp -r images dist/images || true
           [ -d models ] && cp -r models dist/models || true
+          [ -d voice ] && cp -r voice dist/voice || true
 
       - name: Create Pages project (first run only)
         uses: cloudflare/wrangler-action@v3

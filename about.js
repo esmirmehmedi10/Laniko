@@ -124,11 +124,14 @@ export function mountStory(ctx, el) {
       return t > 0.12 && t < 1.4 ? t : 0;
     } catch { return 0; }
   };
+  // the recordings are made once and stored with the site (/voice/<lang>/<scene>.mp3): free, instant, and always the same voice
+  const fileOf = (i) => "/voice/" + I.lang + "/" + sceneIds(i).join("-") + ".mp3";
+  const isAudio = (r) => r.ok && /audio/i.test(r.headers.get("content-type") || "");
   const clips = new Map();
   const clip = (i) => {                                                        // the recording of a scene as a blob URL, fetched once
     const k = I.lang + i;
     if (!clips.has(k)) {
-      clips.set(k, fetch("/api/narrate", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ lang: I.lang, ids: sceneIds(i) }) })
+      clips.set(k, fetch(fileOf(i)).then((r) => isAudio(r) ? r : fetch("/api/narrate", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ lang: I.lang, ids: sceneIds(i) }) }))
         .then(async (r) => {
           if (!r.ok) throw Object.assign(new Error("voice " + r.status), { status: r.status });
           const blob = await r.blob();
@@ -160,7 +163,8 @@ export function mountStory(ctx, el) {
     }).catch((e) => {
       if (!voiceOn || spoken !== i) return;
       if ([400, 403, 404, 501].includes(e && e.status)) { off(); return note(I.t("abNoVoice")); }   // the server has no narrator for this language
-      if (tries < 8) setTimeout(() => { if (voiceOn && spoken === i) go(tries + 1); }, 1500 + tries * 500);   // a hiccup: try again
+      if (tries < 6) setTimeout(() => { if (voiceOn && spoken === i) go(tries + 1); }, 1500 + tries * 500);   // a hiccup: try again
+      else { off(); note(I.t("abNoVoice")); }
     });
     go(0);
   };
@@ -178,7 +182,9 @@ export function mountStory(ctx, el) {
     say(current());
   };
   // does this language have a realistic narrator? (the server knows which voices it has)
-  fetch("/api/narrate?lang=" + encodeURIComponent(I.lang)).then((r) => r.ok ? r.json() : { voice: false }).catch(() => ({ voice: false })).then((j) => {
+  const probe = () => fetch("/voice/" + I.lang + "/abTag.mp3", { method: "HEAD" }).then((r) => isAudio(r) ? { voice: true } : Promise.reject())
+    .catch(() => fetch("/api/narrate?lang=" + encodeURIComponent(I.lang)).then((r) => r.ok ? r.json() : { voice: false })).catch(() => ({ voice: false }));
+  probe().then((j) => {
     if (!alive || !j.voice) return;
     btn = document.createElement("button");
     btn.type = "button"; btn.className = "st-voice"; btn.setAttribute("aria-pressed", "false"); btn.setAttribute("aria-label", I.t("abListen"));
