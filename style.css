@@ -640,3 +640,61 @@ html[dir="rtl"] .gift-toggle input:checked + .gift-sw::after { transform: transl
 .ar-scan i { position: absolute; inset: 0; border: 2px solid rgba(217,185,106,.8); border-radius: 50%; animation: arScan 1.8s ease-out infinite; }
 @keyframes arScan { from { transform: scale(.3); opacity: .9; } to { transform: scale(1.1); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .ar-scan i { animation: none; opacity: .6; } }
+
+/* ---- About us: the story (one sentence per scene, each with a line drawing that draws itself) ---- */
+.story { --st: var(--gold); }
+html[data-theme="dark"] .story { --st: #d9b96a; }
+.story[hidden] { display: none; }
+.st-scene { position: relative; min-height: 84svh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 6vh 22px; text-align: center; }
+.st-scene::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 1.6s ease;
+  background: radial-gradient(60% 38% at 50% 40%, color-mix(in srgb, var(--st) 15%, transparent), transparent 72%); }
+.st-scene.in::before { opacity: 1; }
+.st-art { position: relative; margin: 0; width: min(58vw, 250px); aspect-ratio: 1; }
+.st-art svg { width: 100%; height: 100%; overflow: visible; fill: none; stroke: var(--st); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.st-art .thin { stroke-width: 1; }
+.st-art .dim { opacity: .55; }
+.st-art .dimmer { opacity: .3; }
+.st-art .free { stroke-width: 2.4; }
+.st-art .veil { opacity: .5; }
+.st-art .dr { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 1.5s cubic-bezier(.55, .05, .25, 1) calc(var(--i) * .2s); }
+.st-scene.in .dr { stroke-dashoffset: 0; }
+.st-art .fi { fill: var(--st); stroke: none; opacity: 0; transition: opacity 1.1s ease calc(var(--i) * .2s + .3s); }
+.st-scene.in .fi { opacity: .9; }
+/* small ambient movements, only while the scene is on screen */
+.st-art .sw, .st-art .br { transform-box: fill-box; transform-origin: 50% 100%; }
+.st-art .sw { animation: stSway 5s ease-in-out infinite; }
+.st-art .s2 { animation-delay: -1.7s; } .st-art .s3 { animation-delay: -3.1s; }
+.st-art .br { transform-origin: 50% 50%; animation: stBreath 4.5s ease-in-out infinite; }
+.st-art .b2 { animation-delay: -1.5s; } .st-art .b3 { animation-delay: -3s; }
+.st-scene:not(.vis) .sw, .st-scene:not(.vis) .br, .st-scene:not(.vis) .st-cue { animation-play-state: paused; }
+@keyframes stSway { 0%, 100% { transform: translateY(0) rotate(0); opacity: 1; } 50% { transform: translateY(-3px) rotate(3deg); opacity: .72; } }
+@keyframes stBreath { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.045); } }
+.st-text { max-width: 30rem; margin: 0; font-family: var(--serif); font-weight: 500; font-size: clamp(1.35rem, 5.4vw, 1.9rem); line-height: 1.4; color: var(--fg); }
+.st-w { display: inline-block; opacity: 0; transform: translateY(.5em); filter: blur(5px);
+  transition: opacity .8s ease, transform .8s ease, filter .8s ease; transition-delay: calc(.7s + var(--w) * .055s); }
+.st-scene.in .st-w { opacity: 1; transform: none; filter: none; }
+.st-title { margin: 0; font-family: var(--serif); font-weight: 600; font-size: clamp(1.9rem, 8vw, 2.8rem); letter-spacing: .22em; text-transform: uppercase; }
+.st-tag { margin: 0; max-width: 24rem; font-family: var(--serif); font-style: italic; font-size: clamp(1.15rem, 4.6vw, 1.5rem); color: var(--muted); }
+html[lang="ar"] .st-title { letter-spacing: 0; }
+.st-cue { width: 13px; height: 13px; margin-top: 8px; border-right: 1.5px solid var(--st); border-bottom: 1.5px solid var(--st); transform: rotate(45deg); animation: stCue 1.9s ease-in-out infinite; }
+@keyframes stCue { 0%, 100% { transform: translateY(0) rotate(45deg); opacity: .4; } 50% { transform: translateY(7px) rotate(45deg); opacity: 1; } }
+.st-end { font-size: clamp(1.6rem, 6.4vw, 2.3rem); }
+.st-line { display: block; }
+.st-cta { margin-top: 8px; text-decoration: none; }
+.st-bar { position: fixed; left: 0; right: 0; bottom: 0; height: 3px; z-index: 4; pointer-events: none; }
+.st-bar i { display: block; height: 100%; background: var(--st); transform: scaleX(0); transform-origin: 0 50%; }
+html[dir="rtl"] .st-bar i { transform-origin: 100% 50%; }
+@media (prefers-reduced-motion: reduce) {
+  .st-art .dr { stroke-dashoffset: 0; transition: none; }
+  .st-art .fi { opacity: .9; transition: none; }
+  .st-w { opacity: 1; transform: none; filter: none; transition: none; }
+  .st-art .sw, .st-art .br, .st-cue { animation: none; }
+  .st-scene::before { transition: none; }
+}
+#products[hidden], .page-head[hidden], #page-actions[hidden] { display: none; }
+/* four tabs must fit on a phone without being cut off */
+@media (max-width: 480px) {
+  .tabs { padding: 0 4px; gap: 0; justify-content: space-between; }
+  .tabs a { padding: 10px 7px; letter-spacing: .08em; font-size: .72rem; }
+}
+@media (max-width: 380px) { .tabs a { padding: 10px 5px; letter-spacing: .04em; font-size: .68rem; } }

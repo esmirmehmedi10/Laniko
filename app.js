@@ -67,6 +67,7 @@
     "top-sellers": { title: "topTitle", sub: "topSub", list: () => products.filter((p) => p.rank).sort((a, b) => a.rank - b.rank), empty: "emptyTop" },
     "wishlist": { title: "wishTitle", sub: "wishSub", list: () => wish.map(byId).filter(Boolean), empty: "emptyWish" },
     "compare": { title: "cmpTitle", sub: "cmpSub", list: () => products, empty: "emptyPerfumes", custom: true },
+    "about": { title: "abTab", sub: "abTag", story: true },
     "shared": { title: "sharedTitle", sub: "sharedSub", list: () => sharedIds().map(byId).filter(Boolean), empty: "emptyWish" },
   };
   const sharedIds = () => { const m = location.hash.match(/^#\/shared\/([\w,-]+)/); return m ? m[1].split(",").filter(Boolean).slice(0, 12) : []; };
@@ -136,6 +137,16 @@
     });
     $("page-title").textContent = t(cfg.title);
     $("page-sub").textContent = t(cfg.sub);
+    // "About us" is a story, not a product list
+    document.querySelector(".page-head").hidden = !!cfg.story;
+    $("page-actions").hidden = !!cfg.story;
+    $("products").hidden = !!cfg.story;
+    $("story").hidden = !cfg.story;
+    if (cfg.story) {
+      import("/about.js").then((m) => { if (currentRoute() === "about") m.mountStory({ I, esc }, $("story")); });
+      return;
+    }
+    import("/about.js").then((m) => m.unmountStory()).catch(() => {});
     if (!products.length) return;
     pageActions(route);
     if (cfg.custom) { loadFeatures().then((m) => { if (currentRoute() === route) m.renderCompare(featureCtx(), $("products")); }); return; }
