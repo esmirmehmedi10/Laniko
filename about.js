@@ -135,12 +135,27 @@ export function mountStory(ctx, el) {
   const player = new Audio(); player.preload = "auto"; try { player.preservesPitch = true; } catch {}
   let mode = NEURAL.includes(I.lang) ? null : "phone";                         // decided once per visit: the same narrator reads every scene ("ai"), or, if there is none, the phone's voice does ("phone")
   const sceneIds = (i) => { const id = scenes[i].dataset.id; return id === "hero" ? ["abTag"] : id === "end" ? ["abEnd1", "abEnd2"] : [SCENES[+id.slice(1)].key]; };
+  // every recording starts with a little breath before the first word: find where the voice really begins and start there
+  const onset = async (blob) => {
+    try {
+      const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+      const a = await new OC(1, 1, 44100).decodeAudioData(await blob.arrayBuffer()), d = a.getChannelData(0), fr = Math.round(a.sampleRate * 0.01), rms = [];
+      for (let i = 0; i + fr <= Math.min(d.length, a.sampleRate * 3); i += fr) { let q = 0; for (let j = 0; j < fr; j++) q += d[i + j] * d[i + j]; rms.push(Math.sqrt(q / fr)); }
+      const pk = Math.max(...rms), at = rms.findIndex((v) => v > pk * 0.3);
+      const t = Math.max(0, (at - 5) * 0.01);                                   // a hair before the first word, so no consonant is cut
+      return t > 0.12 && t < 1.4 ? t : 0;
+    } catch { return 0; }
+  };
   const clips = new Map();
   const clip = (i) => {                                                        // the recording of a scene as a blob URL, fetched once
     const k = I.lang + i;
     if (!clips.has(k)) {
       clips.set(k, fetch("/api/narrate", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ lang: I.lang, ids: sceneIds(i) }) })
-        .then(async (r) => { if (!r.ok) throw Object.assign(new Error("voice " + r.status), { status: r.status }); return URL.createObjectURL(await r.blob()); })
+        .then(async (r) => {
+          if (!r.ok) throw Object.assign(new Error("voice " + r.status), { status: r.status });
+          const blob = await r.blob();
+          return { url: URL.createObjectURL(blob), start: await onset(blob) };
+        })
         .catch((e) => { clips.delete(k); throw e; }));
     }
     return clips.get(k);
@@ -170,9 +185,9 @@ export function mountStory(ctx, el) {
     if (!voiceOn || i === spoken) return;
     spoken = i; hush(); if (synth) synth.cancel();
     if (mode === "phone") return sayBrowser(i);
-    const go = (tries) => clip(i).then((url) => {
+    const go = (tries) => clip(i).then(({ url, start }) => {
       if (!voiceOn || spoken !== i) return;
-      mode = "ai"; player.src = url; player.playbackRate = .94; player.volume = .85; blocked = false;
+      mode = "ai"; player.src = url; player.onloadedmetadata = () => { try { player.currentTime = start; } catch {} }; player.playbackRate = .94; player.volume = .85; blocked = false;
       player.play().catch(() => { blocked = true; });                                 // if the browser refuses, the next touch starts it
       for (const j of [i + 1, i + 2]) if (j < scenes.length) clip(j).catch(() => {});      // fetch the next recordings while this one plays
     }).catch((e) => {
