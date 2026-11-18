@@ -8,7 +8,7 @@ const STEP = 8;                                                                /
 const NORM = 0.022;                                                            // overall loudness (the player scales it further)
 
 // One quiet colour for the About story and one for each perfume's chapter: the chords, how dark the sound is (cut-off in Hz),
-// how slowly it moves (step in seconds) and how much glassy shimmer floats on top. "air" is a faint bed of breath-like noise, used by the atmosphere mode.
+// how slowly it moves (step in seconds) and how much glassy shimmer floats on top.
 const ABOUT = {
   chords: [
     [50, 57, 61, 64],   // Dmaj9 (no 3rd doubled): D3 A3 C#4 E4
@@ -68,15 +68,6 @@ export function buildEngine(ctx, preset = ABOUT, opts = {}) {
     const s = ctx.createGain(); s.gain.value = 1; n.connect(s); s.connect(send);                      // wet only: it should arrive as a reflection, not as a note
   };
 
-  if (opts.air) {                                                         // atmosphere mode: a very faint, slow "room tone" under the chords, like distant air
-    const n = ctx.sampleRate * 4, nb = ctx.createBuffer(1, n, ctx.sampleRate), d = nb.getChannelData(0); let y = 0;
-    for (let k = 0; k < n; k++) { y += 0.04 * ((Math.random() * 2 - 1) - y); d[k] = y * 3; }
-    const src = ctx.createBufferSource(); src.buffer = nb; src.loop = true;
-    const bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 420; bp.Q.value = 0.5;
-    const ag = ctx.createGain(); ag.gain.value = 0.55;
-    const l2 = ctx.createOscillator(), l2g = ctx.createGain(); l2.frequency.value = 0.045; l2g.gain.value = 0.35; l2.connect(l2g); l2g.connect(ag.gain); l2.start();
-    src.connect(bp); bp.connect(ag); ag.connect(send); src.start();
-  }
   let i = 0;
   const step = (t) => {
     const c = CHORDS[i % CHORDS.length];

@@ -1,7 +1,7 @@
-// Texts of the perfume chapters and the atmosphere mode, in the 8 languages. {n} is the list of notes (already translated).
+// Texts of the perfume chapters, in the 8 languages. {n} is the list of notes (already translated).
 window.I18N.add({
   en: {
-    chRead: "Read the story", chAtmo: "Atmosphere", chKicker: "A scent story", chOnce: "Once upon a scent…",
+    chRead: "Read the story", chKicker: "A scent story", chOnce: "Once upon a scent…",
     chOnceS: "Once upon a scent, {n} met in a single bottle, and a story began.",
     chTop: "The first breath", chTopS: "It opens with {n}, bright and eager: the first words of the story.",
     chHeart: "The heart", chHeartS: "Then {n} unfold, and the story finds its voice.",
@@ -10,7 +10,7 @@ window.I18N.add({
     chT_blanc_royal: "A quiet crown of white petals and warm light.", chT_reve_paradoxe: "A dream that dares to contradict itself.", chT_noir_prestige: "Where the night learns your name.", chT_rouge_absolu: "A heartbeat, worn on the skin.", chT_bleu_eternel: "A deep blue hour that never ends.",
   },
   de: {
-    chRead: "Die Geschichte lesen", chAtmo: "Atmosphäre", chKicker: "Eine Duftgeschichte", chOnce: "Es war einmal ein Duft …",
+    chRead: "Die Geschichte lesen", chKicker: "Eine Duftgeschichte", chOnce: "Es war einmal ein Duft …",
     chOnceS: "Es war einmal ein Duft: {n} fanden in einem einzigen Flakon zusammen, und eine Geschichte begann.",
     chTop: "Der erste Atemzug", chTopS: "Sie beginnt mit {n}, hell und voller Erwartung: die ersten Worte der Geschichte.",
     chHeart: "Das Herz", chHeartS: "Dann entfalten sich {n}, und die Geschichte findet ihre Stimme.",
@@ -19,7 +19,7 @@ window.I18N.add({
     chT_blanc_royal: "Eine stille Krone aus weißen Blüten und warmem Licht.", chT_reve_paradoxe: "Ein Traum, der es wagt, sich selbst zu widersprechen.", chT_noir_prestige: "Wo die Nacht deinen Namen lernt.", chT_rouge_absolu: "Ein Herzschlag, getragen auf der Haut.", chT_bleu_eternel: "Eine tiefblaue Stunde, die niemals endet.",
   },
   fr: {
-    chRead: "Lire l’histoire", chAtmo: "Atmosphère", chKicker: "Une histoire de parfum", chOnce: "Il était une fois un parfum…",
+    chRead: "Lire l’histoire", chKicker: "Une histoire de parfum", chOnce: "Il était une fois un parfum…",
     chOnceS: "Il était une fois un parfum : {n} se sont rencontrés dans un seul flacon, et une histoire a commencé.",
     chTop: "Le premier souffle", chTopS: "Elle s’ouvre sur {n}, lumineux et impatient : les premiers mots de l’histoire.",
     chHeart: "Le cœur", chHeartS: "Puis {n} se déploient, et l’histoire trouve sa voix.",
@@ -28,7 +28,7 @@ window.I18N.add({
     chT_blanc_royal: "Une couronne silencieuse de pétales blancs et de lumière chaude.", chT_reve_paradoxe: "Un rêve qui ose se contredire.", chT_noir_prestige: "Là où la nuit apprend votre nom.", chT_rouge_absolu: "Un battement de cœur, porté sur la peau.", chT_bleu_eternel: "Une heure bleue profonde qui ne finit jamais.",
   },
   pt: {
-    chRead: "Ler a história", chAtmo: "Atmosfera", chKicker: "Uma história de perfume", chOnce: "Era uma vez um perfume…",
+    chRead: "Ler a história", chKicker: "Uma história de perfume", chOnce: "Era uma vez um perfume…",
     chOnceS: "Era uma vez um perfume: {n} encontraram-se num único frasco, e uma história começou.",
     chTop: "O primeiro sopro", chTopS: "Começa com {n}, luminoso e ansioso: as primeiras palavras da história.",
     chHeart: "O coração", chHeartS: "Depois {n} desabrocham, e a história encontra a sua voz.",
@@ -37,7 +37,7 @@ window.I18N.add({
     chT_blanc_royal: "Uma coroa silenciosa de pétalas brancas e luz quente.", chT_reve_paradoxe: "Um sonho que ousa contradizer-se.", chT_noir_prestige: "Onde a noite aprende o seu nome.", chT_rouge_absolu: "Um batimento cardíaco, vestido na pele.", chT_bleu_eternel: "Uma hora azul e profunda que nunca termina.",
   },
   it: {
-    chRead: "Leggi la storia", chAtmo: "Atmosfera", chKicker: "Una storia di profumo", chOnce: "C’era una volta un profumo…",
+    chRead: "Leggi la storia", chKicker: "Una storia di profumo", chOnce: "C’era una volta un profumo…",
     chOnceS: "C’era una volta un profumo: {n} si incontrarono in un solo flacone, e una storia ebbe inizio.",
     chTop: "Il primo respiro", chTopS: "Si apre con {n}, luminoso e impaziente: le prime parole della storia.",
     chHeart: "Il cuore", chHeartS: "Poi {n} si schiudono, e la storia trova la sua voce.",
@@ -46,7 +46,7 @@ window.I18N.add({
     chT_blanc_royal: "Una corona silenziosa di petali bianchi e luce calda.", chT_reve_paradoxe: "Un sogno che osa contraddirsi.", chT_noir_prestige: "Dove la notte impara il tuo nome.", chT_rouge_absolu: "Un battito del cuore, indossato sulla pelle.", chT_bleu_eternel: "Un’ora blu profonda che non finisce mai.",
   },
   es: {
-    chRead: "Leer la historia", chAtmo: "Atmósfera", chKicker: "Una historia de perfume", chOnce: "Érase una vez un perfume…",
+    chRead: "Leer la historia", chKicker: "Una historia de perfume", chOnce: "Érase una vez un perfume…",
     chOnceS: "Érase una vez un perfume: {n} se encontraron en un solo frasco, y comenzó una historia.",
     chTop: "El primer aliento", chTopS: "Empieza con {n}, luminoso y ansioso: las primeras palabras de la historia.",
     chHeart: "El corazón", chHeartS: "Después {n} se abren, y la historia encuentra su voz.",
@@ -55,7 +55,7 @@ window.I18N.add({
     chT_blanc_royal: "Una corona silenciosa de pétalos blancos y luz cálida.", chT_reve_paradoxe: "Un sueño que se atreve a contradecirse.", chT_noir_prestige: "Donde la noche aprende tu nombre.", chT_rouge_absolu: "Un latido, llevado sobre la piel.", chT_bleu_eternel: "Una hora azul y profunda que nunca termina.",
   },
   ar: {
-    chRead: "اقرأ الحكاية", chAtmo: "أجواء", chKicker: "حكاية عطر", chOnce: "كان يا ما كان عطر…",
+    chRead: "اقرأ الحكاية", chKicker: "حكاية عطر", chOnce: "كان يا ما كان عطر…",
     chOnceS: "كان يا ما كان عطر: التقى {n} في زجاجة واحدة، وبدأت حكاية.",
     chTop: "النفَس الأول", chTopS: "تبدأ الحكاية مع {n}، مشرقةً ومتشوقة: أولى كلماتها.",
     chHeart: "القلب", chHeartS: "ثم يتفتح {n}، وتجد الحكاية صوتها.",
@@ -64,7 +64,7 @@ window.I18N.add({
     chT_blanc_royal: "تاج هادئ من البتلات البيضاء والضوء الدافئ.", chT_reve_paradoxe: "حلم يجرؤ على مناقضة نفسه.", chT_noir_prestige: "حيث يتعلّم الليل اسمك.", chT_rouge_absolu: "نبضُ قلبٍ يُرتدى على البشرة.", chT_bleu_eternel: "ساعة زرقاء عميقة لا تنتهي.",
   },
   zh: {
-    chRead: "阅读故事", chAtmo: "氛围", chKicker: "一段香气的故事", chOnce: "从前，有一缕香……",
+    chRead: "阅读故事", chKicker: "一段香气的故事", chOnce: "从前，有一缕香……",
     chOnceS: "从前有一缕香：{n}在同一只瓶中相遇，故事就此开始。",
     chTop: "初见", chTopS: "故事以{n}开篇，明亮而热切，是它的第一句话。",
     chHeart: "心调", chHeartS: "随后{n}缓缓绽放，故事找到了自己的声音。",

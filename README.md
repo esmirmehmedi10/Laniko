@@ -44,9 +44,8 @@ Test with card `4242 4242 4242 4242`, any future date and any CVC.
   free-text answers in every language, add a secret named `ANTHROPIC_API_KEY` in Cloudflare Pages
   (Settings > Variables and Secrets). The shop then asks Claude (`functions/api/mood.js`); without the key, or if it
   fails, it silently falls back to the built-in matching. Each AI answer costs a small amount of API credit.
-- **Perfume chapters and Atmosphere mode:** every perfume page has "Read the story" (a short scrolling chapter with its own
-  quiet generated music, no voice) and "Atmosphere" (a slow full-screen scene of light and smoke in the perfume's colours,
-  screen kept awake). Code in `chapter.js`, texts in `i18n-chapter.js`, music presets in `music.js` (`PRESETS`).
+- **Perfume chapters:** every perfume page has "Read the story", a short silent scrolling chapter (no voice, no music).
+  Code in `chapter.js`, texts in `i18n-chapter.js`.
 - **Gift reveal:** the gift link opens an elegant unboxing (`openGift` in `extras.js`).
 - **Natural storyteller voice (About us), currently switched off** (`NARRATOR = false` in `about.js`; the button is a music toggle). The "Listen" button reads the story with a natural AI voice through
   `functions/api/narrate.js`, and only appears for languages that have a realistic voice (the phone's robotic voice is
