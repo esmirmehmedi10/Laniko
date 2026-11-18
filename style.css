@@ -732,8 +732,6 @@ html.has-welcome .welcome { display: block; }
 .lang-gate::before, .lang-gate::after { content: ""; flex: 1 0 12px; }
 .gate-title2 { margin-top: 34px; font-size: 1.5rem; }
 .gate-sub:empty { display: none; }
-.ctry-list { margin-bottom: 8px; }
-.ctry { font-size: .98rem; }
 .cart-country { margin: 4px 0 8px; line-height: 1.5; }
 .linklike { padding: 0; border: 0; background: none; color: var(--gold); text-decoration: underline; font: inherit; cursor: pointer; }
 html[data-theme="dark"] @media (orientation: landscape) { .wl-enter { bottom: max(1.5vh, calc(8px + env(safe-area-inset-bottom))); gap: 6px; } .wl-enter i { height: 22px; } }
@@ -744,17 +742,13 @@ html[data-theme="dark"] @media (orientation: landscape) { .wl-enter { bottom: ma
 
 /* country bar: tap to open the list, or type the first letters */
 .ctry-combo { position: relative; width: min(100%, 340px); text-align: start; animation: rise .8s cubic-bezier(.2, .7, .2, 1) .45s both; }
-.ctry-input { width: 100%; padding: 15px 44px 15px 16px; border-radius: 10px; border: 1px solid rgba(217, 185, 106, .75); background: rgba(255, 255, 255, .05); color: #f1e6cc; font: inherit; font-size: 1.05rem; letter-spacing: .03em; }
-html[dir="rtl"] .ctry-input { padding: 15px 16px 15px 44px; }
-.ctry-input::placeholder { color: rgba(241, 230, 204, .55); }
-.ctry-input:focus { outline: none; border-color: #d9b96a; background: rgba(217, 185, 106, .1); }
-.ctry-bar { position: relative; }
-.ctry-arrow { position: absolute; top: 0; bottom: 0; inset-inline-end: 0; width: 44px; padding: 0; background: none; border: 0; cursor: pointer; }
-.ctry-arrow::before { content: ""; position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; margin: -6px 0 0 -4px; border-right: 1.5px solid #d9b96a; border-bottom: 1.5px solid #d9b96a; transform: rotate(45deg); }
-.ctry-input[aria-expanded="true"] ~ .ctry-arrow::before { transform: rotate(225deg); margin-top: -2px; }
 .ctry-lb { margin: 6px 0 0; padding: 4px; list-style: none; max-height: min(46svh, 320px); overflow: auto; border: 1px solid rgba(217, 185, 106, .5); border-radius: 10px; background: rgba(20, 15, 9, .97); }
 .ctry-lb li { padding: 12px 12px; border-radius: 7px; font-size: 1.02rem; color: #f1e6cc; cursor: pointer; }
 .ctry-lb li.hl, .ctry-lb li:hover { background: rgba(217, 185, 106, .18); }
 .ctry-lb li.on { color: #e8c97a; font-weight: 600; }
-.ctry-lb li.none { color: rgba(241, 230, 204, .6); cursor: default; }
-.ctry-lb li.none:hover { background: none; }
+.ctry-input { position: relative; display: block; width: 100%; padding: 15px 44px 15px 16px; border-radius: 10px; border: 1px solid rgba(217, 185, 106, .75); background: rgba(255, 255, 255, .05); color: #f1e6cc; font: inherit; font-size: 1.05rem; letter-spacing: .03em; text-align: start; cursor: pointer; }
+html[dir="rtl"] .ctry-input { padding: 15px 16px 15px 44px; }
+.ctry-input .ph { color: rgba(241, 230, 204, .6); }
+.ctry-input:focus-visible, .ctry-input[aria-expanded="true"] { outline: none; border-color: #d9b96a; background: rgba(217, 185, 106, .1); }
+.ctry-input::after { content: ""; position: absolute; top: 50%; inset-inline-end: 18px; width: 8px; height: 8px; margin-top: -6px; border-right: 1.5px solid #d9b96a; border-bottom: 1.5px solid #d9b96a; transform: rotate(45deg); transition: transform .2s; }
+.ctry-input[aria-expanded="true"]::after { transform: rotate(225deg); margin-top: -2px; }

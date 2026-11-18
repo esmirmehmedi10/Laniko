@@ -607,65 +607,40 @@
     const logo = '<img class="gate-logo" src="/logo.svg" alt="Laniko" width="30" height="74">';
     const closeBtn = () => `<button class="gate-x" aria-label="${esc(t("closeLang"))}">✕</button>`;
     const langList = () => `<div class="gate-list">${I.LANGS.map((l, i) => `<button class="gate-btn${step === "both" && l.code === I.lang ? " on" : ""}" data-lang="${l.code}" lang="${l.code}" dir="${l.dir}" style="--i:${i}">${esc(l.name)}</button>`).join("")}</div>`;
-    const ctryBlock = () => `<div class="ctry-combo"><div class="ctry-bar">
-      <input class="ctry-input" type="text" role="combobox" aria-expanded="false" aria-controls="ctry-lb" aria-autocomplete="list" autocomplete="off" autocapitalize="off" spellcheck="false"
-        placeholder="${esc(t("ctryPh"))}" aria-label="${esc(t("ctryTitle"))}" value="${esc(country ? countryName(country) : "")}">
-      <button class="ctry-arrow" type="button" tabindex="-1" aria-label="${esc(t("ctryTitle"))}"></button></div>
+    // the country bar: tap it and the five countries appear (no typing, so no keyboard pops up)
+    const ctryBlock = () => `<div class="ctry-combo">
+      <button type="button" class="ctry-input" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-controls="ctry-lb" aria-label="${esc(t("ctryTitle"))}"><span class="${country ? "" : "ph"}">${esc(country ? countryName(country) : t("ctryPh"))}</span></button>
       <ul id="ctry-lb" class="ctry-lb" role="listbox" hidden></ul>
     </div>`;
-    // the country bar: tap it to see the list, or type the first letters and the matching countries appear
-    const norm = (x) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-    let enNames = null;
-    try { enNames = new Intl.DisplayNames(["en"], { type: "region" }); } catch {}
-    const enName = (c) => { try { return enNames ? enNames.of(c) || "" : ""; } catch { return ""; } };
-    const countryMatches = (q) => {
-      const all = COUNTRIES, nq = norm(q);
-      if (!nq) return all;
-      const pre = [], mid = [];
-      for (const c of all) {
-        const a = norm(countryName(c)), b = norm(enName(c));
-        if (a.startsWith(nq) || b.startsWith(nq)) pre.push(c); else if (a.includes(nq) || b.includes(nq)) mid.push(c);
-      }
-      return [...pre, ...mid];
-    };
     let closeList = () => {};
     const wireCombo = () => {
-      const input = gate.querySelector(".ctry-input"), ul = gate.querySelector(".ctry-lb"), arrow = gate.querySelector(".ctry-arrow");
-      if (!input) return;
-      let items = [], act = 0, open = false;
+      const bar = gate.querySelector(".ctry-input"), ul = gate.querySelector(".ctry-lb");
+      if (!bar) return;
+      let act = COUNTRIES.indexOf(country), open = false;          // act = the row marked with the keyboard (-1: none)
       const paint = () => {
-        ul.innerHTML = items.length
-          ? items.map((c, k) => `<li role="option" id="co-${c}" data-country="${c}"class="${k === act ? "hl" : ""}${c === country ? " on" : ""}" aria-selected="${c === country}">${esc(countryName(c))}</li>`).join("")
-          : `<li class="none">${esc(t("ctryNone"))}</li>`;
-        const cur = ul.querySelector(".hl");
-        if (cur) { input.setAttribute("aria-activedescendant", cur.id); cur.scrollIntoView({ block: "nearest" }); } else input.removeAttribute("aria-activedescendant");
+        ul.innerHTML = COUNTRIES.map((c, k) => `<li role="option" id="co-${c}" data-country="${c}" class="${k === act ? "hl" : ""}${c === country ? " on" : ""}" aria-selected="${c === country}">${esc(countryName(c))}</li>`).join("");
+        if (act >= 0) bar.setAttribute("aria-activedescendant", "co-" + COUNTRIES[act]); else bar.removeAttribute("aria-activedescendant");
       };
-      const show = (query) => {
-        items = countryMatches(query); act = 0;
-        open = true; ul.hidden = false; input.setAttribute("aria-expanded", "true"); paint();
-      };
-      closeList = () => { open = false; ul.hidden = true; input.setAttribute("aria-expanded", "false"); };
+      const setOpen = (o) => { open = o; ul.hidden = !o; bar.setAttribute("aria-expanded", String(o)); if (o) paint(); };
+      closeList = () => setOpen(false);
       const choose = (c) => {
         setCountry(c);
-        input.value = countryName(c);
-        closeList();
+        const sp = bar.firstElementChild; sp.textContent = countryName(c); sp.classList.remove("ph");
+        setOpen(false);
         if (step !== "both") finish();
       };
-      input.addEventListener("focus", () => { input.select(); show(""); setTimeout(() => ul.scrollIntoView({ block: "nearest" }), 250); });
-      input.addEventListener("click", () => { if (!open) show(""); });
-      input.addEventListener("input", () => show(input.value));
-      input.addEventListener("keydown", (e) => {
+      bar.addEventListener("click", () => setOpen(!open));
+      bar.addEventListener("keydown", (e) => {
         if (e.key === "ArrowDown" || e.key === "ArrowUp") {
           e.preventDefault();
-          if (!open) show(input.value === (country ? countryName(country) : "") ? "" : input.value);
-          else { act = (act + (e.key === "ArrowDown" ? 1 : -1) + items.length) % Math.max(1, items.length); paint(); }
-        } else if (e.key === "Enter") {
-          e.preventDefault();
-          if (open && items[act]) choose(items[act]);
-        } else if (e.key === "Escape" && open) { e.stopPropagation(); closeList(); input.value = country ? countryName(country) : ""; }
+          if (!open) setOpen(true);
+          else { act = act < 0 ? (e.key === "ArrowDown" ? 0 : COUNTRIES.length - 1) : (act + (e.key === "ArrowDown" ? 1 : -1) + COUNTRIES.length) % COUNTRIES.length; paint(); }
+        } else if ((e.key === "Enter" || e.key === " ") && open && act >= 0) { e.preventDefault(); choose(COUNTRIES[act]); }
+        else if (e.key === "Escape" && open) { e.stopPropagation(); setOpen(false); }
       });
-      arrow.addEventListener("click", () => { if (open) closeList(); else { input.focus(); show(""); } });
+      bar.addEventListener("keyup", (e) => { if (e.key === " ") e.preventDefault(); });
       ul.addEventListener("click", (e) => { const li = e.target.closest("li[data-country]"); if (li) choose(li.dataset.country); });
+      if (step === "country") setOpen(true);                    // asked for the country: the five choices are shown right away
     };
     const render = () => {
       clearInterval(timer);
