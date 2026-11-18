@@ -772,3 +772,7 @@ html[dir="rtl"] .ctry-input { padding: 15px 16px 15px 44px; }
 /* touching the welcome page must never highlight or select anything */
 .welcome, .welcome * { -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; outline: none; }
 .welcome ::selection { background: transparent; }
+html.has-welcome, html.has-welcome * { -webkit-tap-highlight-color: rgba(0, 0, 0, 0) !important; }
+.welcome > *, .welcome .wl-img, .welcome .wl-logo, .welcome .wl-logo * { pointer-events: none; }      /* every touch lands on the welcome page itself, never on the logo or the photo */
+.welcome .wl-enter { pointer-events: auto; }
+.welcome .wl-logo { -webkit-user-drag: none; }

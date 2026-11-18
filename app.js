@@ -837,6 +837,7 @@
           resolve();
         }, reduced ? 650 : 1750);
       };
+      el.addEventListener("touchstart", (e) => e.preventDefault(), { passive: false });   // stops the browser from painting its own tap highlight on the touched element
       el.addEventListener("mousedown", (e) => e.preventDefault());           // no text selection or focus highlight on a tap
       let down = null;
       el.addEventListener("pointerdown", (e) => { down = [e.clientX, e.clientY]; });
