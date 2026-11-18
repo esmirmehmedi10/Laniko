@@ -1,0 +1,15 @@
+name: Voice check 3
+on:
+  push:
+    paths: ['.github/workflows/vcheck.yml']
+jobs:
+  c:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          sleep 60
+          for k in abTag ab1 ab8 ab9 ab10 ab11 ab12 ab13 abEnd1; do
+            code=$(curl -sS -m 60 -o out.bin -w "%{http_code} %{content_type} %{size_download}B %{time_total}s" -X POST -H "content-type: application/json" -d "{\"lang\":\"en\",\"ids\":[\"$k\"]}" https://laniko.pages.dev/api/narrate || true)
+            echo "$k -> $code"; [ "$(head -c 1 out.bin)" = "{" ] && head -c 300 out.bin && echo
+          done
+          true

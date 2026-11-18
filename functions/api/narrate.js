@@ -62,7 +62,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
   const voice = hasOpenAI ? OPENAI_VOICE : VOICE[lang] || "default";
 
   const cache = typeof caches !== "undefined" ? caches.default : null;
-  const cacheKey = new Request(`${origin}/__narrate/${lang}/${voice}/${await hex(ids.join(","))}`);
+  const cacheKey = new Request(`${origin}/__narrate/v2/${lang}/${voice}/${await hex(ids.join(","))}`);      // v2: earlier recordings may have been made with the default voice
   if (cache) { const hit = await cache.match(cacheKey); if (hit) return hit; }
 
   const srcRes = await env.ASSETS.fetch(new URL("/i18n-about.js", origin));
@@ -90,7 +90,10 @@ export async function onRequestPost({ request, env, waitUntil }) {
   }
   if (!bytes && usedAI) try {
     const run = (extra) => env.AI.run(lang === "en" ? "@cf/deepgram/aura-2-en" : "@cf/deepgram/aura-2-es", { text, encoding: "mp3", ...extra });
-    try { bytes = await toBytes(await run({ speaker: VOICE[lang] })); } catch { bytes = await toBytes(await run({})); }       // unknown speaker name: use the model's default
+    // always the same speaker: if a try fails, try the SAME speaker again (never the model's default voice, which would sound different)
+    let last;
+    for (let k = 0; k < 3 && !bytes; k++) { try { bytes = await toBytes(await run({ speaker: VOICE[lang] })); } catch (e) { last = e; await new Promise((r) => setTimeout(r, 400 * (k + 1))); } }
+    if (!bytes) throw last || new Error("no audio");
   } catch (e) { return err(502, "voice failed: " + String((e && e.message) || e).slice(0, 200)); }
 
   const wav = bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46;            // MeloTTS answers with WAV, Aura with MP3
