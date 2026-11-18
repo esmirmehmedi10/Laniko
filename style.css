@@ -776,3 +776,15 @@ html.has-welcome, html.has-welcome * { -webkit-tap-highlight-color: rgba(0, 0, 0
 .welcome > *, .welcome .wl-img, .welcome .wl-logo, .welcome .wl-logo * { pointer-events: none; }      /* every touch lands on the welcome page itself, never on the logo or the photo */
 .welcome .wl-enter { pointer-events: auto; }
 .welcome .wl-logo { -webkit-user-drag: none; }
+
+/* narration button on the About page */
+.st-voice { position: fixed; z-index: 6; inset-inline-end: 14px; bottom: calc(18px + env(safe-area-inset-bottom)); display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px 0 12px; border-radius: 22px;
+  border: 1px solid rgba(217, 185, 106, .6); background: rgba(14, 11, 7, .82); color: #e9d49a; font: 600 12px/1 inherit; letter-spacing: .12em; text-transform: uppercase; backdrop-filter: blur(8px); cursor: pointer; -webkit-tap-highlight-color: transparent; box-shadow: 0 6px 22px rgba(0, 0, 0, .35); max-width: calc(100vw - 28px); }
+.st-voice svg { width: 22px; height: 22px; flex: none; fill: currentColor; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.st-voice svg .w1, .st-voice svg .w2 { fill: none; opacity: .35; }
+.st-voice.on { background: #d9b96a; color: #1a1408; border-color: #d9b96a; }
+.st-voice.on svg .w1, .st-voice.on svg .w2 { opacity: 1; animation: stVoice 1.2s ease-in-out infinite; } .st-voice.on svg .w2 { animation-delay: .25s; }
+@keyframes stVoice { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+.st-voice.note { text-transform: none; letter-spacing: .02em; }
+html:not([data-theme="dark"]) .st-voice:not(.on) { background: rgba(255, 252, 244, .9); color: #6b5320; }
+@media (prefers-reduced-motion: reduce) { .st-voice.on svg .w1, .st-voice.on svg .w2 { animation: none; opacity: 1; } }

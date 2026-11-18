@@ -103,6 +103,57 @@ export function mountStory(ctx, el) {
   }, { threshold: [0, 0.3, 0.6] });
   scenes.forEach((s) => io.observe(s));
 
+  // ---- narration: a voice reads each scene aloud as it comes into view (the browser's own speech, no download) ----
+  const synth = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window ? window.speechSynthesis : null;
+  const LANG = { en: "en-US", de: "de-DE", fr: "fr-FR", pt: "pt-PT", it: "it-IT", es: "es-ES", ar: "ar-SA", zh: "zh-CN" };
+  let voiceOn = false, spoken = -1, timer = 0, btn = null, noteT = 0;
+  const pickVoice = () => {
+    const want = (LANG[I.lang] || "en-US").toLowerCase(), base = want.slice(0, 2);
+    const vs = (synth.getVoices() || []).filter((v) => v.lang.toLowerCase().replace("_", "-").startsWith(base));
+    const score = (v) => (v.lang.toLowerCase().replace("_", "-") === want ? 4 : 0) + (/google|natural|premium|enhanced|neural/i.test(v.name) ? 3 : 0) + (v.localService ? 0 : 1) - (/compact/i.test(v.name) ? 2 : 0);
+    return vs.sort((x, y) => score(y) - score(x))[0] || null;
+  };
+  const sceneText = (sc) => [...sc.querySelectorAll(".st-title, .st-tag, .st-text, .st-line")].map((n) => n.textContent.trim()).filter(Boolean).join(I.lang === "zh" ? "" : " ");
+  const say = (i) => {
+    if (!synth || !voiceOn || i === spoken) return;
+    spoken = i;
+    synth.cancel();
+    const txt = sceneText(scenes[i]); if (!txt) return;
+    setTimeout(() => {                                                       // Chrome and Brave skip a speak() that comes right after a cancel()
+      if (!voiceOn || spoken !== i) return;
+      const u = new SpeechSynthesisUtterance(txt), v = pickVoice();
+      u.lang = (v && v.lang) || LANG[I.lang] || "en-US"; if (v) u.voice = v;
+      u.rate = I.lang === "zh" ? .88 : .9; u.pitch = 1; u.volume = 1;
+      u.onerror = (e) => { if (e.error && e.error !== "canceled" && e.error !== "interrupted") fail(); };
+      synth.speak(u);
+    }, 90);
+  };
+  const current = () => {                                                  // the scene that fills most of the screen
+    let best = 0, bv = -1; const h = window.innerHeight;
+    scenes.forEach((s, i) => { const r = s.getBoundingClientRect(), v = Math.min(r.bottom, h) - Math.max(r.top, 0); if (v > bv) { bv = v; best = i; } });
+    return best;
+  };
+  const label = (txt) => { btn.querySelector(".st-voice-t").textContent = txt; };
+  const note = (txt) => { label(txt); btn.classList.add("note"); clearTimeout(noteT); noteT = setTimeout(() => { btn.classList.remove("note"); label(I.t(voiceOn ? "abStop" : "abListen")); }, 3200); };
+  const fail = () => { voiceOn = false; btn.classList.remove("on"); btn.setAttribute("aria-pressed", "false"); note(I.t("abNoVoice")); };
+  const toggle = () => {
+    if (!synth) return fail();
+    voiceOn = !voiceOn; spoken = -1; clearTimeout(timer);
+    btn.classList.toggle("on", voiceOn); btn.setAttribute("aria-pressed", String(voiceOn)); label(I.t(voiceOn ? "abStop" : "abListen"));
+    if (voiceOn) { try { synth.resume(); } catch {} say(current()); } else synth.cancel();    // the tap itself is what lets the browser start the voice
+  };
+  if (synth) {
+    btn = document.createElement("button");
+    btn.type = "button"; btn.className = "st-voice"; btn.setAttribute("aria-pressed", "false"); btn.setAttribute("aria-label", I.t("abListen"));
+    btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/><path class="w1" d="M15 9.2a4 4 0 0 1 0 5.6"/><path class="w2" d="M17.4 6.8a7.4 7.4 0 0 1 0 10.4"/></svg><span class="st-voice-t"></span>';
+    label(I.t("abListen")); btn.addEventListener("click", toggle); el.appendChild(btn);
+    synth.getVoices();                                                      // some browsers only fill the voice list after the first call
+  }
+  const onSpeechScroll = () => { if (!voiceOn) return; clearTimeout(timer); timer = setTimeout(() => say(current()), 380); };
+  const onHide = () => { if (document.hidden && synth) { synth.cancel(); spoken = -1; } };
+  window.addEventListener("scroll", onSpeechScroll, { passive: true });
+  document.addEventListener("visibilitychange", onHide);
+
   // thin progress line along the bottom edge
   const bar = el.querySelector(".st-bar i");
   let raf = 0;
@@ -115,5 +166,5 @@ export function mountStory(ctx, el) {
   const onScroll = () => { if (!raf) raf = requestAnimationFrame(upd); };
   window.addEventListener("scroll", onScroll, { passive: true });
   upd();
-  stop = () => { io.disconnect(); window.removeEventListener("scroll", onScroll); if (raf) cancelAnimationFrame(raf); el.innerHTML = ""; };
+  stop = () => { voiceOn = false; clearTimeout(timer); clearTimeout(noteT); if (synth) synth.cancel(); window.removeEventListener("scroll", onSpeechScroll); document.removeEventListener("visibilitychange", onHide); io.disconnect(); window.removeEventListener("scroll", onScroll); if (raf) cancelAnimationFrame(raf); el.innerHTML = ""; };
 }
