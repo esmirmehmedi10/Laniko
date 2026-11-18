@@ -768,3 +768,7 @@ html[dir="rtl"] .ctry-input { padding: 15px 16px 15px 44px; }
 
 /* when the doors open the logo is finished at once */
 .welcome.open .wl-logo { animation: none; fill-opacity: 1; stroke-width: 0; stroke-dashoffset: 0; scale: 1; }
+
+/* touching the welcome page must never highlight or select anything */
+.welcome, .welcome * { -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; outline: none; }
+.welcome ::selection { background: transparent; }

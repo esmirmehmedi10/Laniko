@@ -837,6 +837,10 @@
           resolve();
         }, reduced ? 650 : 1750);
       };
+      el.addEventListener("mousedown", (e) => e.preventDefault());           // no text selection or focus highlight on a tap
+      let down = null;
+      el.addEventListener("pointerdown", (e) => { down = [e.clientX, e.clientY]; });
+      el.addEventListener("pointerup", (e) => { if (down && Math.hypot(e.clientX - down[0], e.clientY - down[1]) < 14) open(); down = null; });   // opens on the touch itself, without waiting for the click
       el.addEventListener("click", open);
       const onKey = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } };     // keyboard users: Enter or Space
       document.addEventListener("keydown", onKey);
