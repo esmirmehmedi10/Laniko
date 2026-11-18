@@ -15,7 +15,7 @@ const CURVES = {                                   // how strongly a layer is sm
 };
 const minutesAt = (s) => 480 * (s / 100) ** 2;   // the slider is stretched at the start, where most of the change happens
 
-function tiersOf(notes) {
+export function tiersOf(notes) {
   const n = notes.length, nt = n >= 5 ? 2 : 1, nb = n >= 5 ? 2 : 1;
   return { top: notes.slice(0, nt), heart: notes.slice(nt, Math.max(nt, n - nb)), base: notes.slice(Math.max(nt, n - nb)) };
 }
@@ -301,28 +301,51 @@ export function openGift(ctx, g, { preview = false, onClose } = {}) {
   const el = document.createElement("div");
   el.className = "gf wrap-" + wrap;
   el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true");
-  const sparks = Array.from({ length: 22 }, (_, i) => {
-    const a = (i / 22) * 360 + Math.random() * 12, d = 90 + Math.random() * 130;
-    return `<i class="gf-sp" style="--a:${a.toFixed(0)}deg;--d:${d.toFixed(0)}px;--s:${(0.5 + Math.random()).toFixed(2)};--w:${(Math.random() * 0.3).toFixed(2)}s"></i>`;
-  }).join("");
+  // gold dust: a few tiny specks that drift upwards, slowly, once the box is open
+  const dust = Array.from({ length: 16 }, () => `<i class="gf-sp" style="--x:${(Math.random() * 190 - 95).toFixed(0)}px;--h:${(120 + Math.random() * 150).toFixed(0)}px;--s:${(0.5 + Math.random() * 0.9).toFixed(2)};--w:${(1.4 + Math.random() * 3.2).toFixed(2)}s;--t:${(3.6 + Math.random() * 3).toFixed(1)}s"></i>`).join("");
   const msg = (g.m || "").trim(), from = (g.f || "").trim();
+  const GOLD = '<linearGradient id="gfg" x1="0" x2="1"><stop offset="0" stop-color="#9c7630"/><stop offset=".5" stop-color="#f3dd9b"/><stop offset="1" stop-color="#9c7630"/></linearGradient>';
+  const SHADE = '<linearGradient id="gfs" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".28"/><stop offset=".45" stop-color="#fff" stop-opacity=".07"/><stop offset="1" stop-color="#000" stop-opacity=".32"/></linearGradient>';
+  const ORN = '<svg class="gf-orn" viewBox="0 0 120 14" aria-hidden="true"><path d="M0 7H48M72 7H120"/><path d="M60 1.5 63.5 7 60 12.5 56.5 7Z"/></svg>';
   el.innerHTML = `
-    <button class="gf-x" aria-label="${esc(t("qzClose"))}">✕</button>
-    <p class="gf-kicker">${esc(preview ? t("giftPreview") : t("giftForYou"))}</p>
+    <button class="gf-x" aria-label="${esc(t("qzClose"))}"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <img class="gf-logo" src="/logo.svg" alt="" width="14" height="36">
+    <p class="gf-kicker"><span>${esc(preview ? t("giftPreview") : t("giftForYou"))}</span></p>
     <button class="gf-stage" aria-label="${esc(t("giftOpen"))}">
+      <span class="gf-floor"></span>
+      <span class="gf-beam"></span>
       <span class="gf-items">${items.map((p, i) => `<span class="gf-item" style="--i:${i};--n:${items.length}"><img src="${esc(p.image)}" alt="${esc(p.name)}"></span>`).join("")}</span>
       <span class="gf-box">
-        <span class="gf-body"><i class="rb rb-v"></i></span>
-        <span class="gf-lid"><i class="rb rb-v"></i><i class="rb rb-h"></i><span class="gf-bow"><i></i><i></i><b></b></span></span>
+        <svg class="gf-body" viewBox="0 0 220 120" aria-hidden="true"><defs>${GOLD}${SHADE}</defs>
+          <rect x="10" y="0" width="200" height="120" rx="3" style="fill:var(--bx)"/><rect x="10" y="0" width="200" height="120" rx="3" fill="url(#gfs)"/>
+          <rect x="10" y="0" width="200" height="9" fill="#000" opacity=".28"/>
+          <rect x="99" y="0" width="22" height="120" fill="url(#gfg)"/><rect x="99" y="0" width="22" height="120" fill="none" stroke="#6e5220" stroke-opacity=".5" stroke-width=".6"/>
+          <rect x="10.5" y=".5" width="199" height="119" rx="3" fill="none" stroke="#d9b96a" stroke-opacity=".4"/>
+        </svg>
+        <svg class="gf-lid" viewBox="0 0 240 96" aria-hidden="true"><defs>${GOLD}${SHADE}</defs>
+          <rect x="4" y="46" width="232" height="42" rx="3" style="fill:var(--bx2)"/><rect x="4" y="46" width="232" height="42" rx="3" fill="url(#gfs)"/>
+          <rect x="4" y="82" width="232" height="6" fill="#000" opacity=".22"/>
+          <rect x="108" y="46" width="24" height="42" fill="url(#gfg)"/><rect x="108" y="46" width="24" height="42" fill="none" stroke="#6e5220" stroke-opacity=".5" stroke-width=".6"/>
+          <rect x="4.5" y="46.5" width="231" height="41" rx="3" fill="none" stroke="#d9b96a" stroke-opacity=".5"/>
+          <g class="gf-bow">
+            <path d="M120 48 C96 22 58 14 56 32 C54 46 92 54 120 48Z" fill="url(#gfg)" stroke="#6e5220" stroke-opacity=".55" stroke-width=".8"/>
+            <path d="M120 48 C144 22 182 14 184 32 C186 46 148 54 120 48Z" fill="url(#gfg)" stroke="#6e5220" stroke-opacity=".55" stroke-width=".8"/>
+            <path d="M118 49 C100 56 90 74 84 92 L98 86 L106 94 L120 54Z" fill="url(#gfg)" stroke="#6e5220" stroke-opacity=".55" stroke-width=".8"/>
+            <path d="M122 49 C140 56 150 74 156 92 L142 86 L134 94 L120 54Z" fill="url(#gfg)" stroke="#6e5220" stroke-opacity=".55" stroke-width=".8"/>
+            <ellipse cx="120" cy="48" rx="9" ry="8" fill="url(#gfg)" stroke="#6e5220" stroke-opacity=".6" stroke-width=".8"/>
+          </g>
+        </svg>
       </span>
-      <span class="gf-sparks">${sparks}</span>
+      <span class="gf-sparks">${dust}</span>
     </button>
+    <div class="gf-foot">
     <p class="gf-hint">${esc(t("giftOpen"))}</p>
     <div class="gf-card">
-      ${msg ? `<p class="gf-msg">${esc(msg)}</p>` : ""}
+      ${msg ? `<p class="gf-msg">${esc(msg)}</p>${ORN}` : ""}
       ${from ? `<p class="gf-from">${esc(t("giftFromLine", { name: from }))}</p>` : ""}
       ${items.length ? `<p class="gf-names">${items.map((p) => esc(p.name)).join(" · ")}</p>` : ""}
       <button class="qz-main gf-cta">${esc(preview ? t("qzClose") : t("giftDiscover"))}</button>
+    </div>
     </div>`;
   document.body.appendChild(el);
   document.body.style.overflow = "hidden";
@@ -335,7 +358,7 @@ export function openGift(ctx, g, { preview = false, onClose } = {}) {
     if (opened) return;
     opened = true;
     el.classList.add("open");
-    setTimeout(() => el.classList.add("shown"), reduce ? 0 : 1500);
+    setTimeout(() => el.classList.add("shown"), reduce ? 0 : 3000);
     try { if (navigator.vibrate) navigator.vibrate([12, 40, 20]); } catch { /* not supported */ }
   };
   el.querySelector(".gf-stage").addEventListener("click", open);

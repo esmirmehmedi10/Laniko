@@ -303,6 +303,7 @@
         <h1>${esc(p.name)}</h1>
         <p class="pd-sub">${esc(t("pdConcVal"))} · ${esc(t("pdSizeVal"))}</p>
         <p class="pd-price">${fmt(p.price)}</p>
+        ${(p.notes || []).length && p.kind !== "set" ? `<div class="pd-acts"><button class="pd-act" type="button" data-chapter><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5C7 4 9.5 4.3 12 6c2.5-1.7 5-2 8-.5V19c-3-1.5-5.5-1.2-8 .5C9.5 17.8 7 17.5 4 19z"/><path d="M12 6v13.500"/></svg>${esc(t("chRead"))}</button><button class="pd-act" type="button" data-atmo><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.500A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>${esc(t("chAtmo"))}</button></div>` : ""}
       </section>
       <section class="pd-s"><h2>${esc(t("pdAbout"))}</h2><p class="pd-desc">${esc(descOf(p))}</p></section>
       ${notes ? `<section class="pd-s"><h2>${esc(t("pdNotes"))}</h2><ul class="pd-notes">${notes}</ul></section>` : ""}
@@ -968,6 +969,8 @@
     if (link && !e.metaKey && !e.ctrlKey && !e.shiftKey) { e.preventDefault(); goHome(); return; }
     const nb = e.target.closest("[data-note]");
     if (nb) { const p = byId(detailId); loadFeatures().then((m) => m.openNote(featureCtx(), nb.dataset.note, p && p.notes)); return; }
+    const ch = e.target.closest("[data-chapter],[data-atmo]");
+    if (ch) { const p = byId(detailId); if (p) import("/chapter.js").then((m) => (ch.hasAttribute("data-chapter") ? m.openChapter : m.openAtmosphere)(featureCtx(), p)); return; }
     const rl = e.target.closest("[data-rel]");
     if (rl) { history.replaceState(null, "", "#/perfume/" + rl.dataset.rel); lastHref = location.href; syncDetail(); return; }
     const act = e.target.closest("[data-act]");

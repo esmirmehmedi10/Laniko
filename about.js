@@ -107,6 +107,9 @@ export function mountStory(ctx, el) {
 
   // ---- narration: a natural AI voice (through /api/narrate) reads each scene aloud as it comes into view ----
   // Only languages that have a realistic voice get the Listen button; the phone's own robotic voice is never used.
+  const NARRATOR = false;                                                   // no voice for now: the button only starts and stops the quiet music (set to true to bring the narrator back)
+  const LV = NARRATOR ? .4 : 1.7;                                          // without a voice the music is allowed to be a little more present
+  const lab = (on) => I.t(NARRATOR ? (on ? "abStop" : "abListen") : (on ? "abMusicOn" : "abMusic"));
   let voiceOn = false, spoken = -1, timer = 0, btn = null, noteT = 0, alive = true;
   const music = createMusic();
   const sceneIds = (i) => { const id = scenes[i].dataset.id; return id === "hero" ? ["abTag"] : id === "end" ? ["abEnd1", "abEnd2"] : [SCENES[+id.slice(1)].key]; };
@@ -141,16 +144,16 @@ export function mountStory(ctx, el) {
     }
     return clips.get(k);
   };
-  player.addEventListener("playing", () => music.level(1)); player.addEventListener("ended", () => music.level(.4)); player.addEventListener("pause", () => music.level(.4));
+  if (NARRATOR) { player.addEventListener("playing", () => music.level(1)); player.addEventListener("ended", () => music.level(.4)); player.addEventListener("pause", () => music.level(.4)); }
   let blocked = false;
   const resumeOnTouch = () => { if (blocked && voiceOn && player.src) { blocked = false; player.play().catch(() => { blocked = true; }); } };
   document.addEventListener("touchend", resumeOnTouch, { passive: true }); document.addEventListener("pointerup", resumeOnTouch, { passive: true });
   const hush = () => { try { player.pause(); player.currentTime = 0; } catch {} };
   const label = (txt) => { btn.querySelector(".st-voice-t").textContent = txt; };
-  const note = (txt) => { label(txt); btn.classList.add("note"); clearTimeout(noteT); noteT = setTimeout(() => { btn.classList.remove("note"); label(I.t(voiceOn ? "abStop" : "abListen")); }, 3200); };
-  const off = () => { voiceOn = false; spoken = -1; hush(); music.stop(); btn.classList.remove("on"); btn.setAttribute("aria-pressed", "false"); label(I.t("abListen")); };
+  const note = (txt) => { label(txt); btn.classList.add("note"); clearTimeout(noteT); noteT = setTimeout(() => { btn.classList.remove("note"); label(lab(voiceOn)); }, 3200); };
+  const off = () => { voiceOn = false; spoken = -1; hush(); music.stop(); btn.classList.remove("on"); btn.setAttribute("aria-pressed", "false"); label(lab(false)); };
   const say = (i) => {
-    if (!voiceOn || i === spoken) return;
+    if (!NARRATOR || !voiceOn || i === spoken) return;
     spoken = i; hush();
     const go = (tries) => clip(i).then(({ url, start }) => {
       if (!voiceOn || spoken !== i) return;
@@ -176,20 +179,20 @@ export function mountStory(ctx, el) {
   const toggle = () => {
     if (voiceOn) { off(); return; }
     voiceOn = true; spoken = -1; clearTimeout(timer);
-    btn.classList.add("on"); btn.setAttribute("aria-pressed", "true"); label(I.t("abStop"));
-    music.level(.4); music.start();                                          // the story and its quiet music begin together
-    try { player.src = SILENT; player.play().catch(() => {}); } catch {}      // the tap unlocks the audio player for the rest of the visit
+    btn.classList.add("on"); btn.setAttribute("aria-pressed", "true"); label(lab(true));
+    music.level(LV); music.start();                                          // the story and its quiet music begin together
+    if (NARRATOR) try { player.src = SILENT; player.play().catch(() => {}); } catch {}      // the tap unlocks the audio player for the rest of the visit
     say(current());
   };
   // does this language have a realistic narrator? (the server knows which voices it has)
-  const probe = () => fetch("/voice/" + I.lang + "/abTag.mp3", { method: "HEAD" }).then((r) => isAudio(r) ? { voice: true } : Promise.reject())
+  const probe = () => !NARRATOR ? Promise.resolve({ voice: true }) : fetch("/voice/" + I.lang + "/abTag.mp3", { method: "HEAD" }).then((r) => isAudio(r) ? { voice: true } : Promise.reject())
     .catch(() => fetch("/api/narrate?lang=" + encodeURIComponent(I.lang)).then((r) => r.ok ? r.json() : { voice: false })).catch(() => ({ voice: false }));
   probe().then((j) => {
     if (!alive || !j.voice) return;
     btn = document.createElement("button");
-    btn.type = "button"; btn.className = "st-voice"; btn.setAttribute("aria-pressed", "false"); btn.setAttribute("aria-label", I.t("abListen"));
+    btn.type = "button"; btn.className = "st-voice"; btn.setAttribute("aria-pressed", "false"); btn.setAttribute("aria-label", lab(false));
     btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/><path class="w1" d="M15 9.2a4 4 0 0 1 0 5.6"/><path class="w2" d="M17.4 6.8a7.4 7.4 0 0 1 0 10.4"/></svg><span class="st-voice-t"></span>';
-    label(I.t("abListen")); btn.addEventListener("click", toggle); el.appendChild(btn);
+    label(lab(false)); btn.addEventListener("click", toggle); el.appendChild(btn);
   });
   const onSpeechScroll = () => { if (!voiceOn) return; clearTimeout(timer); timer = setTimeout(() => say(current()), 380); };
   const onHide = () => { if (document.hidden) { hush(); spoken = -1; music.pause(); } else music.resume(); };
