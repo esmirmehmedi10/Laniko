@@ -733,7 +733,6 @@ html.has-welcome .welcome { display: block; }
 .gate-title2 { margin-top: 34px; font-size: 1.5rem; }
 .gate-sub:empty { display: none; }
 .ctry-list { margin-bottom: 8px; }
-.gate-btn[data-ship] { border-color: rgba(217, 185, 106, .75); }
 .ctry { font-size: .98rem; }
 .cart-country { margin: 4px 0 8px; line-height: 1.5; }
 .linklike { padding: 0; border: 0; background: none; color: var(--gold); text-decoration: underline; font: inherit; cursor: pointer; }
@@ -757,7 +756,6 @@ html[dir="rtl"] .ctry-input { padding: 15px 16px 15px 44px; }
 .ctry-input[aria-expanded="true"] ~ .ctry-arrow::before { transform: rotate(225deg); margin-top: -2px; }
 .ctry-lb { margin: 6px 0 0; padding: 4px; list-style: none; max-height: min(46svh, 320px); overflow: auto; border: 1px solid rgba(217, 185, 106, .5); border-radius: 10px; background: rgba(20, 15, 9, .97); }
 .ctry-lb li { padding: 12px 12px; border-radius: 7px; font-size: 1.02rem; color: #f1e6cc; cursor: pointer; }
-.ctry-lb li[data-ship]::after { content: ""; display: inline-block; width: 6px; height: 6px; margin-inline-start: 8px; border-radius: 50%; background: #d9b96a; vertical-align: middle; }
 .ctry-lb li.hl, .ctry-lb li:hover { background: rgba(217, 185, 106, .18); }
 .ctry-lb li.on { color: #e8c97a; font-weight: 600; }
 .ctry-lb li.none { color: rgba(241, 230, 204, .6); cursor: default; }

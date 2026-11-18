@@ -636,7 +636,7 @@
       let items = [], act = 0, open = false;
       const paint = () => {
         ul.innerHTML = items.length
-          ? items.map((c, k) => `<li role="option" id="co-${c}" data-country="${c}"${SHIP_TO.includes(c) ? " data-ship" : ""} class="${k === act ? "hl" : ""}${c === country ? " on" : ""}" aria-selected="${c === country}">${esc(countryName(c))}</li>`).join("")
+          ? items.map((c, k) => `<li role="option" id="co-${c}" data-country="${c}"class="${k === act ? "hl" : ""}${c === country ? " on" : ""}" aria-selected="${c === country}">${esc(countryName(c))}</li>`).join("")
           : `<li class="none">${esc(t("ctryNone"))}</li>`;
         const cur = ul.querySelector(".hl");
         if (cur) { input.setAttribute("aria-activedescendant", cur.id); cur.scrollIntoView({ block: "nearest" }); } else input.removeAttribute("aria-activedescendant");
