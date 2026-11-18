@@ -146,6 +146,9 @@ export function mountStory(ctx, el) {
     return clips.get(k);
   };
   player.addEventListener("playing", () => music.level(1)); player.addEventListener("ended", () => music.level(.4)); player.addEventListener("pause", () => music.level(.4));
+  let blocked = false;
+  const resumeOnTouch = () => { if (blocked && voiceOn && player.src) { blocked = false; player.play().catch(() => { blocked = true; }); } };
+  document.addEventListener("touchend", resumeOnTouch, { passive: true }); document.addEventListener("pointerup", resumeOnTouch, { passive: true });
   const hush = () => { try { player.pause(); player.currentTime = 0; } catch {} };
   const sayBrowser = (i) => {
     if (!synth) return;
@@ -154,17 +157,13 @@ export function mountStory(ctx, el) {
     setTimeout(() => {                                                       // Chrome and Brave skip a speak() that comes right after a cancel()
       if (!voiceOn || spoken !== i) return;
       const v = pickVoice();
-      const parts = txt.match(/[^.!?。！？؟]+[.!?。！？؟]*/g) || [txt];           // one sentence at a time, with a breath between them, like a storyteller
-      const next = (k) => {
-        if (!voiceOn || spoken !== i || k >= parts.length) return;
-        const u = new SpeechSynthesisUtterance(parts[k].trim());
+      (txt.match(/[^.!?。！？؟]+[.!?。！？؟]*/g) || [txt]).forEach((part) => {     // every sentence is queued at once: the browser reads them one after the other (waiting for "onend" stalls on some phones)
+        const u = new SpeechSynthesisUtterance(part.trim());
         u.lang = (v && v.lang) || LANG[I.lang] || "en-US"; if (v) u.voice = v;
-        u.rate = I.lang === "zh" ? .85 : .86; u.pitch = 1.02; u.volume = 1;
-        u.onend = () => setTimeout(() => next(k + 1), 420);
+        u.rate = I.lang === "zh" ? .85 : .84; u.pitch = 1.02; u.volume = .9;
         u.onerror = (e) => { if (e.error && e.error !== "canceled" && e.error !== "interrupted") fail(); };
         synth.speak(u);
-      };
-      next(0);
+      });
     }, 90);
   };
   const say = (i) => {
@@ -173,13 +172,13 @@ export function mountStory(ctx, el) {
     if (mode === "phone") return sayBrowser(i);
     const go = (tries) => clip(i).then((url) => {
       if (!voiceOn || spoken !== i) return;
-      mode = "ai"; player.src = url; player.playbackRate = .96; player.volume = .9;
-      player.play().catch(() => {});
+      mode = "ai"; player.src = url; player.playbackRate = .94; player.volume = .85; blocked = false;
+      player.play().catch(() => { blocked = true; });                                 // if the browser refuses, the next touch starts it
       for (const j of [i + 1, i + 2]) if (j < scenes.length) clip(j).catch(() => {});      // fetch the next recordings while this one plays
     }).catch((e) => {
       if (!voiceOn || spoken !== i) return;
       if (mode === null && (tries >= 1 || [400, 403, 404, 501].includes(e && e.status))) { mode = "phone"; return sayBrowser(i); }         // no narrator at all: the phone reads, the same way from the first scene on
-      if (tries < 3) setTimeout(() => { if (voiceOn && spoken === i) go(tries + 1); }, 1200);   // a hiccup: try again, but never swap voices in the middle of the story
+      if (tries < 8) setTimeout(() => { if (voiceOn && spoken === i) go(tries + 1); }, 1500 + tries * 500);   // a hiccup: try again, but never swap voices in the middle of the story
     });
     go(0);
   };
@@ -229,5 +228,5 @@ export function mountStory(ctx, el) {
   const onScroll = () => { if (!raf) raf = requestAnimationFrame(upd); };
   window.addEventListener("scroll", onScroll, { passive: true });
   upd();
-  stop = () => { voiceOn = false; hush(); music.dispose(); clearTimeout(timer); clearTimeout(noteT); if (synth) synth.cancel(); window.removeEventListener("scroll", onSpeechScroll); document.removeEventListener("visibilitychange", onHide); io.disconnect(); window.removeEventListener("scroll", onScroll); if (raf) cancelAnimationFrame(raf); el.innerHTML = ""; };
+  stop = () => { voiceOn = false; hush(); music.dispose(); clearTimeout(timer); clearTimeout(noteT); if (synth) synth.cancel(); window.removeEventListener("scroll", onSpeechScroll); document.removeEventListener("visibilitychange", onHide); document.removeEventListener("touchend", resumeOnTouch); document.removeEventListener("pointerup", resumeOnTouch); io.disconnect(); window.removeEventListener("scroll", onScroll); if (raf) cancelAnimationFrame(raf); el.innerHTML = ""; };
 }

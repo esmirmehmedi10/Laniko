@@ -10,7 +10,12 @@
 // looked up here in i18n-about.js. Every finished recording is stored at the edge for a year, so each sentence is
 // generated once per voice and language, no matter how many visitors listen.
 
-const VOICE = { en: "luna", es: "estrella" };                                                // one soft, friendly narrator: Deepgram Aura-2 "Luna" (English) and "Estrella" (Spanish)
+const VOICE = { en: "pandora", es: "estrella" };                                             // soft, calm narrators: Deepgram Aura-2 "Pandora" (English, smooth and breathy) and "Estrella" (Spanish)
+// how each line should feel (used by the OpenAI voice, which can act): the story goes from a hushed opening to a warm, radiant close
+const MOOD = { abTag: "a soft, hushed opening, like the first line of a fairytale", ab1: "tender and hopeful, a story beginning", ab2: "intimate and wondering, almost a whisper", ab3: "quiet, warm conviction",
+  ab4: "gentle and emotional, slightly breathy", ab5: "calm and grounded, proud but soft", ab6: "curious and a little playful, then gentle", ab7: "soft and quietly defiant, with a small smile in the voice",
+  ab8: "deeply moved, touched and tender", ab9: "soft and precise, almost reverent", ab10: "calm and certain", ab11: "dreamy and wistful, full of wonder", ab12: "warm and proud, confident but gentle",
+  ab13: "hushed and mysterious, like sharing a secret", abEnd1: "radiant and uplifting, a soft smile in the voice", abEnd2: "tender and final, a warm, lingering close" };
 const MELO = { fr: "fr", zh: "zh" };                                                       // MeloTTS (French, Chinese)
 const ALL = ["en", "de", "fr", "pt", "it", "es", "ar", "zh"], LANG_NAME = { en: "English", de: "German", fr: "French", pt: "European Portuguese", it: "Italian", es: "Spanish (neutral Latin-American/Spain)", ar: "Modern Standard Arabic", zh: "Mandarin Chinese" };
 const OPENAI_VOICE = "coral";
@@ -69,7 +74,8 @@ export async function onRequestPost({ request, env, waitUntil }) {
         method: "POST", headers: { Authorization: "Bearer " + env.OPENAI_API_KEY, "content-type": "application/json" },
         body: JSON.stringify({
           model: "gpt-4o-mini-tts", voice: OPENAI_VOICE, response_format: "mp3", input: text,
-          instructions: `Voice: a soft, warm, gentle woman telling a fairytale in a quiet room. Tone: calm, intimate and a little dreamy, tender and kind, never formal, never a news reader, never dramatic. ` +
+          instructions: `Voice: a very soft, warm, gentle woman, almost whispering, telling a fairytale in a quiet room. Tone: calm, intimate and dreamy, tender and kind, never formal, never a news reader, never loud. Show real feeling: let emotion colour the words. ` +
+            `This line should sound: ${ids.map((k) => MOOD[k]).filter(Boolean).join("; ") || "gentle and warm"}. ` +
             `Pace: slow and unhurried, with soft pauses between sentences. Language: ${LANG_NAME[lang]}, with a natural native accent. The brand name "Laniko" is one word, said lah-NEE-koh.`,
         }),
       });
