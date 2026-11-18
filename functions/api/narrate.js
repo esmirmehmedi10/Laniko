@@ -68,7 +68,8 @@ export async function onRequestPost({ request, env, waitUntil }) {
     }
   } catch (e) { return err(502, "voice failed"); }
 
-  const res = new Response(bytes, { headers: { "Content-Type": "audio/mpeg", "Cache-Control": "public, max-age=31536000, immutable" } });
+  const wav = bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46;            // MeloTTS answers with WAV, Aura with MP3
+  const res = new Response(bytes, { headers: { "Content-Type": wav ? "audio/wav" : "audio/mpeg", "Cache-Control": "public, max-age=31536000, immutable" } });
   if (cache) { const put = cache.put(cacheKey, res.clone()); if (waitUntil) waitUntil(put); else await put; }
   return res;
 }
