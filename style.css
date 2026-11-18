@@ -696,10 +696,10 @@ html[dir="rtl"] .st-bar i { transform-origin: 100% 50%; }
 html.has-welcome .welcome { display: block; }
 .wl-door { position: absolute; top: 0; bottom: 0; width: 50%; overflow: hidden; will-change: transform; transition: transform 1.6s cubic-bezier(.72, 0, .18, 1); }
 .wl-l { left: 0; } .wl-r { right: 0; }
-.wl-img { position: absolute; top: 0; bottom: 0; width: 100vw; background: #0a0805 url(/images/welcome-wide.webp) center / cover no-repeat;
+.wl-img { position: absolute; top: 0; bottom: 0; width: 100vw; background: #0a0805 url(/images/welcome-wide-2.webp) center / cover no-repeat;
   transform: translate3d(var(--tx, 0px), var(--ty, 0px), 0) scale(1.08); }
 .wl-l .wl-img { left: 0; } .wl-r .wl-img { right: 0; }
-@media (orientation: portrait) { .wl-img { background-image: url(/images/welcome-tall.webp); } }
+@media (orientation: portrait) { .wl-img { background-image: url(/images/welcome-tall-2.webp); } }
 .wl-shine { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .wl-shine::before { content: ""; position: absolute; top: -10%; bottom: -10%; left: -40%; width: 40%; transform: translateX(-100%) skewX(-18deg);
   background: linear-gradient(90deg, transparent, rgba(255, 232, 178, .2), transparent); mix-blend-mode: screen; animation: wlShine 6.5s ease-in-out 1.4s infinite; }
@@ -740,3 +740,7 @@ html.has-welcome .welcome { display: block; }
 .ctry-warn { display: block; margin-top: 4px; color: #8a2f2f; }
 html[data-theme="dark"] .ctry-warn { color: #e0a0a0; }
 @media (orientation: landscape) { .wl-enter { bottom: max(1.5vh, calc(8px + env(safe-area-inset-bottom))); gap: 6px; } .wl-enter i { height: 22px; } }
+
+/* the logo on the welcome screen is the vector file (sharp at any size), one copy per door so it splits with them */
+.wl-logo { position: absolute; left: 50%; top: 46%; height: min(56svh, 560px); width: auto; aspect-ratio: 631 / 1595; transform: translate(-50%, -50%); overflow: visible;
+  filter: drop-shadow(0 0 16px rgba(255, 214, 130, .22)) drop-shadow(0 3px 4px rgba(0, 0, 0, .55)); }
