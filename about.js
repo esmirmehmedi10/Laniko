@@ -7,6 +7,8 @@ const F = (i, d, cls = "") => `<path class="fi ${cls}" style="--i:${i}" d="${d}"
 const circ = (cx, cy, r) => `M${cx - r},${cy} a${r},${r} 0 1 0 ${2 * r},0 a${r},${r} 0 1 0 ${-2 * r},0`;
 const spark = (cx, cy, s) => `M${cx},${cy - s} L${cx + s * .25},${cy - s * .25} L${cx + s},${cy} L${cx + s * .25},${cy + s * .25} L${cx},${cy + s} L${cx - s * .25},${cy + s * .25} L${cx - s},${cy} L${cx - s * .25},${cy - s * .25} Z`;
 const drop = (cx, cy, s) => `M${cx},${cy - s * 1.5} C${cx - s * .2},${cy - s * .6} ${cx - s},${cy - s * .2} ${cx - s},${cy + s * .35} a${s},${s} 0 0 0 ${2 * s},0 C${cx + s},${cy - s * .2} ${cx + s * .2},${cy - s * .6} ${cx},${cy - s * 1.5} Z`;
+const heart = (cx, cy, s) => { const y = cy - .11 * s + 1.5;      // the box of the shape is centred on (cx, cy); +1.5 because a heart's weight sits in its upper half
+  return `M${cx},${y + .95 * s} C${cx - .35 * s},${y + .6 * s} ${cx - s},${y + .15 * s} ${cx - s},${y - .3 * s} C${cx - s},${y - .75 * s} ${cx - .3 * s},${y - .95 * s} ${cx},${y - .4 * s} C${cx + .3 * s},${y - .95 * s} ${cx + s},${y - .75 * s} ${cx + s},${y - .3 * s} C${cx + s},${y + .15 * s} ${cx + .35 * s},${y + .6 * s} ${cx},${y + .95 * s} Z`; };
 const svg = (inner) => `<svg viewBox="0 0 200 200" aria-hidden="true" focusable="false">${inner}</svg>`;
 
 // the Laniko bottle: square glass body, framed label, collar and a tall cap
@@ -33,15 +35,15 @@ const ART = {
   crown: svg(P(0, "M58,128 L50,78 L78,102 L100,64 L122,102 L150,78 L142,128 Z") + P(1, "M58,138 H142") + F(2, circ(50, 76, 3.2)) + F(2, circ(100, 62, 3.2)) + F(2, circ(150, 76, 3.2)) +
     P(3, "M36,52 Q100,26 164,52 M36,52 C58,92 54,138 40,172 M164,52 C142,92 146,138 160,172", "veil")),
   // 4: sensed, felt, remembered: ripples spreading from a heart
-  ripples: svg(P(0, "M100,120 C84,106 76,96 76,86 a12,12 0 0 1 24,-4 a12,12 0 0 1 24,4 c0,10 -8,20 -24,34 z") +
+  ripples: svg(P(0, heart(100, 98, 25)) +
     P(2, circ(100, 98, 38), "br") + P(3, circ(100, 98, 58), "br b2 dim") + P(4, circ(100, 98, 78), "br b3 dimmer")),
   // 5: anchored in individuality: an anchor under a star
   anchor: svg(P(0, circ(100, 46, 9)) + P(1, "M100,55 V160") + P(2, "M80,76 H120") + P(3, "M52,126 C58,156 80,168 100,168 C120,168 142,156 148,126") +
     P(4, "M44,134 L53,118 L63,136") + P(4, "M156,134 L147,118 L137,136") + P(5, spark(154, 50, 11), "sw") + P(6, spark(46, 66, 6), "sw s2")),
   // 6: contrast: smooth waves on one half, sharp rays on the other
   contrast: svg(P(0, "M100,42 A58,58 0 0 0 100,158") + P(1, "M100,42 A58,58 0 0 1 100,158") + P(2, "M100,42 V158", "thin") +
-    P(3, "M54,84 c10,-7 20,7 30,0 s14,-4 14,-2 M50,100 c12,-7 24,7 36,0 s12,-4 12,-2 M54,116 c10,-7 20,7 30,0 s14,-4 14,-2") +
-    P(4, "M112,70 l10,14 l-10,14 l14,12 l-14,14 l10,12", "") + P(5, "M130,92 l12,-6 M132,112 l14,2", "thin")),
+    P(3, "M57,86 q4.5,-7 9,0 t9,0 t9,0 M57,100 q4.5,-7 9,0 t9,0 t9,0 M57,114 q4.5,-7 9,0 t9,0 t9,0") +
+    P(4, "M114,74 l10,13 l-10,13 l10,13 l-10,13", "") + P(5, "M131,93 l13,-6 M131,107 l13,6", "thin")),
   // 7: not following trends: a crowd of lines going one way, one gold path breaking free
   trend: svg([62, 86, 110, 134, 158].map((y, k) => P(k * .4, `M36,${y} H146 M138,${y - 5} L146,${y} L138,${y + 5}`, "dimmer")).join("") +
     P(2, "M36,110 C74,110 98,112 112,92 C124,74 132,56 160,48", "free") + P(5, spark(164, 44, 10), "sw")),
@@ -62,7 +64,7 @@ const ART = {
   statement: svg(`<g transform="translate(0,12)">${bottle(0)}</g>` + P(6, spark(40, 60, 9), "sw") + P(7, spark(162, 50, 12), "sw s2") + P(8, spark(150, 108, 6), "sw s3") + P(8, spark(34, 118, 5), "sw")),
   // 13: a statement without words: an empty speech bubble holding a drop of scent
   bubble: svg(P(0, "M40,52 H160 a12,12 0 0 1 12,12 V120 a12,12 0 0 1 -12,12 H112 L92,160 L90,132 H40 a12,12 0 0 1 -12,-12 V64 a12,12 0 0 1 12,-12 Z") +
-    F(2, drop(100, 100, 12), "") + P(3, circ(100, 92, 36), "br dim thin")),
+    F(2, drop(100, 92.9, 12), "") + P(3, circ(100, 92, 36), "br dim thin")),
   // end: a radiant star: discover, define
   end: svg(P(0, spark(100, 100, 46)) + P(1, circ(100, 100, 66), "thin dim") +
     Array.from({ length: 16 }, (_, k) => { const a = k * Math.PI / 8, r1 = 74, r2 = k % 2 ? 82 : 90; return P(2 + k * .12, `M${(100 + Math.cos(a) * r1).toFixed(1)},${(100 + Math.sin(a) * r1).toFixed(1)} L${(100 + Math.cos(a) * r2).toFixed(1)},${(100 + Math.sin(a) * r2).toFixed(1)}`, "thin"); }).join("")),
