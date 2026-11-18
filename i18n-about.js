@@ -14,7 +14,7 @@ window.I18N.add({
     ab11: "Every fragrance tells a story that words alone cannot express.",
     ab12: "LANIKO is not just a fragrance.", ab13: "It is a statement without words.",
     abEnd1: "Discover the extraordinary.", abEnd2: "Define your presence.", abCta: "Discover the perfumes",
-    abVoice: "Voice", abListen: "Listen", abStop: "Stop", abNoVoice: "Voice isn’t available on this device",
+    abMusic: "Music", abMusicOn: "Music on", abMusicOff: "Music off", abVoice: "Voice", abListen: "Listen", abStop: "Stop", abNoVoice: "Voice isn’t available on this device",
   },
   de: {
     abTab: "Über uns", abTitle: "ÜBER LANIKO", abTag: "Jenseits des Duftes. Jenseits des Gewöhnlichen.",
@@ -30,7 +30,7 @@ window.I18N.add({
     ab11: "Jeder Duft erzählt eine Geschichte, die Worte allein nicht ausdrücken können.",
     ab12: "LANIKO ist nicht nur ein Duft.", ab13: "Es ist ein Statement ohne Worte.",
     abEnd1: "Entdecke das Außergewöhnliche.", abEnd2: "Definiere deine Präsenz.", abCta: "Parfums entdecken",
-    abVoice: "Stimme", abListen: "Anhören", abStop: "Anhalten", abNoVoice: "Sprachausgabe auf diesem Gerät nicht verfügbar",
+    abMusic: "Musik", abMusicOn: "Musik an", abMusicOff: "Musik aus", abVoice: "Stimme", abListen: "Anhören", abStop: "Anhalten", abNoVoice: "Sprachausgabe auf diesem Gerät nicht verfügbar",
   },
   fr: {
     abTab: "À propos", abTitle: "À PROPOS DE LANIKO", abTag: "Au-delà du parfum. Au-delà de l’ordinaire.",
@@ -46,7 +46,7 @@ window.I18N.add({
     ab11: "Chaque parfum raconte une histoire que les mots seuls ne peuvent exprimer.",
     ab12: "LANIKO n’est pas seulement un parfum.", ab13: "C’est une déclaration sans mots.",
     abEnd1: "Découvrez l’extraordinaire.", abEnd2: "Affirmez votre présence.", abCta: "Découvrir les parfums",
-    abVoice: "Voix", abListen: "Écouter", abStop: "Arrêter", abNoVoice: "Voix indisponible sur cet appareil",
+    abMusic: "Musique", abMusicOn: "Musique activée", abMusicOff: "Musique coupée", abVoice: "Voix", abListen: "Écouter", abStop: "Arrêter", abNoVoice: "Voix indisponible sur cet appareil",
   },
   pt: {
     abTab: "Sobre nós", abTitle: "SOBRE A LANIKO", abTag: "Para além da fragrância. Para além do vulgar.",
@@ -62,7 +62,7 @@ window.I18N.add({
     ab11: "Cada fragrância conta uma história que as palavras, por si só, não conseguem exprimir.",
     ab12: "A LANIKO não é apenas uma fragrância.", ab13: "É uma declaração sem palavras.",
     abEnd1: "Descubra o extraordinário.", abEnd2: "Defina a sua presença.", abCta: "Descobrir os perfumes",
-    abVoice: "Voz", abListen: "Ouvir", abStop: "Parar", abNoVoice: "Voz indisponível neste dispositivo",
+    abMusic: "Música", abMusicOn: "Música ligada", abMusicOff: "Música desligada", abVoice: "Voz", abListen: "Ouvir", abStop: "Parar", abNoVoice: "Voz indisponível neste dispositivo",
   },
   it: {
     abTab: "Chi siamo", abTitle: "CHI È LANIKO", abTag: "Oltre la fragranza. Oltre l’ordinario.",
@@ -78,7 +78,7 @@ window.I18N.add({
     ab11: "Ogni fragranza racconta una storia che le sole parole non possono esprimere.",
     ab12: "LANIKO non è solo una fragranza.", ab13: "È una dichiarazione senza parole.",
     abEnd1: "Scopri lo straordinario.", abEnd2: "Definisci la tua presenza.", abCta: "Scopri i profumi",
-    abVoice: "Voce", abListen: "Ascolta", abStop: "Ferma", abNoVoice: "Voce non disponibile su questo dispositivo",
+    abMusic: "Musica", abMusicOn: "Musica attiva", abMusicOff: "Musica spenta", abVoice: "Voce", abListen: "Ascolta", abStop: "Ferma", abNoVoice: "Voce non disponibile su questo dispositivo",
   },
   es: {
     abTab: "Nosotros", abTitle: "SOBRE LANIKO", abTag: "Más allá de la fragancia. Más allá de lo ordinario.",
@@ -94,7 +94,7 @@ window.I18N.add({
     ab11: "Cada fragancia cuenta una historia que las palabras por sí solas no pueden expresar.",
     ab12: "LANIKO no es solo una fragancia.", ab13: "Es una declaración sin palabras.",
     abEnd1: "Descubre lo extraordinario.", abEnd2: "Define tu presencia.", abCta: "Descubrir los perfumes",
-    abVoice: "Voz", abListen: "Escuchar", abStop: "Parar", abNoVoice: "Voz no disponible en este dispositivo",
+    abMusic: "Música", abMusicOn: "Música activada", abMusicOff: "Música apagada", abVoice: "Voz", abListen: "Escuchar", abStop: "Parar", abNoVoice: "Voz no disponible en este dispositivo",
   },
   ar: {
     abTab: "من نحن", abTitle: "عن LANIKO", abTag: "ما وراء العطر. ما وراء المألوف.",
@@ -110,7 +110,7 @@ window.I18N.add({
     ab11: "كل عطر يروي قصة لا تستطيع الكلمات وحدها التعبير عنها.",
     ab12: "LANIKO ليست مجرد عطر.", ab13: "إنها بيان بلا كلمات.",
     abEnd1: "اكتشف الاستثنائي.", abEnd2: "حدّد حضورك.", abCta: "اكتشف العطور",
-    abVoice: "الصوت", abListen: "استمع", abStop: "إيقاف", abNoVoice: "الصوت غير متاح على هذا الجهاز",
+    abMusic: "الموسيقى", abMusicOn: "الموسيقى تعمل", abMusicOff: "الموسيقى متوقفة", abVoice: "الصوت", abListen: "استمع", abStop: "إيقاف", abNoVoice: "الصوت غير متاح على هذا الجهاز",
   },
   zh: {
     abTab: "关于我们", abTitle: "关于 LANIKO", abTag: "超越香氛，超越寻常。",
@@ -126,6 +126,6 @@ window.I18N.add({
     ab11: "每一款香氛都讲述一个仅凭言语无法表达的故事。",
     ab12: "LANIKO 不只是一款香氛。", ab13: "它是一句无需言语的宣言。",
     abEnd1: "发现非凡，", abEnd2: "定义你的存在。", abCta: "探索香水",
-    abVoice: "声音", abListen: "聆听", abStop: "停止", abNoVoice: "此设备不支持语音朗读",
+    abMusic: "音乐", abMusicOn: "音乐已开", abMusicOff: "音乐已关", abVoice: "声音", abListen: "聆听", abStop: "停止", abNoVoice: "此设备不支持语音朗读",
   },
 });

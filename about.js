@@ -1,6 +1,8 @@
 // "About us": the brand text as a story, one sentence per scene. Each scene has a gold line drawing that draws itself
 // when it scrolls into view, and the sentence appears word by word. Everything is plain SVG + CSS (no libraries).
 
+import { createMusic } from "/music.js";
+
 // ---- tiny helpers for the drawings (viewBox 0 0 200 200) ----
 const P = (i, d, cls = "") => `<path class="dr ${cls}" pathLength="1" style="--i:${i}" d="${d}"/>`;      // a line that draws itself
 const F = (i, d, cls = "") => `<path class="fi ${cls}" style="--i:${i}" d="${d}"/>`;                      // a filled shape that fades in
@@ -106,7 +108,8 @@ export function mountStory(ctx, el) {
   // ---- narration: a voice reads each scene aloud as it comes into view (the browser's own speech, no download) ----
   const synth = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window ? window.speechSynthesis : null;
   const LANG = { en: "en-US", de: "de-DE", fr: "fr-FR", pt: "pt-PT", it: "it-IT", es: "es-ES", ar: "ar-SA", zh: "zh-CN" };
-  let voiceOn = false, spoken = -1, timer = 0, btn = null, vbtn = null, noteT = 0;
+  let voiceOn = false, spoken = -1, timer = 0, btn = null, vbtn = null, mbtn = null, noteT = 0, lastScene = -1, musicOn = false;
+  const music = createMusic();
   // all voices of the site language, best first: natural / network / female-sounding voices before robotic local ones
   const FEMALE = /female|woman|samantha|karen|moira|serena|tessa|ava|allison|susan|zira|aria|jenny|libby|hazel|sonia|amelie|am[eé]lie|marie|audrey|anna|helena|petra|joana|maria|luciana|alice|elsa|federica|paola|paulina|monica|m[oó]nica|laura|helga|katja|amala|conchita|lucia|elvira|salma|zariyah|laila|ting|mei|tian|xiao|hui|yao|huihui|yunxi|x-(?:iob|iog|tpc|tpf|sfg|gba|gbc|gbg|frc|fra|dea|dec|ita|itb|esa|esc|ptb|ptc|cmn-cn-ccc)/i;
   const MALE = /\bmale\b|daniel|alex|fred|david|mark|james|george|thomas|diego|jorge|luca|paul|stefan|hans|maged|tarik|yunyang|kangkang|x-(?:iol|iom|tpd|gbb|gbd|frb|frd|ded|deb|itc|itd|esd|ptd)/i;
@@ -154,12 +157,23 @@ export function mountStory(ctx, el) {
   };
   const label = (txt) => { btn.querySelector(".st-voice-t").textContent = txt; };
   const note = (txt) => { label(txt); btn.classList.add("note"); clearTimeout(noteT); noteT = setTimeout(() => { btn.classList.remove("note"); label(I.t(voiceOn ? "abStop" : "abListen")); }, 3200); };
+  const flash = (b, txt) => { b.querySelector(".st-voice-t").textContent = txt; b.classList.add("note"); clearTimeout(b._t); b._t = setTimeout(() => b.classList.remove("note"), 2600); };
+  const setMusic = (on) => {
+    musicOn = on; if (on) { music.level(voiceOn ? .5 : 1); music.start(); } else music.stop();
+    if (mbtn) { mbtn.classList.toggle("on", on); mbtn.setAttribute("aria-pressed", String(on)); flash(mbtn, I.t(on ? "abMusicOn" : "abMusicOff")); }
+    try { localStorage.setItem("laniko-music", on ? "1" : "0"); } catch {}
+  };
   const fail = () => { voiceOn = false; btn.classList.remove("on"); btn.setAttribute("aria-pressed", "false"); note(I.t("abNoVoice")); };
   const toggle = () => {
     if (!synth) return fail();
     voiceOn = !voiceOn; spoken = -1; clearTimeout(timer);
     btn.classList.toggle("on", voiceOn); btn.setAttribute("aria-pressed", String(voiceOn)); label(I.t(voiceOn ? "abStop" : "abListen"));
-    if (voiceOn) { try { synth.resume(); } catch {} say(current()); } else synth.cancel();    // the tap itself is what lets the browser start the voice
+    music.level(voiceOn ? .5 : 1);
+    if (voiceOn) {
+      let pref = null; try { pref = localStorage.getItem("laniko-music"); } catch {}
+      if (pref !== "0" && !musicOn) setMusic(true);                                // the story starts with its fairytale music, unless the visitor turned it off before
+      try { synth.resume(); } catch {} say(current());
+    } else synth.cancel();    // the tap itself is what lets the browser start the voice
   };
   if (synth) {
     btn = document.createElement("button");
@@ -174,14 +188,23 @@ export function mountStory(ctx, el) {
       const vs = voiceList(); if (!vs.length) return fail();
       const key = (v) => v.voiceURI || v.name, cur = pickVoice(), at = vs.findIndex((v) => cur && key(v) === key(cur)), k = (at + 1) % vs.length, nx = vs[k];
       try { localStorage.setItem(saveKey(), key(nx)); } catch {}
-      vbtn.querySelector(".st-voice-t").textContent = I.t("abVoice") + " " + (k + 1) + "/" + vs.length;
+      flash(vbtn, I.t("abVoice") + " " + (k + 1) + "/" + vs.length);
       if (!voiceOn) toggle(); else { spoken = -1; say(current()); }
     });
     el.appendChild(vbtn);
+    mbtn = document.createElement("button");
+    mbtn.type = "button"; mbtn.className = "st-voice st-voice-pick st-music"; mbtn.setAttribute("aria-pressed", "false"); mbtn.setAttribute("aria-label", I.t("abMusic"));
+    mbtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg><span class="st-voice-t"></span>';
+    mbtn.addEventListener("click", () => setMusic(!musicOn));
+    el.appendChild(mbtn);
     synth.getVoices();                                                      // some browsers only fill the voice list after the first call
   }
-  const onSpeechScroll = () => { if (!voiceOn) return; clearTimeout(timer); timer = setTimeout(() => say(current()), 380); };
-  const onHide = () => { if (document.hidden && synth) { synth.cancel(); spoken = -1; } };
+  const onSpeechScroll = () => {
+    if (!voiceOn && !musicOn) return;
+    clearTimeout(timer);
+    timer = setTimeout(() => { const i = current(); if (i !== lastScene) { lastScene = i; if (musicOn) music.chime(); } say(i); }, 380);     // new scene: a little harp glissando, then the voice
+  };
+  const onHide = () => { if (document.hidden) { if (synth) { synth.cancel(); spoken = -1; } music.pause(); } else music.resume(); };
   window.addEventListener("scroll", onSpeechScroll, { passive: true });
   document.addEventListener("visibilitychange", onHide);
 
@@ -197,5 +220,5 @@ export function mountStory(ctx, el) {
   const onScroll = () => { if (!raf) raf = requestAnimationFrame(upd); };
   window.addEventListener("scroll", onScroll, { passive: true });
   upd();
-  stop = () => { voiceOn = false; clearTimeout(timer); clearTimeout(noteT); if (synth) synth.cancel(); window.removeEventListener("scroll", onSpeechScroll); document.removeEventListener("visibilitychange", onHide); io.disconnect(); window.removeEventListener("scroll", onScroll); if (raf) cancelAnimationFrame(raf); el.innerHTML = ""; };
+  stop = () => { voiceOn = false; music.dispose(); clearTimeout(timer); clearTimeout(noteT); if (synth) synth.cancel(); window.removeEventListener("scroll", onSpeechScroll); document.removeEventListener("visibilitychange", onHide); io.disconnect(); window.removeEventListener("scroll", onScroll); if (raf) cancelAnimationFrame(raf); el.innerHTML = ""; };
 }
