@@ -771,8 +771,9 @@
   } catch {}
 
   // ---- welcome: every visit starts with the golden doors; a tap opens them. Tilting the phone (or moving the mouse) moves the light. ----
-  // one closed cut runs around the logo (its outline plus a safety margin). Points are (x, y) as fractions of the logo's width and height.
-  const DOOR_CUT = [[0.0079, -0.015], [-0.0158, -0.0107], [-0.0349, 0.0006], [-0.0396, 0.0439], [-0.0396, 0.3624], [-0.0301, 0.373], [-0.0063, 0.3862], [-0.0032, 0.3925], [-0.0063, 0.4006], [-0.0317, 0.4163], [-0.0365, 0.427], [-0.0365, 0.8263], [-0.0285, 0.8602], [-0.0079, 0.8884], [0.0317, 0.9204], [0.0824, 0.9473], [0.1727, 0.9799], [0.2647, 1.0], [0.3439, 1.01], [0.4311, 1.0144], [0.5357, 1.0107], [0.6054, 1.0025], [0.6609, 0.9925], [0.7052, 0.9818], [0.7544, 0.9661], [0.7956, 0.9492], [0.8352, 0.9279], [0.859, 0.911], [0.8827, 0.8865], [0.9002, 0.8495], [0.9002, 0.8219], [0.8938, 0.8031], [0.859, 0.7611], [0.8019, 0.7235], [0.8019, 0.7097], [0.8225, 0.6991], [0.8447, 0.6953], [0.9826, 0.6953], [1.0032, 0.6934], [1.0238, 0.6865], [1.0317, 0.6759], [1.0285, 0.6696], [1.0079, 0.6571], [0.8019, 0.5687], [0.7908, 0.5611], [0.7892, 0.5498], [0.8019, 0.5398], [0.9842, 0.4639], [0.9937, 0.4564], [0.9937, 0.4476], [0.9651, 0.4295], [0.9493, 0.4056], [0.6529, 0.1273], [0.6181, 0.1022], [0.6006, 0.0972], [0.58, 0.0953], [0.4311, 0.0959], [0.4073, 0.0984], [0.3899, 0.1047], [0.309, 0.1768], [0.2948, 0.1824], [0.2773, 0.1856], [0.2393, 0.1843], [0.2187, 0.1774], [0.2076, 0.1661], [0.2044, -0.0013], [0.1902, -0.0094], [0.1616, -0.015]];
+  // the doors do not cut through the logo: they part along its right-hand outline, so the logo stays whole on the left door.
+  // points are (x, y) as fractions of the logo's width and height (computed from the logo's real shape plus a safety margin)
+  const DOOR_CUT = [[0.6437, -0.15], [0.6437, 0.1141], [0.9525, 0.4019], [0.972, 0.4301], [0.9984, 0.4451], [0.9984, 0.4583], [0.9889, 0.4658], [0.7994, 0.5448], [0.7851, 0.5542], [0.7989, 0.5636], [0.9968, 0.6483], [0.9984, 0.6953], [0.8717, 0.7423], [0.858, 0.7498], [0.8906, 0.7875], [0.9065, 0.8213], [0.9065, 0.8495], [0.8986, 0.8721], [0.8605, 0.9154], [0.8225, 0.9398], [0.7876, 0.9567], [0.6917, 0.9925], [0.6764, 1.0013], [0.496, 1.0671]];
   function showWelcome(onEnter) {
     return new Promise((resolve) => {
       window.__lanikoReady = true;
@@ -817,18 +818,13 @@
         el.removeEventListener("pointermove", onMove);
         if (tiltOn) window.removeEventListener("deviceorientation", onTilt);
         if (raf) { cancelAnimationFrame(raf); raf = 0; }
-        // measure the logo where it is right now and cut its outline out of the marble
+        // measure the logo where it is right now and cut the two doors along its outline
         const lr = el.querySelector(".wl-logo").getBoundingClientRect(), Wd = el.clientWidth, Hd = el.clientHeight;
-        const ring = DOOR_CUT.map(([u, v]) => [lr.left + u * lr.width, lr.top + v * lr.height]);
-        const poly = ring.map((p) => p[0].toFixed(1) + "px " + p[1].toFixed(1) + "px").join(", ");
-        const p0 = ring[0][0].toFixed(1) + "px " + ring[0][1].toFixed(1) + "px";
-        const L = el.querySelector(".wl-l"), R = el.querySelector(".wl-r");
-        L.style.clipPath = `polygon(${poly})`;                                              // the piece that carries the logo
-        R.style.clipPath = `polygon(evenodd, 0px 0px, ${Wd}px 0px, ${Wd}px ${Hd}px, 0px ${Hd}px, 0px 0px, ${poly}, ${p0}, 0px 0px)`;   // the marble around it (the way in and out of the hole is one hairline, no wedge)
-        L.style.setProperty("--hx", (Math.min(...ring.map((p) => p[0]))).toFixed(1) + "px");   // it swings on its left edge
-        el.style.setProperty("--ox", (lr.left + lr.width / 2).toFixed(1) + "px");
-        el.style.setProperty("--oy", (lr.top + lr.height / 2).toFixed(1) + "px");
-        el.insertAdjacentHTML("beforeend", `<svg class="wl-edge" width="${Wd}" height="${Hd}" viewBox="0 0 ${Wd} ${Hd}" aria-hidden="true"><polygon pathLength="1" points="${ring.map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ")}"/></svg>`);
+        const mid = DOOR_CUT.slice(1).map(([u, v]) => [lr.left + u * lr.width, lr.top + v * lr.height]);
+        const line = [[lr.left + DOOR_CUT[0][0] * lr.width, 0], ...mid, [mid[mid.length - 1][0], Hd]];
+        const pts = line.map((p) => p[0].toFixed(1) + "px " + p[1].toFixed(1) + "px").join(", ");
+        el.querySelector(".wl-l").style.clipPath = `polygon(0px 0px, ${pts}, 0px ${Hd}px)`;
+        el.querySelector(".wl-r").style.clipPath = `polygon(${pts}, ${Wd}px ${Hd}px, ${Wd}px 0px)`;
         el.classList.add("open");
         onEnter();                                             // the first-visit window appears right behind the opening doors
         setTimeout(() => {
@@ -839,7 +835,7 @@
           document.documentElement.classList.remove("has-welcome");
           updateLock();
           resolve();
-        }, reduced ? 650 : 2000);
+        }, reduced ? 650 : 1750);
       };
       el.addEventListener("click", open);
       const onKey = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } };     // keyboard users: Enter or Space

@@ -695,7 +695,7 @@ html[dir="rtl"] .st-bar i { transform-origin: 100% 50%; }
 .welcome { display: none; position: fixed; inset: 0; z-index: 80; overflow: hidden; background: #0a0805; touch-action: none; cursor: pointer; }
 html.has-welcome .welcome { display: block; }
 .wl-door { position: absolute; inset: 0; overflow: hidden; will-change: transform; transition: transform 1.55s cubic-bezier(.72, 0, .18, 1) .3s; }
-.wl-r { visibility: hidden; }      /* the marble frame only shows once the logo piece is cut out of it */
+.wl-r { visibility: hidden; }      /* the right door only shows once the doors are cut along the logo's outline */
 .wl-img { position: absolute; inset: 0; background: #0a0805 url(/images/welcome-wide-2.webp) center / cover no-repeat;
   transform: translate3d(var(--tx, 0px), var(--ty, 0px), 0) scale(1.08); }
 @media (orientation: portrait) { .wl-img { background-image: url(/images/welcome-tall-2.webp); } }
@@ -714,15 +714,13 @@ html.has-welcome .welcome { display: block; }
 .wl-enter i { width: 1px; height: 38px; background: linear-gradient(#d9b96a, transparent); transform-origin: top; animation: wlCue 2s ease-in-out infinite; }
 @keyframes wlCue { 0% { transform: scaleY(0); opacity: 0; } 40% { opacity: 1; } 100% { transform: scaleY(1); opacity: 0; } }
 .welcome.open { pointer-events: none; background: transparent; }
-/* the cut is one closed line around the logo: the logo piece swings open like a door on its left edge, the marble frame around it then falls away */
-.wl-l { transform-origin: var(--hx, 50%) 50%; backface-visibility: hidden; transition: transform 1.2s cubic-bezier(.6, 0, .25, 1) .3s, opacity .3s ease 1.3s; }
-.welcome.open .wl-l { transform: perspective(1300px) rotateY(108deg); opacity: 0; }
-.welcome.open .wl-r { visibility: visible; transform-origin: var(--ox, 50%) var(--oy, 50%); animation: wlFrame .85s cubic-bezier(.5, 0, .75, .4) .95s forwards; }
-@keyframes wlFrame { to { opacity: 0; transform: scale(1.45); } }
-.welcome.open .wl-shine,  .welcome.open .wl-bottom, .welcome.open .wl-enter { opacity: 0; transition: opacity .35s ease; }
+.welcome.open .wl-r { visibility: visible; }
+.welcome.open .wl-l { transform: translateX(-103%); }
+.welcome.open .wl-r { transform: translateX(103%); }
+.welcome.open .wl-shine, .welcome.open .wl-bottom, .welcome.open .wl-enter { opacity: 0; transition: opacity .35s ease; }
 @media (prefers-reduced-motion: reduce) {
   .wl-shine { display: none; } .wl-enter i { animation: none; opacity: .7; transform: none; }
-  .welcome.open .wl-l { transform: none; transition: opacity .5s ease; opacity: 0; } .welcome.open .wl-r { animation: wlFade .5s ease forwards; } @keyframes wlFade { to { opacity: 0; } } }
+  .welcome.open .wl-door { transition: opacity .5s ease; opacity: 0; } .welcome.open .wl-l, .welcome.open .wl-r { transform: none; } }
 
 /* ---------- language + country window ---------- */
 .lang-gate { justify-content: flex-start; }
@@ -768,10 +766,5 @@ html[dir="rtl"] .ctry-input { padding: 15px 16px 15px 44px; }
   .wl-enter span { transition: none; }
 }
 
-/* when the doors open the logo is finished at once, and a ray of light runs down the cut */
+/* when the doors open the logo is finished at once */
 .welcome.open .wl-logo { animation: none; fill-opacity: 1; stroke-width: 0; stroke-dashoffset: 0; scale: 1; }
-.wl-edge { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
-.wl-edge polygon { fill: none; stroke: #ffeec4; stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1;
-  filter: drop-shadow(0 0 8px rgba(255, 214, 130, .95)) drop-shadow(0 0 22px rgba(255, 190, 90, .6)); animation: wlEdge 1.3s ease-out forwards; }
-@keyframes wlEdge { 0% { stroke-dashoffset: 1; opacity: 1; } 35% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .wl-edge { display: none; } }
