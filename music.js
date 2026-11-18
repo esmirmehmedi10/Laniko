@@ -1,115 +1,110 @@
-// Background music for the About story: a slow fairytale lullaby, made live with Web Audio (no audio files).
-// A music-box melody and a soft harp arpeggio float over a warm string pad, in D major (D - Bm - G - A), with a big
-// dreamy reverb and a faint echo. A little harp glissando plays whenever the story moves on to the next scene.
+// Background music for the About story: "a quiet room of scent". A slow, soft waltz for felt piano in D major, with a
+// warm string haze underneath and a few celesta sparkles, drowned in a long reverb. It is composed here (a fixed
+// eight-bar theme that repeats, the second time with a lower harmony), and played live with Web Audio: no audio files.
+// It is meant to sit far behind the narrator's voice.
 
 const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
-const rnd = (a, b) => a + Math.random() * (b - a);
-const BPM = 60, EIGHTH = 60 / BPM / 2;                                   // very slow: half a second per eighth note
-const CHORDS = [[62, 66, 69], [59, 62, 66], [55, 59, 62], [57, 61, 64]];   // D, Bm, G, A
-const BASS = [38, 35, 31, 33];
-const ARP = [0, 1, 2, 3, 2, 1, 2, 1];                                       // harp pattern over the four chord notes
-const PC = new Set([2, 4, 6, 7, 9, 11, 1]);                                 // D major
-const MEL = []; for (let m = 69; m <= 90; m++) if (PC.has(m % 12)) MEL.push(m);
-const PENTA = [74, 78, 81, 83, 86, 90, 93, 95];                              // glissando notes (D major pentatonic-ish, high)
+const BPM = 54, BEAT = 60 / BPM;                                              // slow 3/4
+const NORM = 0.2;                                                              // overall loudness of the engine (the player scales it further)
 
-function impulse(ctx, sec = 4.2, decay = 2.4) {                              // a made-up cathedral: darkening noise that fades out
+// bar by bar: low bass note, and the chord played on beats 2 and 3 (the classic waltz "oom-pah-pah")
+const BARS = [
+  { bass: 43, chord: [59, 62, 66] },   // Gmaj7
+  { bass: 38, chord: [54, 57, 61] },   // Dmaj7
+  { bass: 43, chord: [59, 62, 66] },   // Gmaj7
+  { bass: 38, chord: [54, 57, 61] },   // Dmaj7
+  { bass: 47, chord: [62, 66, 69] },   // Bm7
+  { bass: 40, chord: [55, 59, 62] },   // Em7
+  { bass: 45, chord: [61, 64, 69] },   // A
+  { bass: 38, chord: [54, 57, 61] },   // Dmaj7
+];
+// the theme: [beat, note, length in beats]; 24 beats = 8 bars
+const THEME = [
+  [0, 78, 2], [2, 76, 1], [3, 74, 2], [5, 73, 1], [6, 71, 2], [8, 74, 1], [9, 73, 3],
+  [12, 74, 2], [14, 78, 1], [15, 76, 2], [17, 74, 1], [18, 73, 1], [19, 76, 1], [20, 81, 1], [21, 78, 3],
+];
+
+function impulse(ctx, sec = 5, decay = 2.2) {                                  // a made-up hall: darkening noise that fades away
   const n = Math.floor(ctx.sampleRate * sec), b = ctx.createBuffer(2, n, ctx.sampleRate);
   for (let ch = 0; ch < 2; ch++) {
     const d = b.getChannelData(ch); let y = 0;
-    for (let i = 0; i < n; i++) { y += 0.28 * ((Math.random() * 2 - 1) - y); d[i] = y * Math.pow(1 - i / n, decay); }
+    for (let i = 0; i < n; i++) { y += 0.22 * ((Math.random() * 2 - 1) - y); d[i] = y * Math.pow(1 - i / n, decay); }
   }
   return b;
 }
 
 export function buildEngine(ctx) {
   const comp = ctx.createDynamicsCompressor();
-  comp.threshold.value = -20; comp.knee.value = 24; comp.ratio.value = 3; comp.attack.value = 0.02; comp.release.value = 0.4;
+  comp.threshold.value = -26; comp.knee.value = 30; comp.ratio.value = 2.5; comp.attack.value = 0.03; comp.release.value = 0.5;
   const out = ctx.createGain(); out.gain.value = 0; comp.connect(out); out.connect(ctx.destination);
-
   const dry = ctx.createGain(); dry.gain.value = 1; dry.connect(comp);
-  const send = ctx.createGain(); send.gain.value = 1;
-  const conv = ctx.createConvolver(); conv.buffer = impulse(ctx);
-  const wet = ctx.createGain(); wet.gain.value = 0.7; send.connect(conv); conv.connect(wet); wet.connect(comp);
-  const dl = ctx.createDelay(2); dl.delayTime.value = EIGHTH * 3;           // a faint, dotted echo
-  const fb = ctx.createGain(); fb.gain.value = 0.3; const dlp = ctx.createBiquadFilter(); dlp.type = "lowpass"; dlp.frequency.value = 2400;
-  const ew = ctx.createGain(); ew.gain.value = 0.22;
-  send.connect(dl); dl.connect(dlp); dlp.connect(fb); fb.connect(dl); dlp.connect(ew); ew.connect(comp); ew.connect(conv);
+  const send = ctx.createGain(); const conv = ctx.createConvolver(); conv.buffer = impulse(ctx);
+  const wet = ctx.createGain(); wet.gain.value = 0.62; send.connect(conv); conv.connect(wet); wet.connect(comp);
 
-  const padLP = ctx.createBiquadFilter(); padLP.type = "lowpass"; padLP.frequency.value = 850; padLP.Q.value = 0.4;
-  const padOut = ctx.createGain(); padOut.gain.value = 0.55; padLP.connect(padOut); padOut.connect(dry); padOut.connect(send);
-
-  const route = (node, t, pan, wetAmt) => {                                  // dry + reverb send, placed left/right
+  const noise = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.05), ctx.sampleRate); { const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+  const route = (node, pan, wetAmt) => {
     let n = node;
     if (ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = pan; n.connect(p); n = p; }
     n.connect(dry); const s = ctx.createGain(); s.gain.value = wetAmt; n.connect(s); s.connect(send);
   };
-  const env = (g, t, peak, attack, decay) => {
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay);
+
+  // felt piano: a few slightly stretched harmonics that die away slowly, a soft hammer thump, and a low-pass that closes as the note fades
+  const piano = (m, t, vel, pan = 0) => {
+    const f = hz(m), dur = Math.max(2.4, Math.min(6, 6.4 - (m - 36) * 0.06));
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vel, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(vel * 0.3, t + 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.Q.value = 0.3;
+    lp.frequency.setValueAtTime(Math.min(4200, f * 6), t); lp.frequency.exponentialRampToValueAtTime(Math.max(500, f * 2), t + 1.6);
+    [1, 0.5, 0.26, 0.13, 0.07, 0.035].forEach((a, h) => {
+      const o = ctx.createOscillator(), ga = ctx.createGain(), k = h + 1;
+      o.type = "sine"; o.frequency.value = f * k * (1 + 0.0003 * k * k); ga.gain.value = a; o.connect(ga); ga.connect(lp); o.start(t); o.stop(t + dur + 0.1);
+    });
+    const hs = ctx.createBufferSource(), hf = ctx.createBiquadFilter(), hg = ctx.createGain();       // the felt hammer
+    hs.buffer = noise; hf.type = "lowpass"; hf.frequency.value = Math.min(2200, f * 3); hg.gain.setValueAtTime(vel * 0.35, t); hg.gain.exponentialRampToValueAtTime(0.0001, t + 0.035);
+    hs.connect(hf); hf.connect(hg); hg.connect(g); hs.start(t);
+    lp.connect(g); route(g, pan, 0.5 + (m > 70 ? 0.15 : 0));
+  };
+  // celesta: a small, glassy bell
+  const celesta = (m, t, vel, pan = 0) => {
+    const f = hz(m), g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vel, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.4);
+    [[1, 1], [2.0, 0.25], [4.1, 0.08]].forEach(([mul, a]) => { const o = ctx.createOscillator(), ga = ctx.createGain(); o.type = "sine"; o.frequency.value = f * mul; ga.gain.value = a; o.connect(ga); ga.connect(g); o.start(t); o.stop(t + 2.6); });
+    route(g, pan, 0.8);
+  };
+  // strings: a slow swell of the chord's low notes, hardly there
+  const haze = (notes, t, dur) => {
+    const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 520; lp.Q.value = 0.3;
+    const g = ctx.createGain(), peak = 0.03;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + dur * 0.45); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 1.5);
+    notes.forEach((m) => [[-5, "triangle"], [5, "sine"]].forEach(([c, type]) => { const o = ctx.createOscillator(); o.type = type; o.frequency.value = hz(m); o.detune.value = c; o.connect(lp); o.start(t); o.stop(t + dur + 1.6); }));
+    lp.connect(g); route(g, 0, 0.7);
   };
 
-  // music box: a bright, short bell with two soft overtones
-  const box = (m, t, vel, pan = 0) => {
-    const f = hz(m), g = ctx.createGain(); env(g, t, vel, 0.004, 2.2);
-    [[1, 1, "sine"], [2.01, 0.28, "sine"], [3.97, 0.1, "sine"], [5.4, 0.04, "sine"]].forEach(([mul, a, type]) => {
-      const o = ctx.createOscillator(), ga = ctx.createGain(); o.type = type; o.frequency.value = f * mul; ga.gain.value = a;
-      o.connect(ga); ga.connect(g); o.start(t); o.stop(t + 2.4);
-    });
-    route(g, t, pan, 0.75);
-  };
-  // harp: a soft plucked tone, rounder than the box
-  const harp = (m, t, vel, pan = 0) => {
-    const g = ctx.createGain(); env(g, t, vel, 0.006, 1.6);
-    const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.setValueAtTime(3200, t); lp.frequency.exponentialRampToValueAtTime(700, t + 1.2);
-    [[1, 1, "triangle"], [2, 0.18, "sine"]].forEach(([mul, a, type]) => {
-      const o = ctx.createOscillator(), ga = ctx.createGain(); o.type = type; o.frequency.value = hz(m) * mul; ga.gain.value = a;
-      o.connect(ga); ga.connect(lp); o.start(t); o.stop(t + 1.9);
-    });
-    lp.connect(g); route(g, t, pan, 0.55);
-  };
-  // strings: slow swell of a chord, two slightly detuned voices per note
-  const pad = (notes, bass, t, dur) => {
-    [...notes.map((n) => n - 12), ...notes, bass].forEach((m, k) => {
-      const g = ctx.createGain(), peak = m === bass ? 0.07 : 0.032;
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + 2.4); g.gain.setValueAtTime(peak, t + dur - 0.2); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 2.6);
-      [[-5, "sine"], [6, "triangle"]].forEach(([cents, type]) => {
-        const o = ctx.createOscillator(); o.type = type; o.frequency.value = hz(m); o.detune.value = cents; o.connect(g); o.start(t); o.stop(t + dur + 2.8);
-      });
-      g.connect(padLP);
-    });
-  };
-
-  // ---- the score, one eighth note at a time ----
-  let i = 0, mi = 6, rest = 0, lastSpark = 0;
+  // ---- the score, one beat at a time ----
+  let beat = 0;
   const step = (t) => {
-    const bar = Math.floor(i / 8) % 4, k = i % 8, chord = CHORDS[bar];
-    if (k === 0) pad(chord, BASS[bar], t, EIGHTH * 8);
-    const pool = [chord[0], chord[1], chord[2], chord[0] + 12];
-    harp(pool[ARP[k]], t, k === 0 ? 0.09 : 0.045 + (k % 2) * 0.01, ((k % 4) - 1.5) * 0.18);
-    if (k === 0) harp(BASS[bar] + 12, t, 0.07, -0.2);
-    // melody: a gentle random walk on the D major scale; it lands on a chord note at the start of each bar and rests now and then
-    if (rest > 0) rest--;
-    else if (k % 2 === 0 && (k === 0 || Math.random() < 0.62)) {
-      const r = Math.random(); mi += r < 0.28 ? -1 : r < 0.56 ? 1 : r < 0.7 ? -2 : r < 0.84 ? 2 : 0;
-      if (mi < 1) mi = 3; if (mi > MEL.length - 2) mi = MEL.length - 4;
-      if (k === 0) { const tones = MEL.map((m, x) => [m, x]).filter(([m]) => chord.some((c) => (c - m) % 12 === 0)); mi = tones.reduce((b, c) => Math.abs(c[1] - mi) < Math.abs(b[1] - mi) ? c : b)[1]; }
-      box(MEL[mi], t + rnd(0, 0.012), k === 0 ? 0.2 : 0.14, 0.25 + rnd(-0.1, 0.1));
-      if (Math.random() < 0.12) rest = 2;
-    }
-    // a faint sparkle high above, now and then
-    if (t - lastSpark > 5 && Math.random() < 0.07) { lastSpark = t; box(PENTA[4 + Math.floor(rnd(0, 4))] + 12, t + 0.2, 0.05, rnd(-0.6, 0.6)); }
-    i++;
+    const cycle = Math.floor(beat / 24), at = beat % 24, bar = Math.floor(at / 3), k = at % 3, B = BARS[bar];
+    if (k === 0) { piano(B.bass, t, 0.34, -0.15); if (bar % 2 === 0) haze([B.bass + 12, B.bass + 19, B.chord[0]], t, BEAT * 6); }
+    else B.chord.forEach((m, j) => piano(m, t + j * 0.018 + Math.random() * 0.01, 0.12 - j * 0.012, -0.1 + j * 0.1));           // soft chord, notes rolled a hair apart
+    THEME.forEach(([b, m, len]) => {
+      if (b !== at) return;
+      piano(m, t + Math.random() * 0.012, 0.3, 0.2);
+      if (cycle % 2 === 1) piano(m - 9, t + 0.02, 0.1, -0.25);                                                                  // second time round: a lower harmony underneath
+    });
+    if (at === 9 || at === 21) [0, 1, 2, 3].forEach((j) => celesta(B.chord[j % 3] + 24 + (j > 2 ? 12 : 0), t + 0.4 + j * 0.28, 0.05 - j * 0.006, -0.4 + j * 0.25));   // a few sparkles at the end of each half
+    beat++;
   };
-  const chime = (t) => { const s = PENTA.slice(0, 6 + Math.floor(rnd(0, 2))); s.forEach((m, k) => harp(m, t + k * 0.085, 0.07, -0.5 + k * 0.17)); box(s[s.length - 1] + 12, t + s.length * 0.085, 0.07, 0.3); };
+  const chime = (t) => { [86, 90, 93].forEach((m, k) => celesta(m, t + k * 0.16, 0.04 - k * 0.008, -0.3 + k * 0.3)); };
   return { step, chime, out, ctx };
 }
 
 // ---- the live player ----
 export function createMusic() {
   let ctx = null, eng = null, timer = 0, next = 0, on = false, lvl = 1;
-  const BASE = 0.9;
+  const BASE = 0.55 * NORM;
   const tick = () => {
     if (!ctx || !on) return;
-    while (next < ctx.currentTime + 0.7) { eng.step(next); next += EIGHTH; }
+    while (next < ctx.currentTime + 0.8) { eng.step(next); next += BEAT; }
   };
   return {
     start() {
@@ -117,27 +112,27 @@ export function createMusic() {
       const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
       if (!ctx) { ctx = new AC(); eng = buildEngine(ctx); }
       if (ctx.state === "suspended") ctx.resume();
-      on = true; next = ctx.currentTime + 0.15;
-      const g = eng.out.gain; g.cancelScheduledValues(ctx.currentTime); g.setValueAtTime(Math.max(g.value, 0.0001), ctx.currentTime); g.linearRampToValueAtTime(BASE * lvl, ctx.currentTime + 3);
-      clearInterval(timer); timer = setInterval(tick, 120); tick();
+      on = true; next = ctx.currentTime + 0.2;
+      const g = eng.out.gain; g.cancelScheduledValues(ctx.currentTime); g.setValueAtTime(Math.max(g.value, 0.0001), ctx.currentTime); g.linearRampToValueAtTime(BASE * lvl, ctx.currentTime + 4);
+      clearInterval(timer); timer = setInterval(tick, 150); tick();
     },
     stop() {
       if (!on || !ctx) return; on = false; clearInterval(timer);
-      const g = eng.out.gain; g.cancelScheduledValues(ctx.currentTime); g.setValueAtTime(g.value, ctx.currentTime); g.linearRampToValueAtTime(0, ctx.currentTime + 1.4);
+      const g = eng.out.gain; g.cancelScheduledValues(ctx.currentTime); g.setValueAtTime(g.value, ctx.currentTime); g.linearRampToValueAtTime(0, ctx.currentTime + 1.6);
     },
-    level(x) { lvl = x; if (on && ctx) eng.out.gain.setTargetAtTime(BASE * lvl, ctx.currentTime, 0.4); },     // quieter while the voice is reading
+    level(x) { lvl = x; if (on && ctx) eng.out.gain.setTargetAtTime(BASE * lvl, ctx.currentTime, 0.4); },
     chime() { if (on && ctx) eng.chime(ctx.currentTime + 0.05); },
     pause() { if (ctx && on) { clearInterval(timer); ctx.suspend(); } },
-    resume() { if (ctx && on) { ctx.resume(); next = ctx.currentTime + 0.1; clearInterval(timer); timer = setInterval(tick, 120); } },
+    resume() { if (ctx && on) { ctx.resume(); next = ctx.currentTime + 0.1; clearInterval(timer); timer = setInterval(tick, 150); } },
     dispose() { on = false; clearInterval(timer); if (ctx) { try { ctx.close(); } catch {} ctx = null; eng = null; } },
     get on() { return on; },
   };
 }
 
-// for testing: render some seconds offline
-export function _render(oc, seconds) {
-  const e = buildEngine(oc); e.out.gain.value = 0.9;
-  for (let t = 0.05; t < seconds; t += EIGHTH) e.step(t);
+// for testing: render some seconds offline at the playing level
+export function _render(oc, seconds, level = 1) {
+  const e = buildEngine(oc); e.out.gain.value = 0.55 * NORM * level;
+  for (let t = 0.05; t < seconds; t += BEAT) e.step(t);
   e.chime(seconds * 0.5);
   return oc.startRendering();
 }

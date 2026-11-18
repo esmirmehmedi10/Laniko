@@ -1,4 +1,4 @@
-// Cloudflare Pages Function: POST /api/narrate   { lang, ids, speaker }  ->  audio/mpeg
+// Cloudflare Pages Function: POST /api/narrate   { lang, ids }  ->  audio/mpeg
 // A natural neural voice (Cloudflare Workers AI) reads the "About us" story. It needs the Workers AI binding named AI
 // (Cloudflare Pages > laniko > Settings > Bindings > Add > Workers AI, variable name AI). Without it this answers 501 and
 // the page falls back to the phone's own voice.
@@ -7,10 +7,8 @@
 // looked up here in i18n-about.js. Every finished recording is stored at the edge for a year, so each sentence is
 // generated once per voice and language, no matter how many visitors listen.
 
-const EN = ["luna", "athena", "helena", "thalia", "aurora", "ophelia"];                 // Deepgram Aura-2 English (female voices)
-const ES = ["carina", "celeste", "diana", "selena", "estrella"];                           // Deepgram Aura-2 Spanish (female voices)
+const VOICE = { en: "luna", es: "estrella" };                                                // one soft, friendly narrator: Deepgram Aura-2 "Luna" (English) and "Estrella" (Spanish)
 const MELO = { fr: "fr", zh: "zh" };                                                       // MeloTTS (French, Chinese)
-const SPEAKERS = { en: EN, es: ES };
 const KEY_OK = /^ab(?:\d{1,2}|Tag|End1|End2)$/;
 
 const err = (status, error) => new Response(JSON.stringify({ error }), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
@@ -43,10 +41,10 @@ export async function onRequestPost({ request, env, waitUntil }) {
   const origin = new URL(request.url).origin, from = request.headers.get("Origin");
   if (from && from !== origin) return err(403, "forbidden");
 
-  let lang, ids, speaker;
-  try { ({ lang, ids, speaker } = await request.json()); } catch { return err(400, "bad request"); }
+  let lang, ids;
+  try { ({ lang, ids } = await request.json()); } catch { return err(400, "bad request"); }
   if (!["en", "es", "fr", "zh"].includes(lang) || !Array.isArray(ids) || !ids.length || ids.length > 3 || !ids.every((k) => KEY_OK.test(k))) return err(400, "bad request");
-  const voice = SPEAKERS[lang] ? (SPEAKERS[lang].includes(speaker) ? speaker : SPEAKERS[lang][0]) : "default";
+  const voice = VOICE[lang] || "default";
 
   const cache = typeof caches !== "undefined" ? caches.default : null;
   const cacheKey = new Request(`${origin}/__narrate/${lang}/${voice}/${await hex(ids.join(","))}`);
