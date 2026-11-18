@@ -1,7 +1,7 @@
 // Loaded on demand from the product page:
 //  - openChapter: a short scrolling "fairytale chapter" for one perfume (cover, once upon a scent, top / heart / base notes, when to wear it, the end),
-//    with its own very quiet music. There is no voice.
-//  - openAtmosphere: a full-screen, slow scene of light and smoke in the perfume's colours, with the same quiet music, for winding down.
+//    silent (no voice, no music).
+//  - openAtmosphere: a full-screen, slow scene of light and smoke in the perfume's colours, with its own quiet music, for winding down.
 // Both are plain DOM + canvas + Web Audio (no libraries). ctx = { I, esc, fmt, change, updateLock }.
 import { ART, NOTE_INFO } from "/features.js";
 import { tiersOf } from "/extras.js";
@@ -60,7 +60,6 @@ export function openChapter(ctx, p, { onClose } = {}) {
     <div class="ch-glow" aria-hidden="true"></div>
     <div class="ch-chrome">
       <button class="ch-btn ch-x" type="button" aria-label="${esc(t("qzClose"))}"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none"/></svg></button>
-      <button class="ch-btn ch-mu" type="button"></button>
     </div>
     <nav class="ch-dots" aria-hidden="true"></nav>
     <div class="ch-scroll">
@@ -106,20 +105,11 @@ export function openChapter(ctx, p, { onClose } = {}) {
   secs.forEach((s) => io.observe(s));
   requestAnimationFrame(() => secs[0].classList.add("in"));
 
-  // music: the perfume's own quiet chords
-  const music = createMusic(p.id, { gain: 1.8 });
-  const wanted = musicWanted();
-  const syncMu = musicButton(I, music, el.querySelector(".ch-mu"));
-  if (wanted) { music.start(); setTimeout(syncMu, 80); }
-  let atmoOpen = false, closed = false;
-  const unlock = () => { if (wanted && !music.on && musicWanted() && !atmoOpen) { music.start(); syncMu(); } };    // if the browser held the sound back, the first touch starts it
-  el.addEventListener("pointerdown", unlock, { once: true });
-  const onVis = () => { if (document.hidden) music.pause(); else music.resume(); };
-  document.addEventListener("visibilitychange", onVis);
+  let atmoOpen = false, closed = false;                                      // the story itself is silent; only the Atmosphere has sound
   const close = () => {
     if (closed) return; closed = true;
-    document.removeEventListener("keydown", onKey); document.removeEventListener("visibilitychange", onVis);
-    io.disconnect(); music.dispose();
+    document.removeEventListener("keydown", onKey);
+    io.disconnect();
     el.classList.add("out"); setTimeout(() => el.remove(), 380);
     ctx.updateLock(); if (onClose) onClose();
   };
@@ -134,8 +124,8 @@ export function openChapter(ctx, p, { onClose } = {}) {
     setTimeout(() => { add.classList.remove("done"); add.textContent = t("add") + " · " + fmt(p.price); }, 2200);
   });
   el.querySelector(".ch-atmo").addEventListener("click", () => {
-    atmoOpen = true; const was = music.on; music.stop(); syncMu();
-    openAtmosphere(ctx, p, { onClose: () => { atmoOpen = false; document.body.style.overflow = "hidden"; if (was && musicWanted()) { music.start(); syncMu(); } } });
+    atmoOpen = true;
+    openAtmosphere(ctx, p, { onClose: () => { atmoOpen = false; document.body.style.overflow = "hidden"; } });
   });
   return { close };
 }
@@ -216,7 +206,7 @@ export function openAtmosphere(ctx, p, { onClose } = {}) {
   const onResize = () => fit();
   window.addEventListener("resize", onResize);
 
-  // music: the same chords as the chapter, even softer, with a faint breath of air under them
+  // music: the perfume's own quiet chords, with a faint breath of air under them
   const music = createMusic(p.id, { gain: 1.5, air: true });
   const wanted = musicWanted();
   const syncMu = musicButton(I, music, el.querySelector(".ch-mu"));
