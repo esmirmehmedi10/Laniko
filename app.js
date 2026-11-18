@@ -571,10 +571,6 @@
     if (c === "other") return t("ctryOther");
     try { return new Intl.DisplayNames([I.lang], { type: "region" }).of(c) || c; } catch { return c; }
   };
-  const shipList = () => {
-    const n = SHIP_TO.map(countryName);
-    try { return new Intl.ListFormat(I.lang, { style: "long", type: "conjunction" }).format(n); } catch { return n.join(", "); }
-  };
   function guessCountry() {                              // from the phone's region setting, e.g. de-LU
     for (const l of navigator.languages || [navigator.language]) {
       const m = /[-_]([A-Za-z]{2})$/.exec(l || "");
@@ -587,7 +583,7 @@
     if (!country) { el.hidden = true; return; }
     el.hidden = false;
     el.innerHTML = `${esc(t("ctryLine"))}: <strong>${esc(countryName(country))}</strong> · <button type="button" class="linklike" data-ctry-change>${esc(t("ctryChange"))}</button>` +
-      (SHIP_TO.includes(country) ? "" : `<span class="ctry-warn">${esc(t("ctryShips").replace("{list}", shipList()))} ${esc(t("ctryNo"))}</span>`);
+      (SHIP_TO.includes(country) ? "" : `<span class="ctry-warn">${esc(t("ctryNo"))}</span>`);
   }
   function setCountry(c) {
     country = c;
@@ -614,7 +610,7 @@
     const langList = () => `<div class="gate-list">${I.LANGS.map((l, i) => `<button class="gate-btn${step === "both" && l.code === I.lang ? " on" : ""}" data-lang="${l.code}" lang="${l.code}" dir="${l.dir}" style="--i:${i}">${esc(l.name)}</button>`).join("")}</div>`;
     const ctryBlock = () => {
       const sel = country || (step === "both" ? "" : guessCountry());
-      return `<p class="gate-sub">${esc(t("ctryShips").replace("{list}", shipList()))}</p><div class="gate-list ctry-list">${[...COUNTRIES, "other"].map((c, i) =>
+      return `<div class="gate-list ctry-list">${[...COUNTRIES, "other"].map((c, i) =>
         `<button class="gate-btn ctry${c === sel ? " on" : ""}" data-country="${c}"${SHIP_TO.includes(c) ? " data-ship" : ""} style="--i:${Math.min(i, 10)}">${esc(countryName(c))}</button>`).join("")}</div>`;
     };
     const render = () => {
