@@ -7,7 +7,7 @@ window.I18N.add({
     ab3: "We believe that true luxury does not announce itself.",
     ab4: "It is sensed in the finest details, felt through emotion, and remembered long after the moment fades.",
     ab5: "Our philosophy is anchored in individuality, artistic expression, and the relentless pursuit of the extraordinary.",
-    ab6: "Each creation is a study in contrast—where elegance meets intensity, simplicity meets complexity, and the familiar turns unexpected.",
+    ab6: "Each creation is a study in contrast where elegance meets intensity, simplicity meets complexity, and the familiar turns unexpected.",
     ab7: "We don’t create fragrances to follow trends.",
     ab8: "We craft them to evoke emotion, challenge perceptions, and become part of someone’s identity.",
     ab9: "Every detail matters.", ab10: "Every composition has purpose.",
