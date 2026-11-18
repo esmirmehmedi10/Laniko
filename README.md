@@ -44,12 +44,13 @@ Test with card `4242 4242 4242 4242`, any future date and any CVC.
   free-text answers in every language, add a secret named `ANTHROPIC_API_KEY` in Cloudflare Pages
   (Settings > Variables and Secrets). The shop then asks Claude (`functions/api/mood.js`); without the key, or if it
   fails, it silently falls back to the built-in matching. Each AI answer costs a small amount of API credit.
-- **Natural storyteller voice (About us):** the "Listen" button reads the story with a natural neural voice (English and
-  Spanish: Deepgram Aura-2; French and Chinese: MeloTTS) through Cloudflare Workers AI (`functions/api/narrate.js`).
-  One-time setup, no secret needed: Cloudflare Pages > laniko > Settings > Bindings > Add > Workers AI, variable name
-  `AI` (for Production and Preview), then deploy again. Every sentence is generated once per voice and cached at the
-  edge for a year. Without the binding, and for German, Portuguese, Italian and Arabic (no neural voice there), the page
-  uses the phone's own voice instead.
+- **Natural storyteller voice (About us):** the "Listen" button reads the story with a natural voice through
+  `functions/api/narrate.js`. Best quality, one soft voice in all 8 languages: add a secret named `OPENAI_API_KEY` in
+  Cloudflare Pages (Settings > Variables and Secrets, type Secret); it uses OpenAI `gpt-4o-mini-tts` (voice "coral",
+  told to sound soft and fairytale-like). Without that key it uses Cloudflare Workers AI (binding named `AI`, already
+  set): Deepgram Aura-2 for English and Spanish, and MeloTTS for French and Chinese (Cloudflare retires MeloTTS on
+  2026-11-20). Where no voice exists, the page uses the phone's own voice. Every sentence is generated once per voice and
+  language and cached at the edge for a year.
 - **Discovery Set credit:** the set (5 x 2 ml, EUR 29, edit `products.json`) is credited on a full bottle through a
   Stripe promotion code: in the Stripe dashboard create a coupon (EUR 29 off, ideally one use) with a promotion code, and
   print that code on the card in the box. Checkout already accepts promotion codes.

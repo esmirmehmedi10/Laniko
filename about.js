@@ -130,7 +130,7 @@ export function mountStory(ctx, el) {
   const speakable = (t) => t.replace(/laniko/gi, NAME[I.lang] || "Laniko").replace(/[—–]/g, ", ").replace(/\s+/g, " ").trim();
   const sceneText = (sc) => speakable([...sc.querySelectorAll(".st-tag, .st-text, .st-line")].map((n) => n.textContent.trim()).filter(Boolean).join(I.lang === "zh" ? "" : " "));
   // ---- the natural voice (Cloudflare Workers AI, through /api/narrate); the phone's own voice is only the fallback ----
-  const NEURAL = ["en", "es", "fr", "zh"];                                      // one soft narrator per language, chosen on the server
+  const NEURAL = ["en", "de", "fr", "pt", "it", "es", "ar", "zh"];                  // the server decides which languages have a narrator (it answers 400/501 if not)
   const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
   const player = new Audio(); player.preload = "auto"; try { player.preservesPitch = true; } catch {}
   let mode = NEURAL.includes(I.lang) ? null : "phone";                         // decided once per visit: the same narrator reads every scene ("ai"), or, if there is none, the phone's voice does ("phone")
@@ -140,7 +140,7 @@ export function mountStory(ctx, el) {
     const k = I.lang + i;
     if (!clips.has(k)) {
       clips.set(k, fetch("/api/narrate", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ lang: I.lang, ids: sceneIds(i) }) })
-        .then(async (r) => { if (!r.ok) throw new Error("voice " + r.status); return URL.createObjectURL(await r.blob()); })
+        .then(async (r) => { if (!r.ok) throw Object.assign(new Error("voice " + r.status), { status: r.status }); return URL.createObjectURL(await r.blob()); })
         .catch((e) => { clips.delete(k); throw e; }));
     }
     return clips.get(k);
@@ -176,9 +176,9 @@ export function mountStory(ctx, el) {
       mode = "ai"; player.src = url; player.playbackRate = .96; player.volume = .9;
       player.play().catch(() => {});
       for (const j of [i + 1, i + 2]) if (j < scenes.length) clip(j).catch(() => {});      // fetch the next recordings while this one plays
-    }).catch(() => {
+    }).catch((e) => {
       if (!voiceOn || spoken !== i) return;
-      if (mode === null && tries >= 1) { mode = "phone"; return sayBrowser(i); }         // no narrator at all: the phone reads, the same way from the first scene on
+      if (mode === null && (tries >= 1 || [400, 403, 404, 501].includes(e && e.status))) { mode = "phone"; return sayBrowser(i); }         // no narrator at all: the phone reads, the same way from the first scene on
       if (tries < 3) setTimeout(() => { if (voiceOn && spoken === i) go(tries + 1); }, 1200);   // a hiccup: try again, but never swap voices in the middle of the story
     });
     go(0);
