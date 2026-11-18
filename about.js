@@ -129,9 +129,27 @@ export function mountStory(ctx, el) {
   const NAME = { ar: "لانيكو", zh: "拉尼科" };
   const speakable = (t) => t.replace(/laniko/gi, NAME[I.lang] || "Laniko").replace(/[—–]/g, ", ").replace(/\s+/g, " ").trim();
   const sceneText = (sc) => speakable([...sc.querySelectorAll(".st-tag, .st-text, .st-line")].map((n) => n.textContent.trim()).filter(Boolean).join(I.lang === "zh" ? "" : " "));
-  const say = (i) => {
-    if (!synth || !voiceOn || i === spoken) return;
-    spoken = i;
+  // ---- the natural voice (Cloudflare Workers AI, through /api/narrate); the phone's own voice is only the fallback ----
+  const NEURAL = ["en", "es", "fr", "zh"], AI_SPEAKERS = { en: ["luna", "athena", "helena", "thalia", "aurora", "ophelia"], es: ["carina", "celeste", "diana", "selena", "estrella"] };
+  const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
+  const player = new Audio(); player.preload = "auto"; try { player.preservesPitch = true; } catch {}
+  let aiOff = !NEURAL.includes(I.lang);                                        // set when the server has no voice (or this language has none): then the phone's voice reads
+  const aiKey = () => "laniko-ai-" + I.lang;
+  const aiSpeaker = () => { const l = AI_SPEAKERS[I.lang]; if (!l) return "default"; let v = ""; try { v = localStorage.getItem(aiKey()) || ""; } catch {} return l.includes(v) ? v : l[0]; };
+  const sceneIds = (i) => { const id = scenes[i].dataset.id; return id === "hero" ? ["abTag"] : id === "end" ? ["abEnd1", "abEnd2"] : [SCENES[+id.slice(1)].key]; };
+  const clips = new Map();
+  const clip = (i) => {                                                        // the recording of a scene as a blob URL, fetched once
+    const sp = aiSpeaker(), k = I.lang + sp + i;
+    if (!clips.has(k)) {
+      clips.set(k, fetch("/api/narrate", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ lang: I.lang, ids: sceneIds(i), speaker: sp }) })
+        .then(async (r) => { if (!r.ok) { if ([501, 403, 400, 404].includes(r.status)) aiOff = true; throw new Error("voice " + r.status); } return URL.createObjectURL(await r.blob()); })
+        .catch((e) => { clips.delete(k); throw e; }));
+    }
+    return clips.get(k);
+  };
+  const hush = () => { try { player.pause(); player.currentTime = 0; } catch {} };
+  const sayBrowser = (i) => {
+    if (!synth) return;
     synth.cancel();
     const txt = sceneText(scenes[i]); if (!txt) return;
     setTimeout(() => {                                                       // Chrome and Brave skip a speak() that comes right after a cancel()
@@ -150,6 +168,17 @@ export function mountStory(ctx, el) {
       next(0);
     }, 90);
   };
+  const say = (i) => {
+    if (!voiceOn || i === spoken) return;
+    spoken = i; hush(); if (synth) synth.cancel();
+    if (aiOff) return sayBrowser(i);
+    clip(i).then((url) => {
+      if (!voiceOn || spoken !== i) return;
+      player.src = url; player.playbackRate = .96;
+      player.play().catch(() => { aiOff = true; sayBrowser(i); });
+      for (const j of [i + 1, i + 2]) if (j < scenes.length) clip(j).catch(() => {});      // fetch the next recordings while this one plays
+    }).catch(() => { if (voiceOn && spoken === i) { aiOff = true; sayBrowser(i); } });
+  };
   const current = () => {                                                  // the scene that fills most of the screen
     let best = 0, bv = -1; const h = window.innerHeight;
     scenes.forEach((s, i) => { const r = s.getBoundingClientRect(), v = Math.min(r.bottom, h) - Math.max(r.top, 0); if (v > bv) { bv = v; best = i; } });
@@ -165,17 +194,18 @@ export function mountStory(ctx, el) {
   };
   const fail = () => { voiceOn = false; btn.classList.remove("on"); btn.setAttribute("aria-pressed", "false"); note(I.t("abNoVoice")); };
   const toggle = () => {
-    if (!synth) return fail();
+    if (!synth && aiOff) return fail();
     voiceOn = !voiceOn; spoken = -1; clearTimeout(timer);
     btn.classList.toggle("on", voiceOn); btn.setAttribute("aria-pressed", String(voiceOn)); label(I.t(voiceOn ? "abStop" : "abListen"));
     music.level(voiceOn ? .5 : 1);
     if (voiceOn) {
       let pref = null; try { pref = localStorage.getItem("laniko-music"); } catch {}
       if (pref !== "0" && !musicOn) setMusic(true);                                // the story starts with its fairytale music, unless the visitor turned it off before
-      try { synth.resume(); } catch {} say(current());
-    } else synth.cancel();    // the tap itself is what lets the browser start the voice
+      try { player.src = SILENT; player.play().catch(() => {}); } catch {}         // the tap unlocks the audio player for the rest of the visit
+      try { synth && synth.resume(); } catch {} say(current());
+    } else { hush(); if (synth) synth.cancel(); }    // the tap itself is what lets the browser start the voice
   };
-  if (synth) {
+  if (synth || NEURAL.includes(I.lang)) {
     btn = document.createElement("button");
     btn.type = "button"; btn.className = "st-voice"; btn.setAttribute("aria-pressed", "false"); btn.setAttribute("aria-label", I.t("abListen"));
     btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/><path class="w1" d="M15 9.2a4 4 0 0 1 0 5.6"/><path class="w2" d="M17.4 6.8a7.4 7.4 0 0 1 0 10.4"/></svg><span class="st-voice-t"></span>';
@@ -185,6 +215,14 @@ export function mountStory(ctx, el) {
     vbtn.type = "button"; vbtn.className = "st-voice st-voice-pick"; vbtn.setAttribute("aria-label", I.t("abVoice"));
     vbtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-4 3-6.4 7-6.4s7 2.4 7 6.4" fill="none"/></svg><span class="st-voice-t">' + esc(I.t("abVoice")) + '</span>';
     vbtn.addEventListener("click", () => {
+      if (!aiOff && NEURAL.includes(I.lang)) {                                  // natural voices: step through the speakers (French and Chinese have one)
+        const l = AI_SPEAKERS[I.lang] || ["default"], cur = aiSpeaker(), k = (l.indexOf(cur) + 1) % l.length;
+        try { localStorage.setItem(aiKey(), l[k]); } catch {}
+        flash(vbtn, I.t("abVoice") + " " + (k + 1) + "/" + l.length);
+        if (!voiceOn) toggle(); else { spoken = -1; say(current()); }
+        return;
+      }
+      if (!synth) return fail();
       const vs = voiceList(); if (!vs.length) return fail();
       const key = (v) => v.voiceURI || v.name, cur = pickVoice(), at = vs.findIndex((v) => cur && key(v) === key(cur)), k = (at + 1) % vs.length, nx = vs[k];
       try { localStorage.setItem(saveKey(), key(nx)); } catch {}
@@ -197,14 +235,14 @@ export function mountStory(ctx, el) {
     mbtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg><span class="st-voice-t"></span>';
     mbtn.addEventListener("click", () => setMusic(!musicOn));
     el.appendChild(mbtn);
-    synth.getVoices();                                                      // some browsers only fill the voice list after the first call
+    if (synth) synth.getVoices();                                           // some browsers only fill the voice list after the first call
   }
   const onSpeechScroll = () => {
     if (!voiceOn && !musicOn) return;
     clearTimeout(timer);
     timer = setTimeout(() => { const i = current(); if (i !== lastScene) { lastScene = i; if (musicOn) music.chime(); } say(i); }, 380);     // new scene: a little harp glissando, then the voice
   };
-  const onHide = () => { if (document.hidden) { if (synth) { synth.cancel(); spoken = -1; } music.pause(); } else music.resume(); };
+  const onHide = () => { if (document.hidden) { hush(); if (synth) synth.cancel(); spoken = -1; music.pause(); } else music.resume(); };
   window.addEventListener("scroll", onSpeechScroll, { passive: true });
   document.addEventListener("visibilitychange", onHide);
 
@@ -220,5 +258,5 @@ export function mountStory(ctx, el) {
   const onScroll = () => { if (!raf) raf = requestAnimationFrame(upd); };
   window.addEventListener("scroll", onScroll, { passive: true });
   upd();
-  stop = () => { voiceOn = false; music.dispose(); clearTimeout(timer); clearTimeout(noteT); if (synth) synth.cancel(); window.removeEventListener("scroll", onSpeechScroll); document.removeEventListener("visibilitychange", onHide); io.disconnect(); window.removeEventListener("scroll", onScroll); if (raf) cancelAnimationFrame(raf); el.innerHTML = ""; };
+  stop = () => { voiceOn = false; hush(); music.dispose(); clearTimeout(timer); clearTimeout(noteT); if (synth) synth.cancel(); window.removeEventListener("scroll", onSpeechScroll); document.removeEventListener("visibilitychange", onHide); io.disconnect(); window.removeEventListener("scroll", onScroll); if (raf) cancelAnimationFrame(raf); el.innerHTML = ""; };
 }
