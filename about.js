@@ -111,8 +111,9 @@ export function mountStory(ctx, el) {
   const music = createMusic();
   const sceneIds = (i) => { const id = scenes[i].dataset.id; return id === "hero" ? ["abTag"] : id === "end" ? ["abEnd1", "abEnd2"] : [SCENES[+id.slice(1)].key]; };
   const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
-  const player = new Audio(); player.preload = "auto"; try { player.preservesPitch = true; } catch {}
-  // every recording starts with a little breath before the first word: find where the voice really begins and start there
+  const player = new Audio(); player.preload = "auto";
+  try { player.preservesPitch = false; player.webkitPreservesPitch = false; player.mozPreservesPitch = false; } catch {}      // playing a touch faster lifts the pitch, so the narrator sounds like a younger woman
+  // every recording starts with a little breath before the first word: find where the voice really begins (the breath itself stays, but quiet)
   const onset = async (blob) => {
     try {
       const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
@@ -150,7 +151,10 @@ export function mountStory(ctx, el) {
     spoken = i; hush();
     const go = (tries) => clip(i).then(({ url, start }) => {
       if (!voiceOn || spoken !== i) return;
-      player.src = url; player.onloadedmetadata = () => { try { player.currentTime = start; } catch {} }; player.playbackRate = .94; player.volume = .85; blocked = false;
+      const FULL = .85, lead = start > 0.15 ? Math.max(0, start - 0.32) : 0;      // keep a short, soft breath: start a moment before the first word, quietly
+      player.src = url; player.onloadedmetadata = () => { try { player.currentTime = lead; } catch {} };
+      player.playbackRate = 1.08; player.volume = lead ? .22 : FULL; blocked = false;
+      player.onplaying = lead ? () => { const ramp = () => { if (player.paused || player.src !== url) return; if (player.currentTime >= start - 0.04) { player.volume = FULL; return; } requestAnimationFrame(ramp); }; ramp(); } : null;
       player.play().catch(() => { blocked = true; });                                 // if the browser refuses, the next touch starts it
       for (const j of [i + 1, i + 2]) if (j < scenes.length) clip(j).catch(() => {});      // fetch the next recordings while this one plays
     }).catch((e) => {

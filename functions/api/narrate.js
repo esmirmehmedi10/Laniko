@@ -9,7 +9,7 @@
 // looked up here in i18n-about.js. Every finished recording is stored at the edge for a year, so each sentence is
 // generated once per voice and language, no matter how many visitors listen.
 
-const VOICE = { en: "cordelia", es: "estrella" };                                            // soft, warm, youthful narrators: Deepgram Aura-2 "Cordelia" (English, approachable and warm; not a breathy voice) and "Estrella" (Spanish)
+const VOICE = { en: "pandora", es: "estrella" };                                             // soft narrators: Deepgram Aura-2 "Pandora" (English: smooth, calm, melodic; the page lifts her pitch a little) and "Estrella" (Spanish)
 // how each line should feel (used by the OpenAI voice, which can act): the story goes from a hushed opening to a warm, radiant close
 const MOOD = { abTag: "a soft, hushed opening, like the first line of a fairytale", ab1: "tender and hopeful, a story beginning", ab2: "intimate and wondering, almost a whisper", ab3: "quiet, warm conviction",
   ab4: "gentle and emotional, slightly breathy", ab5: "calm and grounded, proud but soft", ab6: "curious and a little playful, then gentle", ab7: "soft and quietly defiant, with a small smile in the voice",
@@ -78,7 +78,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
         method: "POST", headers: { Authorization: "Bearer " + env.OPENAI_API_KEY, "content-type": "application/json" },
         body: JSON.stringify({
           model: "gpt-4o-mini-tts", voice: OPENAI_VOICE, response_format: "mp3", input: text,
-          instructions: `Voice: a very soft, warm, gentle young woman with a light, slightly higher pitch, telling a fairytale in a quiet room. Start speaking straight away: no breath, no inhale, no filler sounds. Tone: calm, intimate and dreamy, tender and kind, never formal, never a news reader, never loud. Show real feeling: let emotion colour the words. ` +
+          instructions: `Voice: a very soft, warm, gentle young woman with a light, slightly higher pitch, telling a fairytale in a quiet room. A very soft, natural breath before the first word is welcome, barely audible. Tone: calm, intimate and dreamy, tender and kind, never formal, never a news reader, never loud. Show real feeling: let emotion colour the words. ` +
             `This line should sound: ${ids.map((k) => MOOD[k]).filter(Boolean).join("; ") || "gentle and warm"}. ` +
             `Pace: slow and unhurried, with soft pauses between sentences. Language: ${LANG_NAME[lang]}, with a natural native accent. The brand name "Laniko" is one word, said lah-NEE-koh.`,
         }),
