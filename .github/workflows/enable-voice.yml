@@ -1,0 +1,22 @@
+name: Enable narrator voice (Workers AI binding)
+
+# One-off helper. It adds the Workers AI binding named AI to the Pages project "laniko" using the same Cloudflare
+# token the deploy already uses. It prints only the NAMES of settings, never their values.
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/enable-voice.yml']
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Look at the project settings (names only)
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACC: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          curl -sS -H "Authorization: Bearer $TOKEN" "https://api.cloudflare.com/client/v4/accounts/$ACC/pages/projects/laniko" > before.json
+          jq '{success, errors, production: {env_names: (.result.deployment_configs.production.env_vars // {} | with_entries(.value = .value.type)), ai: (.result.deployment_configs.production.ai_bindings // null), compat: .result.deployment_configs.production.compatibility_date},
+               preview: {env_names: (.result.deployment_configs.preview.env_vars // {} | with_entries(.value = .value.type)), ai: (.result.deployment_configs.preview.ai_bindings // null)}}' before.json
