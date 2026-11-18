@@ -780,16 +780,14 @@
       updateLock();
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       const label = $("wl-enter-t");
-      let cyc = 0;
-      if (I.hasChoice()) label.textContent = t("welEnter");
-      else {                                                   // first visit: the word appears in every language in turn
-        let n = 0;
-        cyc = setInterval(() => {
-          n = (n + 1) % I.LANGS.length;
-          const l = I.LANGS[n];
-          label.textContent = I.phrase(l.code, "welEnter"); label.lang = l.code; label.dir = l.dir;
-        }, 1900);
-      }
+      // the word "Enter" changes language every 2 seconds, through all 8 languages, starting with the visitor's own
+      let n = Math.max(0, I.LANGS.findIndex((l) => l.code === (I.hasChoice() ? I.lang : "en")));
+      const showWord = () => { const l = I.LANGS[n]; label.textContent = I.phrase(l.code, "welEnter"); label.lang = l.code; label.dir = l.dir; };
+      showWord();
+      const cyc = setInterval(() => {
+        label.classList.add("swap");
+        setTimeout(() => { n = (n + 1) % I.LANGS.length; showWord(); label.classList.remove("swap"); }, 380);
+      }, 2000);
       // parallax: phone tilt (Android) or mouse / finger drag; eased so it never jumps
       let tx = 0, ty = 0, gx = 0, gy = 0, raf = 0, base = null;
       const step = () => {
