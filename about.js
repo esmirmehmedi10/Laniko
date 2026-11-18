@@ -133,18 +133,19 @@ export function mountStory(ctx, el) {
   const NEURAL = ["en", "es", "fr", "zh"];                                      // one soft narrator per language, chosen on the server
   const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
   const player = new Audio(); player.preload = "auto"; try { player.preservesPitch = true; } catch {}
-  let aiOff = !NEURAL.includes(I.lang);                                        // set when the server has no voice (or this language has none): then the phone's voice reads
+  let mode = NEURAL.includes(I.lang) ? null : "phone";                         // decided once per visit: the same narrator reads every scene ("ai"), or, if there is none, the phone's voice does ("phone")
   const sceneIds = (i) => { const id = scenes[i].dataset.id; return id === "hero" ? ["abTag"] : id === "end" ? ["abEnd1", "abEnd2"] : [SCENES[+id.slice(1)].key]; };
   const clips = new Map();
   const clip = (i) => {                                                        // the recording of a scene as a blob URL, fetched once
     const k = I.lang + i;
     if (!clips.has(k)) {
       clips.set(k, fetch("/api/narrate", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ lang: I.lang, ids: sceneIds(i) }) })
-        .then(async (r) => { if (!r.ok) { if ([501, 403, 400, 404].includes(r.status)) aiOff = true; throw new Error("voice " + r.status); } return URL.createObjectURL(await r.blob()); })
+        .then(async (r) => { if (!r.ok) throw new Error("voice " + r.status); return URL.createObjectURL(await r.blob()); })
         .catch((e) => { clips.delete(k); throw e; }));
     }
     return clips.get(k);
   };
+  player.addEventListener("playing", () => music.level(1)); player.addEventListener("ended", () => music.level(.4)); player.addEventListener("pause", () => music.level(.4));
   const hush = () => { try { player.pause(); player.currentTime = 0; } catch {} };
   const sayBrowser = (i) => {
     if (!synth) return;
@@ -169,13 +170,18 @@ export function mountStory(ctx, el) {
   const say = (i) => {
     if (!voiceOn || i === spoken) return;
     spoken = i; hush(); if (synth) synth.cancel();
-    if (aiOff) return sayBrowser(i);
-    clip(i).then((url) => {
+    if (mode === "phone") return sayBrowser(i);
+    const go = (tries) => clip(i).then((url) => {
       if (!voiceOn || spoken !== i) return;
-      player.src = url; player.playbackRate = .96; player.volume = .9;
-      player.play().catch(() => { aiOff = true; sayBrowser(i); });
+      mode = "ai"; player.src = url; player.playbackRate = .96; player.volume = .9;
+      player.play().catch(() => {});
       for (const j of [i + 1, i + 2]) if (j < scenes.length) clip(j).catch(() => {});      // fetch the next recordings while this one plays
-    }).catch(() => { if (voiceOn && spoken === i) { aiOff = true; sayBrowser(i); } });
+    }).catch(() => {
+      if (!voiceOn || spoken !== i) return;
+      if (mode === null && tries >= 1) { mode = "phone"; return sayBrowser(i); }         // no narrator at all: the phone reads, the same way from the first scene on
+      if (tries < 3) setTimeout(() => { if (voiceOn && spoken === i) go(tries + 1); }, 1200);   // a hiccup: try again, but never swap voices in the middle of the story
+    });
+    go(0);
   };
   const current = () => {                                                  // the scene that fills most of the screen
     let best = 0, bv = -1; const h = window.innerHeight;
@@ -186,11 +192,11 @@ export function mountStory(ctx, el) {
   const note = (txt) => { label(txt); btn.classList.add("note"); clearTimeout(noteT); noteT = setTimeout(() => { btn.classList.remove("note"); label(I.t(voiceOn ? "abStop" : "abListen")); }, 3200); };
   const fail = () => { voiceOn = false; btn.classList.remove("on"); btn.setAttribute("aria-pressed", "false"); note(I.t("abNoVoice")); };
   const toggle = () => {
-    if (!synth && aiOff) return fail();
+    if (!synth && !NEURAL.includes(I.lang)) return fail();
     voiceOn = !voiceOn; spoken = -1; clearTimeout(timer);
     btn.classList.toggle("on", voiceOn); btn.setAttribute("aria-pressed", String(voiceOn)); label(I.t(voiceOn ? "abStop" : "abListen"));
     if (voiceOn) {
-      musicOn = true; music.level(1); music.start();                                // the story and its quiet music begin together
+      musicOn = true; music.level(.4); music.start();                                // the story and its quiet music begin together
       try { player.src = SILENT; player.play().catch(() => {}); } catch {}         // the tap unlocks the audio player for the rest of the visit
       try { synth && synth.resume(); } catch {} say(current());
     } else { hush(); if (synth) synth.cancel(); musicOn = false; music.stop(); }    // the tap itself is what lets the browser start the voice
@@ -205,7 +211,7 @@ export function mountStory(ctx, el) {
   const onSpeechScroll = () => {
     if (!voiceOn) return;
     clearTimeout(timer);
-    timer = setTimeout(() => { const i = current(); if (i !== lastScene) { lastScene = i; if (musicOn) music.chime(); } say(i); }, 380);     // new scene: a soft celesta chime, then the voice
+    timer = setTimeout(() => { const i = current(); if (i !== lastScene) { lastScene = i; } say(i); }, 380);     // new scene: a soft celesta chime, then the voice
   };
   const onHide = () => { if (document.hidden) { hush(); if (synth) synth.cancel(); spoken = -1; music.pause(); } else music.resume(); };
   window.addEventListener("scroll", onSpeechScroll, { passive: true });
