@@ -106,14 +106,26 @@ export function mountStory(ctx, el) {
   // ---- narration: a voice reads each scene aloud as it comes into view (the browser's own speech, no download) ----
   const synth = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window ? window.speechSynthesis : null;
   const LANG = { en: "en-US", de: "de-DE", fr: "fr-FR", pt: "pt-PT", it: "it-IT", es: "es-ES", ar: "ar-SA", zh: "zh-CN" };
-  let voiceOn = false, spoken = -1, timer = 0, btn = null, noteT = 0;
-  const pickVoice = () => {
-    const want = (LANG[I.lang] || "en-US").toLowerCase(), base = want.slice(0, 2);
-    const vs = (synth.getVoices() || []).filter((v) => v.lang.toLowerCase().replace("_", "-").startsWith(base));
-    const score = (v) => (v.lang.toLowerCase().replace("_", "-") === want ? 4 : 0) + (/google|natural|premium|enhanced|neural/i.test(v.name) ? 3 : 0) + (v.localService ? 0 : 1) - (/compact/i.test(v.name) ? 2 : 0);
-    return vs.sort((x, y) => score(y) - score(x))[0] || null;
+  let voiceOn = false, spoken = -1, timer = 0, btn = null, vbtn = null, noteT = 0;
+  // all voices of the site language, best first: natural / network / female-sounding voices before robotic local ones
+  const FEMALE = /female|woman|samantha|karen|moira|serena|tessa|ava|allison|susan|zira|aria|jenny|libby|hazel|sonia|amelie|am[eé]lie|marie|audrey|anna|helena|petra|joana|maria|luciana|alice|elsa|federica|paola|paulina|monica|m[oó]nica|laura|helga|katja|amala|conchita|lucia|elvira|salma|zariyah|laila|ting|mei|tian|xiao|hui|yao|huihui|yunxi|x-(?:iob|iog|tpc|tpf|sfg|gba|gbc|gbg|frc|fra|dea|dec|ita|itb|esa|esc|ptb|ptc|cmn-cn-ccc)/i;
+  const MALE = /\bmale\b|daniel|alex|fred|david|mark|james|george|thomas|diego|jorge|luca|paul|stefan|hans|maged|tarik|yunyang|kangkang|x-(?:iol|iom|tpd|gbb|gbd|frb|frd|ded|deb|itc|itd|esd|ptd)/i;
+  const voiceList = () => {
+    const base = (LANG[I.lang] || "en-US").slice(0, 2).toLowerCase(), want = (LANG[I.lang] || "en-US").toLowerCase();
+    const sc = (v) => { const l = v.lang.toLowerCase().replace("_", "-"), n = v.name + " " + (v.voiceURI || "");
+      return (l === want ? 3 : 0) + (/natural|neural|premium|enhanced|siri|online/i.test(n) ? 6 : 0) + (/google/i.test(n) ? 2 : 0) + (v.localService ? 0 : 2) + (/network/i.test(n) ? 3 : 0)
+        + (MALE.test(n) ? -8 : FEMALE.test(n) ? 5 : 0) - (/compact|espeak|robot/i.test(n) ? 6 : 0); };
+    return (synth.getVoices() || []).filter((v) => v.lang.toLowerCase().replace("_", "-").startsWith(base)).sort((x, y) => sc(y) - sc(x));
   };
-  const sceneText = (sc) => [...sc.querySelectorAll(".st-title, .st-tag, .st-text, .st-line")].map((n) => n.textContent.trim()).filter(Boolean).join(I.lang === "zh" ? "" : " ");
+  const saveKey = () => "laniko-voice-" + I.lang;
+  const pickVoice = () => {
+    const vs = voiceList(); let saved = ""; try { saved = localStorage.getItem(saveKey()) || ""; } catch {}
+    return vs.find((v) => v.voiceURI === saved || v.name === saved) || vs[0] || null;
+  };
+  // the name must be said as one word, never spelled out: "Laniko" (title case), or the local script
+  const NAME = { ar: "لانيكو", zh: "拉尼科" };
+  const speakable = (t) => t.replace(/laniko/gi, NAME[I.lang] || "Laniko").replace(/[—–]/g, ", ").replace(/\s+/g, " ").trim();
+  const sceneText = (sc) => speakable([...sc.querySelectorAll(".st-tag, .st-text, .st-line")].map((n) => n.textContent.trim()).filter(Boolean).join(I.lang === "zh" ? "" : " "));
   const say = (i) => {
     if (!synth || !voiceOn || i === spoken) return;
     spoken = i;
@@ -121,11 +133,18 @@ export function mountStory(ctx, el) {
     const txt = sceneText(scenes[i]); if (!txt) return;
     setTimeout(() => {                                                       // Chrome and Brave skip a speak() that comes right after a cancel()
       if (!voiceOn || spoken !== i) return;
-      const u = new SpeechSynthesisUtterance(txt), v = pickVoice();
-      u.lang = (v && v.lang) || LANG[I.lang] || "en-US"; if (v) u.voice = v;
-      u.rate = I.lang === "zh" ? .88 : .9; u.pitch = 1; u.volume = 1;
-      u.onerror = (e) => { if (e.error && e.error !== "canceled" && e.error !== "interrupted") fail(); };
-      synth.speak(u);
+      const v = pickVoice();
+      const parts = txt.match(/[^.!?。！？؟]+[.!?。！？؟]*/g) || [txt];           // one sentence at a time, with a breath between them, like a storyteller
+      const next = (k) => {
+        if (!voiceOn || spoken !== i || k >= parts.length) return;
+        const u = new SpeechSynthesisUtterance(parts[k].trim());
+        u.lang = (v && v.lang) || LANG[I.lang] || "en-US"; if (v) u.voice = v;
+        u.rate = I.lang === "zh" ? .85 : .86; u.pitch = 1.02; u.volume = 1;
+        u.onend = () => setTimeout(() => next(k + 1), 420);
+        u.onerror = (e) => { if (e.error && e.error !== "canceled" && e.error !== "interrupted") fail(); };
+        synth.speak(u);
+      };
+      next(0);
     }, 90);
   };
   const current = () => {                                                  // the scene that fills most of the screen
@@ -147,6 +166,18 @@ export function mountStory(ctx, el) {
     btn.type = "button"; btn.className = "st-voice"; btn.setAttribute("aria-pressed", "false"); btn.setAttribute("aria-label", I.t("abListen"));
     btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/><path class="w1" d="M15 9.2a4 4 0 0 1 0 5.6"/><path class="w2" d="M17.4 6.8a7.4 7.4 0 0 1 0 10.4"/></svg><span class="st-voice-t"></span>';
     label(I.t("abListen")); btn.addEventListener("click", toggle); el.appendChild(btn);
+    // a second small button steps through the voices of this phone, so the visitor can choose the one that sounds best
+    vbtn = document.createElement("button");
+    vbtn.type = "button"; vbtn.className = "st-voice st-voice-pick"; vbtn.setAttribute("aria-label", I.t("abVoice"));
+    vbtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-4 3-6.4 7-6.4s7 2.4 7 6.4" fill="none"/></svg><span class="st-voice-t">' + esc(I.t("abVoice")) + '</span>';
+    vbtn.addEventListener("click", () => {
+      const vs = voiceList(); if (!vs.length) return fail();
+      const key = (v) => v.voiceURI || v.name, cur = pickVoice(), at = vs.findIndex((v) => cur && key(v) === key(cur)), k = (at + 1) % vs.length, nx = vs[k];
+      try { localStorage.setItem(saveKey(), key(nx)); } catch {}
+      vbtn.querySelector(".st-voice-t").textContent = I.t("abVoice") + " " + (k + 1) + "/" + vs.length;
+      if (!voiceOn) toggle(); else { spoken = -1; say(current()); }
+    });
+    el.appendChild(vbtn);
     synth.getVoices();                                                      // some browsers only fill the voice list after the first call
   }
   const onSpeechScroll = () => { if (!voiceOn) return; clearTimeout(timer); timer = setTimeout(() => say(current()), 380); };

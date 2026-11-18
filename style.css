@@ -788,3 +788,5 @@ html.has-welcome, html.has-welcome * { -webkit-tap-highlight-color: rgba(0, 0, 0
 .st-voice.note { text-transform: none; letter-spacing: .02em; }
 html:not([data-theme="dark"]) .st-voice:not(.on) { background: rgba(255, 252, 244, .9); color: #6b5320; }
 @media (prefers-reduced-motion: reduce) { .st-voice.on svg .w1, .st-voice.on svg .w2 { animation: none; opacity: 1; } }
+.st-voice-pick { bottom: calc(72px + env(safe-area-inset-bottom)); height: 38px; border-radius: 19px; padding: 0 14px 0 10px; font-size: 11px; background: rgba(14, 11, 7, .72); }
+.st-voice-pick svg { width: 18px; height: 18px; stroke-width: 1.7; fill: none; }
