@@ -107,8 +107,8 @@ export function mountStory(ctx, el) {
 
   // ---- narration: a natural AI voice (through /api/narrate) reads each scene aloud as it comes into view ----
   // Only languages that have a realistic voice get the Listen button; the phone's own robotic voice is never used.
-  const NARRATOR = true;                                                    // the narrator reads the story (the Listen button only appears for languages that have a voice)
-  const LV = NARRATOR ? .4 : 1.7;                                          // without a voice the music is allowed to be a little more present
+  let NARRATOR = false;                                                     // becomes true when this language has a narrator (stored recordings); otherwise the button is just a music toggle
+  const LIVE = false;                                                       // true = also ask /api/narrate to record on the fly when no stored file exists (needs a paid Cloudflare plan or an OpenAI key)
   const lab = (on) => I.t(NARRATOR ? (on ? "abStop" : "abListen") : (on ? "abMusicOn" : "abMusic"));
   let voiceOn = false, spoken = -1, timer = 0, btn = null, noteT = 0, alive = true;
   const music = createMusic();
@@ -144,7 +144,7 @@ export function mountStory(ctx, el) {
     }
     return clips.get(k);
   };
-  if (NARRATOR) { player.addEventListener("playing", () => music.level(1)); player.addEventListener("ended", () => music.level(.4)); player.addEventListener("pause", () => music.level(.4)); }
+  player.addEventListener("playing", () => music.level(1)); player.addEventListener("ended", () => music.level(.4)); player.addEventListener("pause", () => music.level(.4));
   let blocked = false;
   const resumeOnTouch = () => { if (blocked && voiceOn && player.src) { blocked = false; player.play().catch(() => { blocked = true; }); } };
   document.addEventListener("touchend", resumeOnTouch, { passive: true }); document.addEventListener("pointerup", resumeOnTouch, { passive: true });
@@ -180,15 +180,16 @@ export function mountStory(ctx, el) {
     if (voiceOn) { off(); return; }
     voiceOn = true; spoken = -1; clearTimeout(timer);
     btn.classList.add("on"); btn.setAttribute("aria-pressed", "true"); label(lab(true));
-    music.level(LV); music.start();                                          // the story and its quiet music begin together
+    music.level(NARRATOR ? .4 : 1.7); music.start();                                          // the story and its quiet music begin together
     if (NARRATOR) try { player.src = SILENT; player.play().catch(() => {}); } catch {}      // the tap unlocks the audio player for the rest of the visit
     say(current());
   };
   // does this language have a realistic narrator? (the server knows which voices it has)
-  const probe = () => !NARRATOR ? Promise.resolve({ voice: true }) : fetch("/voice/" + I.lang + "/abTag.mp3", { method: "HEAD" }).then((r) => isAudio(r) ? { voice: true } : Promise.reject())
-    .catch(() => fetch("/api/narrate?lang=" + encodeURIComponent(I.lang)).then((r) => r.ok ? r.json() : { voice: false })).catch(() => ({ voice: false }));
+  const probe = () => fetch("/voice/" + I.lang + "/abTag.mp3", { method: "HEAD" }).then((r) => isAudio(r) ? { voice: true } : Promise.reject())
+    .catch(() => LIVE ? fetch("/api/narrate?lang=" + encodeURIComponent(I.lang)).then((r) => r.ok ? r.json() : { voice: false }) : { voice: false }).catch(() => ({ voice: false }));
   probe().then((j) => {
-    if (!alive || !j.voice) return;
+    if (!alive) return;
+    NARRATOR = !!j.voice;
     btn = document.createElement("button");
     btn.type = "button"; btn.className = "st-voice"; btn.setAttribute("aria-pressed", "false"); btn.setAttribute("aria-label", lab(false));
     btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/><path class="w1" d="M15 9.2a4 4 0 0 1 0 5.6"/><path class="w2" d="M17.4 6.8a7.4 7.4 0 0 1 0 10.4"/></svg><span class="st-voice-t"></span>';
