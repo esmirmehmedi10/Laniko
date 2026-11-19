@@ -107,7 +107,7 @@ export function mountStory(ctx, el) {
 
   // ---- narration: a natural AI voice (through /api/narrate) reads each scene aloud as it comes into view ----
   // Only languages that have a realistic voice get the Listen button; the phone's own robotic voice is never used.
-  const NARRATOR = false;                                                   // no voice for now: the button only starts and stops the quiet music (set to true to bring the narrator back)
+  const NARRATOR = true;                                                    // the narrator reads the story (the Listen button only appears for languages that have a voice)
   const LV = NARRATOR ? .4 : 1.7;                                          // without a voice the music is allowed to be a little more present
   const lab = (on) => I.t(NARRATOR ? (on ? "abStop" : "abListen") : (on ? "abMusicOn" : "abMusic"));
   let voiceOn = false, spoken = -1, timer = 0, btn = null, noteT = 0, alive = true;
