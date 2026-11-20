@@ -680,7 +680,7 @@
       if (b.dataset.lang) {
         I.setLang(b.dataset.lang);
         if (step === "lang") { if (country) finish(); else { step = "country"; render(); } }
-        else render();                                           // the window itself switches to the new language
+        else { render(); goHome(); }                             // the window itself switches to the new language, and the page behind it goes back to the homepage
       } else { clearInterval(timer); closeGate(); }
     });
     render();

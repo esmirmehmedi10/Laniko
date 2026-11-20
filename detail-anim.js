@@ -89,16 +89,17 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
   };
 
   // ---- scroll position -> frame
-  const S1 = 0.28, S2 = 0.40, S3 = 0.58, S4 = 0.66, S5 = 0.90;     // end of: turn, push-in, cap lift, pause, press
+  const S1 = 0.12, S2 = 0.23, S3 = 0.45, S4 = 0.54, S5 = 0.90;     // end of: turn, push-in, cap lift, pause, press (the turn is a short flourish at the start, then the scroll belongs to the cap and the spray)
+  const easeOut = (x) => 1 - Math.pow(1 - x, 3);                    // the bottle spins quickly and then settles gently facing front
   const frameAt = (p) => {
-    if (p <= S1) return (p / S1) * (T - 1);
+    if (p <= S1) return easeOut(p / S1) * (T - 1);
     if (p <= S2) return lerp(T - 1, T + PU - 1, (p - S1) / (S2 - S1));
     if (p <= S3) return lerp(T + PU - 1, T + PU + LF - 1, (p - S2) / (S3 - S2));
     if (p <= S4) return T + PU + LF - 1;
     if (p <= S5) return lerp(HOLD, N - 1, (p - S4) / (S5 - S4));
     return N - 1;
   };
-  const SPRAY_A = 0.685, SPRAY_B = 0.90;
+  const SPRAY_A = S4 + 0.025, SPRAY_B = 0.90;
 
   // ---- drawing
   const ctx = canvas.getContext("2d");
@@ -269,7 +270,7 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
     const v = Math.abs(p - lastP) / dt;                       // scroll speed in "whole pages per second"
     vel = vel * 0.5 + v * 0.5;
     if (!reduce) {
-      if (p < 0.62) sprayed = 0;                              // scrolled back up: it can spray again
+      if (p < S4 - 0.04) sprayed = 0;                              // scrolled back up: it can spray again
       if (p > S2 + 0.03 && lastP <= S2 + 0.03 && hooks.onCap) hooks.onCap();   // the cap starts to lift
       if (p > lastP && p > SPRAY_A) {
         const from = Math.max(lastP, SPRAY_A), to = Math.min(p, SPRAY_B);
