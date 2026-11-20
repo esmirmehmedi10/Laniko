@@ -102,7 +102,7 @@ export function mountStory(ctx, el) {
       e.target.classList.toggle("vis", e.isIntersecting);                   // loops only run while a scene is on screen
       if (e.isIntersecting && e.intersectionRatio >= 0.3) { e.target.classList.add("in"); seen.add(e.target.dataset.id); }
     }
-  }, { threshold: [0, 0.3, 0.6] });
+  }, { threshold: [0, 0.3, 0.6], rootMargin: "0px 0px 8% 0px" });
   scenes.forEach((s) => io.observe(s));
 
   // ---- narration: a natural AI voice (through /api/narrate) reads each scene aloud as it comes into view ----
@@ -171,9 +171,9 @@ export function mountStory(ctx, el) {
     });
     go(0);
   };
-  const current = () => {                                                  // the scene that fills most of the screen
-    let best = 0, bv = -1; const h = window.innerHeight;
-    scenes.forEach((s, i) => { const r = s.getBoundingClientRect(), v = Math.min(r.bottom, h) - Math.max(r.top, 0); if (v > bv) { bv = v; best = i; } });
+  const current = () => {                                                  // the scene nearest to the reading line (about 45% down the screen)
+    let best = 0, bv = 1e9; const line = window.innerHeight * 0.45;
+    scenes.forEach((s, i) => { const r = s.getBoundingClientRect(), d = Math.abs((r.top + r.bottom) / 2 - line); if (d < bv) { bv = d; best = i; } });
     return best;
   };
   const toggle = () => {

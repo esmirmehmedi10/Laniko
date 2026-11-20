@@ -648,11 +648,13 @@ html[dir="rtl"] .gift-toggle input:checked + .gift-sw::after { transform: transl
 .story { --st: var(--gold); }
 html[data-theme="dark"] .story { --st: #d9b96a; }
 .story[hidden] { display: none; }
-.st-scene { position: relative; min-height: 84svh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 6vh 22px; text-align: center; }
+.st-scene { position: relative; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 22px 22px; text-align: center; }
+.st-scene[data-id="hero"], .st-scene[data-id="end"] { min-height: 62svh; gap: 14px; }
 .st-scene::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 1.6s ease;
   background: radial-gradient(60% 38% at 50% 40%, color-mix(in srgb, var(--st) 15%, transparent), transparent 72%); }
 .st-scene.in::before { opacity: 1; }
-.st-art { position: relative; margin: 0; width: min(58vw, 250px); aspect-ratio: 1; }
+.st-art { position: relative; margin: 0; width: min(30vw, 120px); aspect-ratio: 1; }
+.st-scene[data-id="hero"] .st-art, .st-scene[data-id="end"] .st-art { width: min(44vw, 190px); }
 .st-art svg { width: 100%; height: 100%; overflow: visible; fill: none; stroke: var(--st); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .st-art .thin { stroke-width: 1; }
 .st-art .dim { opacity: .55; }
