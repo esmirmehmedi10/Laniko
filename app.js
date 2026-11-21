@@ -1,7 +1,6 @@
 (() => {
   const CART_KEY = "shop-cart-v1";
   const WISH_KEY = "shop-wishlist-v1";
-  const PROMO_KEY = "laniko-promo-seen";
   const I = window.I18N;
   const t = I.t;
   const fmt = (n) => I.fmtMoney(n);
@@ -152,6 +151,7 @@
       if (a.dataset.route === (route === "compare" ? "discover" : route)) a.setAttribute("aria-current", "page");
       else a.removeAttribute("aria-current");
     });
+    updateNewTab();
     $("page-title").textContent = t(cfg.title);
     $("page-sub").textContent = t(cfg.sub);
     // "About us" is a story, not a product list
@@ -422,7 +422,7 @@
 
   // the page behind must not scroll while a window is open
   function updateLock() {
-    document.body.style.overflow = (detailId || !$("viewer").hidden || gate || promo || welcomeEl) ? "hidden" : "";
+    document.body.style.overflow = (detailId || !$("viewer").hidden || gate || welcomeEl) ? "hidden" : "";
   }
 
   // ---- 3D viewer ----
@@ -688,7 +688,6 @@
     const finish = () => {
       clearInterval(timer);
       closeGate();
-      if (promoAfter) productsReady.then(() => setTimeout(showPromo, 650));
     };
     gate.addEventListener("click", (e) => {
       if (e.target.closest(".ctry-combo")) return;               // the country bar handles its own clicks
@@ -723,52 +722,12 @@
   }
   I.onChange(applyLanguage);
 
-  // ---- advertisement for the new fragrance ----
-  let promo = null;
-  function showPromo() {
-    const p = products.find((x) => x.featured);
-    if (!p || promo) return;
-    try { sessionStorage.setItem(PROMO_KEY, "1"); } catch {}
-    promo = document.createElement("div");
-    promo.className = "promo-back";
-    const notes = t("promoNotes");
-    promo.innerHTML = `
-      <div class="promo" role="dialog" aria-modal="true" aria-label="${esc(t("promoAria"))}" style="--p-dark:${esc((p.theme && p.theme.bgDark) || "#07150e")}">
-        <button class="promo-x" aria-label="${esc(t("promoClose"))}">✕</button>
-        <div class="promo-img">
-          <img src="${esc(p.image)}" alt="${esc(p.name)}">
-          <span class="promo-chip">${esc(t("promoNew"))}</span>
-        </div>
-        <div class="promo-body">
-          <h2 class="promo-title pr-in" style="--d:.55s">${esc(p.name)}</h2>
-          <span class="promo-rule pr-in" style="--d:.7s"></span>
-          <p class="promo-tag pr-in" style="--d:.8s">${esc(t("promoTag"))}</p>
-          <p class="promo-text pr-in" style="--d:.95s">${esc(t("promoBody"))}</p>
-          <ul class="promo-notes pr-in" style="--d:1.1s">${notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>
-          <p class="promo-meta pr-in" style="--d:1.2s">${esc(t("promoMeta"))} · <strong>${fmt(p.price)}</strong></p>
-          <button class="promo-cta pr-in" style="--d:1.3s" data-promo="discover">${esc(t("promoCta"))}</button>
-          <button class="promo-add pr-in" style="--d:1.4s" data-promo="add">${esc(t("add"))}</button>
-          <button class="promo-later pr-in" style="--d:1.5s" data-promo="close">${esc(t("promoLater"))}</button>
-        </div>
-      </div>`;
-    document.body.appendChild(promo);
-    document.body.style.overflow = "hidden";
-    promo.addEventListener("click", (e) => {
-      if (e.target === promo) return closePromo();
-      const b = e.target.closest("button");
-      if (!b) return;
-      if (b.classList.contains("promo-x") || b.dataset.promo === "close") closePromo();
-      else if (b.dataset.promo === "discover") { closePromo(); setTimeout(() => openDetail(p.id), 250); }
-      else if (b.dataset.promo === "add") { change(p.id, 1); closePromo(); addedToast(); }
-    });
-    promo.querySelector(".promo-cta").focus({ preventScroll: true });
-  }
-  function closePromo() {
-    if (!promo) return;
-    const el = promo; promo = null;
-    el.classList.add("out");
-    setTimeout(() => el.remove(), 400);
-    updateLock();
+  // ---- the new fragrance has its own gold tab, left of "Perfumes" (there is no pop-up any more) ----
+  function updateNewTab() {
+    const tab = $("tab-new"), p = products.find((x) => x.featured);
+    if (!tab) return;
+    tab.hidden = !p;
+    if (p) { tab.href = "#/perfume/" + p.id; tab.setAttribute("aria-label", t("newTab") + " · " + p.name); }
   }
 
   // ---- light / dark mode: follows the phone until the visitor chooses ----
@@ -1028,8 +987,7 @@
   });
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
-    if (promo) closePromo();
-    else if (gate && I.hasChoice()) closeGate();
+    if (gate && I.hasChoice()) closeGate();
     else if (!$("viewer").hidden) closeViewer();
     else if (detailId) closeDetail();
   });
@@ -1100,12 +1058,6 @@
     renderCountryLine();
     resolveProducts();
 
-    // returning visitor: the advertisement once per visit, after the doors have opened
-    if (I.hasChoice() && country && !gl) {
-      let seen = false;
-      try { seen = !!sessionStorage.getItem(PROMO_KEY); } catch {}
-      if (!seen && !params.get("canceled")) welcomed.then(() => setTimeout(showPromo, 1400));
-    }
   }
   init();
 })();

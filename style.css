@@ -881,3 +881,15 @@ html[dir="rtl"] .dis-go svg { transform: scaleX(-1); } html[dir="rtl"] .dis-card
 html[dir="rtl"] .dis-go, html[dir="rtl"] .dis-num { letter-spacing: 0; }
 @media (min-width: 760px) { .dis { grid-template-columns: repeat(3, 1fr); gap: 20px; } .dis-card { min-height: 290px; padding: 30px 26px 26px; } }
 @media (prefers-reduced-motion: reduce) { .dis-card, .dis-go svg { transition: none; } .dis-card:hover { transform: none; } }
+
+/* the gold "New" tab for the newest fragrance */
+.tabs a.tab-new { display: inline-flex; align-items: center; gap: 7px; align-self: center; margin: 0 6px; padding: 6px 14px; border: 0; border-radius: 99px; font-weight: 600; letter-spacing: .16em; color: #2a1d05; position: relative; overflow: hidden;
+  background: linear-gradient(105deg, #b8924a, #f1d98f 48%, #c9a24d); box-shadow: 0 2px 10px rgba(184,146,74,.4); transition: transform .25s, box-shadow .25s; }
+.tabs a.tab-new[hidden] { display: none; }
+.tabs a.tab-new svg { fill: currentColor; flex: none; }
+.tabs a.tab-new::after { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.65) 50%, transparent 65%); transform: translateX(-120%); animation: tab-shine 5.5s ease-in-out 1.5s infinite; }
+@keyframes tab-shine { 0%, 62% { transform: translateX(-120%); } 85%, 100% { transform: translateX(120%); } }
+.tabs a.tab-new:hover, .tabs a.tab-new:focus-visible { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(184,146,74,.55); outline: none; }
+html[dir="rtl"] .tabs a.tab-new { letter-spacing: 0; }
+@media (prefers-reduced-motion: reduce) { .tabs a.tab-new::after { animation: none; } }
+@media (max-width: 480px) { .tabs a { padding: 10px 8px; letter-spacing: .1em; font-size: .74rem; } .tabs a.tab-new { padding: 6px 12px; margin: 0 4px; } }
