@@ -1,6 +1,7 @@
 // Scroll-linked film of the product page. The frames are rendered from the 3D model (tools/render_sequence.py):
-//   1. the bottle turns once            2. the camera pushes in and tilts down onto the cap
-//   3. the cap lifts off and flies away 4. the spray button is pressed and the perfume sprays
+//   1. the camera pushes in and tilts down onto the cap (the bottle does not spin any more)
+//   2. the cap lifts off and flies away  3. the spray button is pressed and the perfume sprays
+// The whole film plays within the first ANIM_PX pixels of scrolling, so it is short, and the page then simply continues.
 // How far the page is scrolled picks the frame; how fast it is scrolled sets how forceful the spray is.
 // The mist is simulated live (fine jet, soft cloud, droplets) on a second canvas, from the nozzle position and direction stored per frame.
 //
@@ -31,7 +32,7 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
   const useBitmap = typeof createImageBitmap === "function";
   const KEY = 24;                           // every 24th frame stays decoded
   const url = (i) => `${base}/${String(i).padStart(2, "0")}.webp`;
-  let cur = 0, dirn = 1;
+  let cur = T - 1, dirn = 1;
   let loadedFirst = false;
 
   const decode = (i) => {
@@ -62,11 +63,12 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
   };
   // load order: the first frame, then the key frames, then always the missing frame nearest to where the visitor is (ahead first)
   const want = new Set();
-  for (let i = 0; i < N; i++) want.add(i);
+  for (let i = 0; i < N; i++) if (i === 0 || i >= T - 1) want.add(i);     // the turning frames are not used: only the front view and everything after it
   const nextToLoad = () => {
     for (const i of want) if (blobs[i]) want.delete(i);
     if (!want.size) return -1;
     if (want.has(0)) return 0;
+    if (want.has(T - 1)) return T - 1;
     let best = -1, bd = 1e9;
     for (const i of want) {
       const d = (i - cur) * (i >= cur ? 1 : 2.5) + (i % KEY === 0 ? -6 : 0);       // ahead is cheaper than behind; key frames first when equal
@@ -89,23 +91,22 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
   };
 
   // ---- scroll position -> frame
-  const S1 = 0.12, S2 = 0.23, S3 = 0.45, S4 = 0.54, S5 = 0.90;     // end of: turn, push-in, cap lift, pause, press (the turn is a short flourish at the start, then the scroll belongs to the cap and the spray)
-  const easeOut = (x) => 1 - Math.pow(1 - x, 3);                    // the bottle spins quickly and then settles gently facing front
+  const S2 = 0.28, S3 = 0.58, S4 = 0.66, S5 = 1.0;                 // end of: push-in, cap lift, pause, button press + spray (shares of the short film)
+  const ANIM_PX = 460;                                              // the film plays in this many pixels of scrolling (about one thumb swipe and a half)
   const frameAt = (p) => {
-    if (p <= S1) return easeOut(p / S1) * (T - 1);
-    if (p <= S2) return lerp(T - 1, T + PU - 1, (p - S1) / (S2 - S1));
+    if (p <= S2) return lerp(T - 1, T + PU - 1, p / S2);
     if (p <= S3) return lerp(T + PU - 1, T + PU + LF - 1, (p - S2) / (S3 - S2));
     if (p <= S4) return T + PU + LF - 1;
     if (p <= S5) return lerp(HOLD, N - 1, (p - S4) / (S5 - S4));
     return N - 1;
   };
-  const SPRAY_A = S4 + 0.025, SPRAY_B = 0.90;
+  const SPRAY_A = S4 + 0.03, SPRAY_B = S5;
 
   // ---- drawing
   const ctx = canvas.getContext("2d");
   const mctx = mist.getContext("2d");
   let cw = 1, ch = 1, dpr = 1, mdpr = 1, sc = 1, dx = 0, dy = 0, k = 1;
-  let range = 1, quality = 0;                          // quality drops by itself when the device cannot keep up
+  let range = 1, animLen = 1, quality = 0;                          // quality drops by itself when the device cannot keep up
   const layout = () => {
     cw = stage.clientWidth || 1; ch = stage.clientHeight || 1;
     dpr = Math.min(window.devicePixelRatio || 1, 3);                // the picture always keeps the screen's full resolution: lowering it made the bottle blurry
@@ -117,13 +118,14 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
     dy = (ch - FH * sc) * 0.12;                       // ... showing mostly the upper part (the action is up there)
     k = cw / 390;
     range = Math.max(1, scroller.scrollHeight - scroller.clientHeight);
+    animLen = Math.max(1, Math.min(range, ANIM_PX));
     lastKey = "";
     kick();
   };
   const ro = new ResizeObserver(layout);
   ro.observe(stage);
 
-  let target = 0, shown = 0, p = 0, lastP = 0, lastT = 0, vel = 0, sprayed = 0, lastKey = "";
+  let target = T - 1, shown = T - 1, p = 0, lastP = 0, lastT = 0, vel = 0, sprayed = 0, lastKey = "";
   let raf = 0, lastTick = 0, slow = 0.016, ticks = 0;
 
   const draw = () => {
@@ -263,11 +265,11 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
   let setP = -1;
   const onScroll = () => {
     const now = performance.now();
-    p = clamp(scroller.scrollTop / range, 0, 1);
+    p = clamp(scroller.scrollTop / animLen, 0, 1);
     target = frameAt(p);
     if (p < 0.12 || setP < 0.12) { stage.style.setProperty("--p", p.toFixed(3)); setP = p; }
     const dt = Math.max(0.008, (now - lastT) / 1000);
-    const v = Math.abs(p - lastP) / dt;                       // scroll speed in "whole pages per second"
+    const v = Math.abs(p - lastP) / dt * (animLen / 1400);                       // scroll speed in "whole pages per second"
     vel = vel * 0.5 + v * 0.5;
     if (!reduce) {
       if (p < S4 - 0.04) sprayed = 0;                              // scrolled back up: it can spray again

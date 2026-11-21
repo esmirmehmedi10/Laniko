@@ -63,6 +63,7 @@
   // ---- pages: the home page is the plain address (/); the others are #/discover and #/wishlist ----
   const ROUTES = {
     "perfumes": { title: "collectionTitle", sub: "collectionSub", list: () => products, empty: "emptyPerfumes" },
+    "new": { title: "newTitle", sub: "newSub", newPage: true },
     "discover": { title: "disTitle", sub: "disSub", discover: true },
     "wishlist": { title: "wishTitle", sub: "wishSub", list: () => wish.map(byId).filter(Boolean), empty: "emptyWish" },
     "compare": { title: "cmpTitle", sub: "cmpSub", list: () => products, empty: "emptyPerfumes", custom: true },
@@ -143,6 +144,30 @@
       </button>`).join("")}</div>`;
   }
 
+  // the "New" page: the newest fragrance shown as one large, quiet feature
+  function newHTML() {
+    const list = products.filter((p) => p.featured);
+    if (!list.length) return `<p class="empty">${esc(t("emptyPerfumes"))}</p>`;
+    return `<div class="nw">${list.map((p) => {
+      const th = p.theme || {}, tagKey = "chT_" + p.id.replace(/-/g, "_"), tag = t(tagKey) === tagKey ? "" : t(tagKey);
+      return `<article class="nw-card" style="--bg:${th.bgDark || "#0c0a07"};--gl:${th.glow || "#c9a25a"}">
+        <a class="nw-img" href="#/perfume/${esc(p.id)}" aria-label="${esc(p.name)}"><img src="${esc(p.image)}" alt="${esc(p.name)}" loading="eager"></a>
+        <div class="nw-body">
+          <p class="nw-kick"><span>✦</span> ${esc(t("newTab"))}</p>
+          <h3>${esc(p.name)}</h3>
+          ${tag ? `<p class="nw-tag">${esc(tag)}</p>` : ""}
+          <p class="nw-desc">${esc(descOf(p))}</p>
+          <p class="nw-notes">${(p.notes || []).map((n) => `<span>${esc(I.noteName(n))}</span>`).join("")}</p>
+          <div class="nw-cta"><a class="nw-go" href="#/perfume/${esc(p.id)}">${esc(t("newGo"))}</a><button class="nw-story" type="button" data-story="${esc(p.id)}">${esc(t("chRead"))}</button></div>
+        </div>
+      </article>`;
+    }).join("")}</div>`;
+  }
+  $("products").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-story]"); if (!b) return;
+    const p = byId(b.dataset.story); if (p) import("/chapter.js").then((m) => m.openChapter(featureCtx(), p));
+  });
+
   function renderPage() {
     const route = currentRoute();
     const cfg = ROUTES[route];
@@ -150,6 +175,8 @@
       if (a.dataset.route === (route === "compare" ? "discover" : route)) a.setAttribute("aria-current", "page");
       else a.removeAttribute("aria-current");
     });
+    const curTab = document.querySelector(".tabs a[aria-current]");                      // keep the open page's tab in view in the sideways-scrolling row
+    if (curTab && curTab.parentElement) { const row = curTab.parentElement; row.scrollTo({ left: curTab.offsetLeft - (row.clientWidth - curTab.offsetWidth) / 2, behavior: "smooth" }); }
     updateNewTab();
     $("page-title").textContent = t(cfg.title);
     $("page-sub").textContent = t(cfg.sub);
@@ -166,6 +193,7 @@
     if (!products.length) return;
     pageActions(route);
     if (cfg.discover) { $("products").innerHTML = discoverHTML(); return; }
+    if (cfg.newPage) { $("products").innerHTML = newHTML(); return; }
     if (cfg.custom) { loadFeatures().then((m) => { if (currentRoute() === route) m.renderCompare(featureCtx(), $("products")); }); return; }
     const list = cfg.list();
     if (!list.length) {
@@ -234,6 +262,38 @@
     if (location.hash || location.pathname !== "/") history.pushState(null, "", "/");
     onRoute();
   }
+  // ---- swipe left / right to move between the pages (New, Perfumes, Discover, Wishlist, About us)
+  (() => {
+    let sx = 0, sy = 0, st = 0, ok = false;
+    const blocked = (el) => {
+      if (document.body.style.overflow === "hidden" || detailId || !$("cart").hidden) return true;
+      for (let n = el; n && n !== document.body && n.nodeType === 1; n = n.parentElement) {
+        if (/^(INPUT|TEXTAREA|SELECT|CANVAS)$/.test(n.tagName) || n.classList.contains("tabs")) return true;
+        const cs = getComputedStyle(n);
+        if (/(auto|scroll)/.test(cs.overflowX) && n.scrollWidth > n.clientWidth + 2) return true;       // a row that scrolls sideways keeps its own swipe
+      }
+      return false;
+    };
+    document.addEventListener("touchstart", (e) => {
+      ok = e.touches.length === 1 && !blocked(e.target);
+      if (ok) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; st = Date.now(); }
+    }, { passive: true });
+    document.addEventListener("touchend", (e) => {
+      if (!ok) return; ok = false;
+      const t0 = e.changedTouches[0], dx = t0.clientX - sx, dy = t0.clientY - sy;
+      if (Math.abs(dx) < 64 || Math.abs(dx) < Math.abs(dy) * 1.7 || Date.now() - st > 800) return;
+      const tabs = [...document.querySelectorAll(".tabs a")].filter((x) => !x.hidden);
+      const route = currentRoute(), at = tabs.findIndex((x) => x.dataset.route === (route === "compare" ? "discover" : route));
+      if (at < 0) return;
+      const rtl = document.documentElement.dir === "rtl";
+      const to = tabs[at + (dx > 0 ? -1 : 1) * (rtl ? -1 : 1)];                                        // swipe right = the page on the left
+      if (!to) return;
+      to.click();
+      const m = document.querySelector("main");
+      m.classList.remove("sw-l", "sw-r"); void m.offsetWidth; m.classList.add(dx > 0 ? "sw-l" : "sw-r");
+      setTimeout(() => m.classList.remove("sw-l", "sw-r"), 450);
+    }, { passive: true });
+  })();
   window.addEventListener("hashchange", onRoute);
   window.addEventListener("popstate", onRoute);
   // an old link with #/perfumes shows the plain address
@@ -726,7 +786,7 @@
     const tab = $("tab-new"), p = products.find((x) => x.featured);
     if (!tab) return;
     tab.hidden = !p;
-    if (p) { tab.href = "#/perfume/" + p.id; tab.setAttribute("aria-label", t("newTab") + " · " + p.name); }
+    if (p) tab.setAttribute("aria-label", t("newTab") + " · " + p.name);
   }
 
   // ---- light / dark mode: follows the phone until the visitor chooses ----
