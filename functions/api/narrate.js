@@ -9,14 +9,14 @@
 // looked up here in i18n-about.js. Every finished recording is stored at the edge for a year, so each sentence is
 // generated once per voice and language, no matter how many visitors listen.
 
-const VOICE = { en: "pandora", es: "estrella" };                                             // soft narrators: Deepgram Aura-2 "Pandora" (English: smooth, calm, melodic; the page lifts her pitch a little) and "Estrella" (Spanish)
+const VOICE = { en: "hera", es: "selena" };                                             // soft narrators: Deepgram Aura-2 "Pandora" (English: smooth, calm, melodic; the page lifts her pitch a little) and "Estrella" (Spanish)
 // how each line should feel (used by the OpenAI voice, which can act): the story goes from a hushed opening to a warm, radiant close
-const MOOD = { abTag: "a soft, hushed opening, like the first line of a fairytale", ab1: "tender and hopeful, a story beginning", ab2: "intimate and wondering, almost a whisper", ab3: "quiet, warm conviction",
-  ab4: "gentle and emotional, slightly breathy", ab5: "calm and grounded, proud but soft", ab6: "curious and a little playful, then gentle", ab7: "soft and quietly defiant, with a small smile in the voice",
-  ab8: "deeply moved, touched and tender", ab9: "soft and precise, almost reverent", ab10: "calm and certain", ab11: "dreamy and wistful, full of wonder", ab12: "warm and proud, confident but gentle",
-  ab13: "hushed and mysterious, like sharing a secret", abEnd1: "radiant and uplifting, a soft smile in the voice", abEnd2: "tender and final, a warm, lingering close" };
+const MOOD = { abTag: "a low, sultry whisper, close to the ear, the first words of a seduction", ab1: "slow, velvety and intimate, savouring every word", ab2: "breathy and sensual, almost a murmur, lingering on 'identity' and 'signature'", ab3: "husky, warm and quietly confident",
+  ab4: "sensual and breathy, as if describing a touch on bare skin", ab5: "low, smooth and self-assured, a knowing half-smile", ab6: "teasing and playful, then dropping into a silky whisper", ab7: "smoky, defiant and alluring, a wicked little smile in the voice",
+  ab8: "deeply intimate, a soft shiver in the voice", ab9: "slow and precise, every syllable caressed", ab10: "low, calm and magnetic", ab11: "dreamy, languid and sensual, like waking beside someone", ab12: "confident and seductive, voice dropping low",
+  ab13: "a hushed, intoxicating secret whispered right at the ear", abEnd1: "husky and inviting, a smile you can hear", abEnd2: "slow, low and lingering, a final breathy whisper that stays with you" };
 const ALL = ["en", "de", "fr", "pt", "it", "es", "ar", "zh"], LANG_NAME = { en: "English", de: "German", fr: "French", pt: "European Portuguese", it: "Italian", es: "Spanish (neutral Latin-American/Spain)", ar: "Modern Standard Arabic", zh: "Mandarin Chinese" };
-const OPENAI_VOICE = "shimmer";                                                           // OpenAI's soft, light, higher female voice
+const OPENAI_VOICE = "coral";                                                           // OpenAI's soft, light, higher female voice
 const KEY_OK = /^ab(?:\d{1,2}|Tag|End1|End2)$/;
 
 const err = (status, error) => new Response(JSON.stringify({ error }), { status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
@@ -62,7 +62,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
   const voice = hasOpenAI ? OPENAI_VOICE : VOICE[lang] || "default";
 
   const cache = typeof caches !== "undefined" ? caches.default : null;
-  const cacheKey = new Request(`${origin}/__narrate/v2/${lang}/${voice}/${await hex(ids.join(","))}`);      // v2: earlier recordings may have been made with the default voice
+  const cacheKey = new Request(`${origin}/__narrate/v3/${lang}/${voice}/${await hex(ids.join(","))}`);      // v2: earlier recordings may have been made with the default voice
   if (cache) { const hit = await cache.match(cacheKey); if (hit) return hit; }
 
   const srcRes = await env.ASSETS.fetch(new URL("/i18n-about.js", origin));
@@ -78,9 +78,9 @@ export async function onRequestPost({ request, env, waitUntil }) {
         method: "POST", headers: { Authorization: "Bearer " + env.OPENAI_API_KEY, "content-type": "application/json" },
         body: JSON.stringify({
           model: "gpt-4o-mini-tts", voice: OPENAI_VOICE, response_format: "mp3", input: text,
-          instructions: `Voice: a very soft, warm, gentle young woman with a light, slightly higher pitch, telling a fairytale in a quiet room. A very soft, natural breath before the first word is welcome, barely audible. Tone: calm, intimate and dreamy, tender and kind, never formal, never a news reader, never loud. Show real feeling: let emotion colour the words. ` +
-            `This line should sound: ${ids.map((k) => MOOD[k]).filter(Boolean).join("; ") || "gentle and warm"}. ` +
-            `Pace: slow and unhurried, with soft pauses between sentences. Language: ${LANG_NAME[lang]}, with a natural native accent. The brand name "Laniko" is one word, said lah-NEE-koh.`,
+          instructions: `Voice: a real, warm, low-pitched woman with a husky, velvety, slightly breathy voice, speaking very close to the microphone, as if whispering to one person in a dim, candle-lit room. Sensual, intimate and seductive, in the way a luxury perfume film is: elegant, confident, alluring and tasteful, never explicit, never vulgar, never cartoonish. A soft audible breath before the first word and between phrases is welcome. Let the voice drop and linger on the ends of sentences, smile with the words, and let a little smoky roughness come through. Never robotic, never formal, never a news reader or customer-service voice, never loud. ` +
+            `This line should sound: ${ids.map((k) => MOOD[k]).filter(Boolean).join("; ") || "low, sultry and intimate"}. ` +
+            `Pace: very slow and unhurried, with long, silky pauses between sentences. Language: ${LANG_NAME[lang]}, with a natural native accent. The brand name "Laniko" is one word, said lah-NEE-koh.`,
         }),
       });
       if (r.ok) bytes = new Uint8Array(await r.arrayBuffer());
@@ -88,8 +88,9 @@ export async function onRequestPost({ request, env, waitUntil }) {
       else return err(502, "voice failed");
     } catch { return err(502, "voice failed"); }
   }
+  const slow = text.replace(/([.!?])\s+(?=\S)/g, "$1.. ");                                  // Aura cannot be directed, so slow, lingering pauses are made with punctuation
   if (!bytes && usedAI) try {
-    const run = (extra) => env.AI.run(lang === "en" ? "@cf/deepgram/aura-2-en" : "@cf/deepgram/aura-2-es", { text, encoding: "mp3", ...extra });
+    const run = (extra) => env.AI.run(lang === "en" ? "@cf/deepgram/aura-2-en" : "@cf/deepgram/aura-2-es", { text: slow, encoding: "mp3", ...extra });
     // always the same speaker: if a try fails, try the SAME speaker again (never the model's default voice, which would sound different)
     let last;
     for (let k = 0; k < 3 && !bytes; k++) { try { bytes = await toBytes(await run({ speaker: VOICE[lang] })); } catch (e) { last = e; await new Promise((r) => setTimeout(r, 400 * (k + 1))); } }
