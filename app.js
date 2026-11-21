@@ -61,10 +61,10 @@
   const loadFeatures = () => import("/features.js");
   const loadExtras = () => import("/extras.js");
 
-  // ---- pages: the home page is the plain address (/); the others are #/top-sellers and #/wishlist ----
+  // ---- pages: the home page is the plain address (/); the others are #/discover and #/wishlist ----
   const ROUTES = {
     "perfumes": { title: "collectionTitle", sub: "collectionSub", list: () => products, empty: "emptyPerfumes" },
-    "top-sellers": { title: "topTitle", sub: "topSub", list: () => products.filter((p) => p.rank).sort((a, b) => a.rank - b.rank), empty: "emptyTop" },
+    "discover": { title: "disTitle", sub: "disSub", discover: true },
     "wishlist": { title: "wishTitle", sub: "wishSub", list: () => wish.map(byId).filter(Boolean), empty: "emptyWish" },
     "compare": { title: "cmpTitle", sub: "cmpSub", list: () => products, empty: "emptyPerfumes", custom: true },
     "about": { title: "abTab", sub: "abTag", story: true },
@@ -121,18 +121,35 @@
   function pageActions(route) {
     const el = $("page-actions");
     let h = "";
-    if (route === "perfumes") h = `<button class="act" data-act="quiz">${esc(t("findScent"))}</button><button class="act" data-act="mood">${esc(t("moodBtn"))}</button><button class="act" data-act="compare">${esc(t("compareBtn"))}</button>`;
-    else if (route === "wishlist" && wish.length) h = `<button class="act" data-act="share">${ICON_SHARE}<span>${esc(t("shareWish"))}</span></button>`;
+    if (route === "wishlist" && wish.length) h = `<button class="act" data-act="share">${ICON_SHARE}<span>${esc(t("shareWish"))}</span></button>`;
     else if (route === "shared" && sharedIds().length) h = `<button class="act gold" data-act="saveall">${esc(t("saveAllWish"))}</button>`;
-    el.className = "page-actions" + (route === "perfumes" ? " row" : "");
+    el.className = "page-actions";
     el.innerHTML = h;
+  }
+
+  // the Discover page: three guided ways to find a perfume, shown as quiet numbered cards
+  const DIS_ICONS = {
+    quiz: '<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="17"/><path d="M30.5 17.5 27 27l-9.5 3.5L21 21z"/><circle cx="24" cy="24" r="1.6" class="f"/></svg>',
+    mood: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M9 11h30a3 3 0 0 1 3 3v15a3 3 0 0 1-3 3H25l-8 7v-7H9a3 3 0 0 1-3-3V14a3 3 0 0 1 3-3z"/><path d="M16 21.500c2-2.5 3.5-2.5 5.5 0s3.5 2.5 5.5 0 3.5-2.5 5 0"/></svg>',
+    compare: '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="7" y="16" width="14" height="22" rx="2"/><path d="M11 16v-4h6v4"/><rect x="27" y="16" width="14" height="22" rx="2"/><path d="M31 16v-4h6v4"/><path d="M7 26h14M27 26h14"/></svg>',
+  };
+  function discoverHTML() {
+    const cards = [["I", "quiz", "disQzT", "disQzD"], ["II", "mood", "disMdT", "disMdD"], ["III", "compare", "disCpT", "disCpD"]];
+    return `<div class="dis">${cards.map(([n, act, ti, de]) => `
+      <button class="dis-card" type="button" data-act="${act}">
+        <span class="dis-num" aria-hidden="true">${n}</span>
+        <span class="dis-ico">${DIS_ICONS[act]}</span>
+        <span class="dis-t">${esc(t(ti))}</span>
+        <span class="dis-d">${esc(t(de))}</span>
+        <span class="dis-go">${esc(t("disGo"))}<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M4 12h15M14 6l6 6-6 6"/></svg></span>
+      </button>`).join("")}</div>`;
   }
 
   function renderPage() {
     const route = currentRoute();
     const cfg = ROUTES[route];
     document.querySelectorAll(".tabs a").forEach((a) => {
-      if (a.dataset.route === route) a.setAttribute("aria-current", "page");
+      if (a.dataset.route === (route === "compare" ? "discover" : route)) a.setAttribute("aria-current", "page");
       else a.removeAttribute("aria-current");
     });
     $("page-title").textContent = t(cfg.title);
@@ -149,6 +166,7 @@
     import("/about.js").then((m) => m.unmountStory()).catch(() => {});
     if (!products.length) return;
     pageActions(route);
+    if (cfg.discover) { $("products").innerHTML = discoverHTML(); return; }
     if (cfg.custom) { loadFeatures().then((m) => { if (currentRoute() === route) m.renderCompare(featureCtx(), $("products")); }); return; }
     const list = cfg.list();
     if (!list.length) {
