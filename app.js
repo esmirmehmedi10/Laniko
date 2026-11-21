@@ -133,10 +133,9 @@
     compare: '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="7" y="16" width="14" height="22" rx="2"/><path d="M11 16v-4h6v4"/><rect x="27" y="16" width="14" height="22" rx="2"/><path d="M31 16v-4h6v4"/><path d="M7 26h14M27 26h14"/></svg>',
   };
   function discoverHTML() {
-    const cards = [["I", "quiz", "disQzT", "disQzD"], ["II", "mood", "disMdT", "disMdD"], ["III", "compare", "disCpT", "disCpD"]];
-    return `<div class="dis">${cards.map(([n, act, ti, de]) => `
+    const cards = [["quiz", "disQzT", "disQzD"], ["mood", "disMdT", "disMdD"], ["compare", "disCpT", "disCpD"]];
+    return `<div class="dis">${cards.map(([act, ti, de]) => `
       <button class="dis-card" type="button" data-act="${act}">
-        <span class="dis-num" aria-hidden="true">${n}</span>
         <span class="dis-ico">${DIS_ICONS[act]}</span>
         <span class="dis-t">${esc(t(ti))}</span>
         <span class="dis-d">${esc(t(de))}</span>
