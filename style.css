@@ -925,19 +925,12 @@ main.sw-r { animation: sw-from-right .32s cubic-bezier(.2,.7,.2,1); }
   -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; animation: inIn .7s ease both; }
 .intro.out { opacity: 0; transition: opacity .85s ease; pointer-events: none; }
 @keyframes inIn { from { opacity: 0; } to { opacity: 1; } }
-.in-bg { position: absolute; inset: -4%; background: #0a0805 url(/images/welcome-wide-2.webp) center / cover no-repeat; opacity: .85; animation: inDrift 22s ease-in-out infinite alternate; }
-@media (orientation: portrait) { .in-bg { background-image: url(/images/welcome-tall-2.webp); } }
-@keyframes inDrift { from { transform: scale(1.04); } to { transform: scale(1.16) translateY(-1.2%); } }
 .in-vig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 75% 65% at 50% 50%, rgba(8, 6, 4, .32), rgba(5, 4, 3, .82)); }
 .in-stage { position: relative; width: min(92vw, 760px); height: 100%; display: grid; place-items: center; }
 .in-s { grid-area: 1 / 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 0 6px; opacity: 0; visibility: hidden; transform: translateY(18px);
   transition: opacity 1s ease, transform 1.2s cubic-bezier(.2, .7, .2, 1), visibility 0s linear 1s; }
 .in-s.on { opacity: 1; visibility: visible; transform: none; transition-delay: .35s, .35s, 0s; }
 .in-s.past { transform: translateY(-18px); }
-.in-logo { height: min(30svh, 250px); width: auto; aspect-ratio: 631 / 1595; overflow: visible; fill-opacity: 0; stroke: url(#wl-gold); stroke-width: 5; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1;
-  filter: drop-shadow(0 0 18px rgba(255, 214, 130, .28)); }
-.in-s.past .in-logo { fill-opacity: 1; stroke-width: 0; stroke-dashoffset: 0; }
-.in-s.on .in-logo { animation: wlDraw 1.3s cubic-bezier(.55, .1, .3, 1) .5s forwards, wlFill .7s ease 1.5s forwards; }
 .in-kick { margin: 6px 0 -8px; font-size: .74rem; letter-spacing: .5em; text-transform: uppercase; color: #cdb27a; padding-inline-start: .5em; }
 .in-brand { margin: 0; font-family: var(--serif); font-weight: 500; font-size: clamp(2.3rem, 11vw, 4rem); letter-spacing: .5em; padding-inline-start: .5em; color: #f6e8c2; text-shadow: 0 2px 24px rgba(0, 0, 0, .6); }
 .in-rule { width: 1px; height: 64px; margin: 0; background: linear-gradient(transparent, #d9b96a); transform-origin: top; transform: scaleY(0); }
@@ -963,7 +956,7 @@ html[lang="zh"] .in-line { max-width: 15em; } html[lang="zh"] .in-soft { font-st
 html[dir="rtl"] .in-kick, html[dir="rtl"] .in-brand, html[dir="rtl"] .in-big, html[dir="rtl"] .in-go, html[dir="rtl"] .in-skip { letter-spacing: 0; }
 html[dir="rtl"] .in-brand { padding: 0; }
 html[lang="zh"] .in-kick, html[lang="zh"] .in-go, html[lang="zh"] .in-skip { letter-spacing: .1em; }
-@media (prefers-reduced-motion: reduce) { .in-bg { animation: none; } .in-s { transform: none !important; } .in-s.on .in-logo { animation: none; fill-opacity: 1; stroke-width: 0; stroke-dashoffset: 0; }
+@media (prefers-reduced-motion: reduce) { .in-bg { animation: none; } .in-s { transform: none !important; } 
   .in-s.on .in-rule { animation: none; transform: none; } .in-go { opacity: 1 !important; transform: none !important; animation: none !important; } }
 
 /* ---------- the New pop-up window ---------- */
@@ -981,3 +974,26 @@ html[lang="zh"] .in-kick, html[lang="zh"] .in-go, html[lang="zh"] .in-skip { let
   background: rgba(0, 0, 0, .5); color: #f1e6cc; border: 1px solid rgba(217, 185, 106, .55); font-size: .95rem; backdrop-filter: blur(4px); }
 @media (min-width: 760px) { .nwp { width: min(100%, 880px); } .nwp .nw-img { aspect-ratio: auto; } .nwp .nw-body { padding: 36px 40px; } }
 @media (prefers-reduced-motion: reduce) { .nwp, .nwp-back { transition: opacity .2s ease; transform: none !important; } }
+
+/* the introduction has its own look: no logo, no marble. Each scene is washed in the colour of a perfume, inside a thin gold frame */
+.in-washes { position: absolute; inset: 0; overflow: hidden; background: #070605; }
+.in-wash { position: absolute; inset: -12%; background-size: cover; background-position: 50% 40%; opacity: 0; transition: opacity 1.8s ease; filter: blur(46px) saturate(1.6) brightness(.78); transform: scale(1.15); animation: inDrift 24s ease-in-out infinite alternate; }
+.in-wash.on { opacity: .95; }
+.in-wash:nth-child(even) { animation-direction: alternate-reverse; }
+@keyframes inDrift { from { transform: scale(1.15) translate(-1.5%, 1%); } to { transform: scale(1.3) translate(1.5%, -1%); } }
+.in-frame { position: absolute; inset: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom)); border: 1px solid rgba(217, 185, 106, .34); pointer-events: none; opacity: 0; animation: inFrame 1.6s ease .3s forwards; }
+.in-frame::before, .in-frame::after { content: ""; position: absolute; width: 14px; height: 14px; border: 0 solid #d9b96a; }
+.in-frame::before { top: -1px; inset-inline-start: -1px; border-top-width: 1px; border-inline-start-width: 1px; }
+.in-frame::after { bottom: -1px; inset-inline-end: -1px; border-bottom-width: 1px; border-inline-end-width: 1px; }
+@keyframes inFrame { to { opacity: 1; } }
+.in-brand { display: flex; justify-content: center; gap: .32em; padding-inline-start: 0; font-size: clamp(3rem, 15vw, 5.4rem); letter-spacing: 0; line-height: 1; }
+.in-brand span { display: inline-block; opacity: 0; transform: translateY(.35em); filter: blur(10px); }
+.in-s.on .in-brand span { animation: inLetter 1.1s cubic-bezier(.2, .7, .2, 1) calc(.45s + var(--k) * .13s) forwards; }
+.in-s.past .in-brand span { opacity: 1; transform: none; filter: none; }
+@keyframes inLetter { to { opacity: 1; transform: none; filter: blur(0); } }
+.in-orn { width: 9px; height: 9px; margin-top: 18px; background: #d9b96a; transform: rotate(45deg) scale(0); }
+.in-s.on .in-orn { animation: inOrn .8s ease 1.5s forwards; }
+@keyframes inOrn { to { transform: rotate(45deg) scale(1); } }
+.in-kick { margin: 0 0 6px; }
+html[dir="rtl"] .in-brand { gap: .32em; direction: ltr; }
+@media (prefers-reduced-motion: reduce) { .in-wash { animation: none; } .in-brand span, .in-orn { animation: none !important; opacity: 1 !important; transform: none !important; filter: none !important; } .in-orn { transform: rotate(45deg) !important; } }

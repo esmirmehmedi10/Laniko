@@ -790,10 +790,13 @@
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const el = document.createElement("div");
     el.className = "intro"; el.id = "intro"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", "Laniko");
-    el.innerHTML = `<div class="in-bg"></div><div class="in-vig"></div>
+    const order = ["noir-prestige", "reve-paradoxe", "rouge-absolu", "bleu-eternel", "blanc-royal"];       // each scene is washed in the colour of a different perfume
+    const pics = order.map((id) => (products || []).find((p) => p.id === id)).filter(Boolean);
+    const wash = (pics.length ? pics : (products || []).slice(0, 5));
+    el.innerHTML = `<div class="in-washes">${wash.map((p, k) => `<i class="in-wash" data-w="${k}" style="background-image:url('${esc(p.image)}')"></i>`).join("")}</div><div class="in-vig"></div><div class="in-frame"></div>
       <button class="in-skip" type="button">${esc(t("inSkip"))}</button>
       <div class="in-stage">
-        <section class="in-s" data-i="0"><svg class="in-logo" viewBox="0 0 631 1595" fill="url(#wl-gold)" aria-hidden="true" focusable="false"><use href="#wl-logo-shape"/></svg><p class="in-kick">${esc(t("inKick"))}</p><h2 class="in-brand">LANIKO</h2></section>
+        <section class="in-s" data-i="0"><p class="in-kick">${esc(t("inKick"))}</p><h2 class="in-brand" aria-label="LANIKO">${[..."LANIKO"].map((ch, k) => `<span aria-hidden="true" style="--k:${k}">${ch}</span>`).join("")}</h2><i class="in-orn" aria-hidden="true"></i></section>
         <section class="in-s" data-i="1"><p class="in-rule"></p><h2 class="in-big">${esc(t("abTag"))}</h2></section>
         <section class="in-s" data-i="2"><p class="in-line">${esc(t("inL1"))}</p><p class="in-line in-soft">${esc(t("inL2"))}</p></section>
         <section class="in-s" data-i="3"><p class="in-rule"></p><p class="in-line">${esc(t("inL3"))}</p><p class="in-line in-soft">${esc(t("inL4"))}</p></section>
@@ -811,6 +814,7 @@
       if (i >= S.length) return;
       S.forEach((s, k) => { s.classList.toggle("on", k === i); s.classList.toggle("past", k < i); });
       D.forEach((d, k) => d.classList.toggle("on", k <= i));
+      el.querySelectorAll(".in-wash").forEach((w, k) => w.classList.toggle("on", k === Math.min(i, wash.length - 1)));
       at = i;
       el.classList.toggle("last", i === S.length - 1);
       if (i < HOLD.length) timer = setTimeout(() => show(i + 1), HOLD[i]);
