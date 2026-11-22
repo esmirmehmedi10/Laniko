@@ -19,7 +19,7 @@ threading.Thread(target=srv.serve_forever, daemon=True).start()
 P = json.load(open(R + "/products.json"))
 only = [int(a) for a in sys.argv[1:]] or range(len(P))
 
-TURN, PUSH, LIFT, PRESS = 90, 40, 70, 40       # 240 frames in all
+TURN, PUSH, LIFT, PRESS = 1, 80, 140, 80       # 301 frames in all: twice as dense as before (about 0.6 frames per pixel of scrolling), so a slow swipe still moves on every refresh
 sm = lambda u: u * u * (3 - 2 * u)
 mix = lambda a, b, u: a + (b - a) * u
 YAW0, YAW1, YAW2 = 0.0, 0.30, 0.42            # the bottle turns a little so that the nozzle points to the right and slightly away: the spray flies over the dark background
@@ -49,7 +49,8 @@ for j, pr in enumerate(PRESS_CURVE):
     poses.append((dict(yaw=YAW2, pitch=PIT2, zoom=mix(ZOOM2, ZOOM3, u), lift=LIFT_UP, slide=LIFT_SIDE, tilt=LIFT_TILT, press=pr), NZ2))
 NF = len(poses)
 
-os.makedirs(R + "/images/seq", exist_ok=True)
+SEQ = os.environ.get("SEQ_DIR", R + "/images/seq")       # set SEQ_DIR to render somewhere else and move the result in afterwards
+os.makedirs(SEQ, exist_ok=True)
 with sync_playwright() as p:
     b = p.chromium.launch(args=["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"])
     for i in only:
@@ -78,7 +79,7 @@ with sync_playwright() as p:
         n0 = meas(base); nx = meas(dict(base, panX=1)); ny = meas(dict(base, panY=1))
         jx, jy = nx["x"] - n0["x"], ny["y"] - n0["y"]
         print("jacobian", jx, jy, flush=True)
-        d = f"{R}/images/seq/{pr['id']}"; os.makedirs(d, exist_ok=True)
+        d = f"{SEQ}/{pr['id']}"; os.makedirs(d, exist_ok=True)
         nzs = []; panX = panY = 0.0
         for n, (po, tgt) in enumerate(poses):
             po = dict(po)
@@ -95,10 +96,10 @@ with sync_playwright() as p:
             pg.evaluate("new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))")
             pg.locator("#seqbox").screenshot(path=tmp)
             img = cv2.imread(tmp)
-            cv2.imwrite(f"{d}/{n:02d}.webp", img, [cv2.IMWRITE_WEBP_QUALITY, 82])
+            cv2.imwrite(f"{d}/{n:02d}.webp", img, [cv2.IMWRITE_WEBP_QUALITY, 80])
         for f in os.listdir(d):
             if f.endswith(".webp") and int(f[:2]) >= NF: os.remove(f"{d}/{f}")
-        json.dump({"v": 2, "frames": NF, "turn": TURN, "push": PUSH, "lift": LIFT, "press": PRESS, "nz": nzs}, open(d + "/meta.json", "w"))
+        json.dump({"v": 2, "r": 3, "frames": NF, "turn": TURN, "push": PUSH, "lift": LIFT, "press": PRESS, "nz": nzs}, open(d + "/meta.json", "w"))
         print(pr["id"], NF, "frames", flush=True)
         pg.close()
     b.close()

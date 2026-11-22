@@ -437,7 +437,7 @@
     const poster = $("pd-poster");
     poster.style.opacity = "1";
     poster.onerror = () => { poster.onerror = null; poster.src = p.image; };
-    poster.src = `/images/seq/${p.id}/00.webp`;
+    poster.src = `/images/seq/${p.id}/00.webp?r=3`;
     fillDetail(p);
     updateSndBtn();
     flyIn();

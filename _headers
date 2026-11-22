@@ -1,0 +1,7 @@
+# Long-lived caching for the heavy, versioned files: the animation frames (?r=), the photos and models (?v=) never change under the same URL
+/images/seq/*/*.webp
+  Cache-Control: public, max-age=31536000, immutable
+/images/*.jpg
+  Cache-Control: public, max-age=31536000, immutable
+/models/*
+  Cache-Control: public, max-age=31536000, immutable

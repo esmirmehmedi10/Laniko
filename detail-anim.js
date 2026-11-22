@@ -7,6 +7,9 @@
 //
 // Speed: the frames are kept as compressed files and only a window around the current frame (plus a few key frames)
 // is decoded into ImageBitmaps, off the main thread, so scrolling never waits for a decode and memory stays small.
+// Smoothness: the film has about 0.6 frames per pixel of scrolling, a single picture is drawn each refresh (no cross-fading: blending two
+// frames that are a few pixels apart shows a ghost), the window of decoded frames is steered by where the page is heading, the picture
+// never steps back and forth between frames, and a fling cannot skip frames faster than they can be decoded and drawn.
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -30,8 +33,8 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
   const bmps = new Array(N).fill(null);
   const pending = new Set();
   const useBitmap = typeof createImageBitmap === "function";
-  const KEY = 24;                           // every 24th frame stays decoded
-  const url = (i) => `${base}/${String(i).padStart(2, "0")}.webp`;
+  const KEY = 50;                           // every 50th frame stays decoded
+  const url = (i) => `${base}/${String(i).padStart(2, "0")}.webp?r=${meta.r || 0}`;       // the files never change under the same ?r=, so the browser keeps them for good
   let cur = T - 1, dirn = 1;
   let loadedFirst = false;
 
@@ -49,11 +52,17 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
       im.onload = () => { URL.revokeObjectURL(u); done(im); }; im.onerror = () => pending.delete(i); im.src = u;
     }
   };
-  const keep = (i) => i % KEY === 0 || i === N - 1 || (i >= cur - 4 && i <= cur + 13) || !useBitmap;
+  let winA = 3, winB = 14;                  // decoded window around the current frame: behind / ahead (in frames, already turned to the direction of travel)
+  const keep = (i) => i % KEY === 0 || i === N - 1 || (i >= cur - winA && i <= cur + winB) || !useBitmap;
   const manage = () => {
-    // decode what is about to be needed (more ahead of the scroll direction), release what is far away
-    const a = dirn >= 0 ? 4 : 13, b = dirn >= 0 ? 13 : 4;
-    for (let i = Math.max(0, cur - a); i <= Math.min(N - 1, cur + b); i++) decode(i);
+    // decode what is about to be needed, nearest first, further ahead the farther the page still has to travel; release what is far away
+    const lead = clamp(Math.ceil(Math.abs(target - shown)) + 6, 10, 24), back = 3;
+    winA = dirn >= 0 ? back : lead; winB = dirn >= 0 ? lead : back;
+    const s = dirn >= 0 ? 1 : -1;
+    for (let d = 0; d <= lead; d++) {
+      const f = cur + s * d; if (f >= 0 && f < N) decode(f);
+      if (d <= back) { const g = cur - s * d; if (g >= 0 && g < N) decode(g); }
+    }
     if (useBitmap) for (let i = 0; i < N; i++) if (bmps[i] && !keep(i)) { bmps[i].close && bmps[i].close(); bmps[i] = null; }
   };
   const fetchFrame = async (i) => {
@@ -82,17 +91,20 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
     await Promise.all([worker(), worker(), worker(), worker()]);
   })();
 
+  // the picture for frame i; if it is not decoded yet, the closest decoded one on the side the page comes from (so the picture
+  // only ever moves on, and never jumps back and forth between two frames while the rest is still decoding)
   const nearest = (i) => {
+    const s = dirn >= 0 ? 1 : -1;
     for (let d = 0; d < N; d++) {
-      if (bmps[i - d]) return bmps[i - d];
-      if (bmps[i + d]) return bmps[i + d];
+      if (bmps[i - s * d]) return bmps[i - s * d];
+      if (bmps[i + s * d]) return bmps[i + s * d];
     }
     return null;
   };
 
   // ---- scroll position -> frame
   const S2 = 0.28, S3 = 0.58, S4 = 0.66, S5 = 1.0;                 // end of: push-in, cap lift, pause, button press + spray (shares of the short film)
-  const ANIM_PX = 460;                                              // the film plays in this many pixels of scrolling (about one thumb swipe and a half)
+  const ANIM_PX = 500;                                              // the film plays in this many pixels of scrolling (about one thumb swipe and a half)
   const frameAt = (p) => {
     if (p <= S2) return lerp(T - 1, T + PU - 1, p / S2);
     if (p <= S3) return lerp(T + PU - 1, T + PU + LF - 1, (p - S2) / (S3 - S2));
@@ -133,25 +145,18 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
   ro.observe(stage);
 
   let target = T - 1, shown = T - 1, p = 0, lastP = 0, lastT = 0, vel = 0, sprayed = 0, lastKey = "";
-  let raf = 0, lastTick = 0, slow = 0.016, ticks = 0;
+  let raf = 0, lastTick = 0, slow = 0.016, ticks = 0, lastA = null;
 
   const draw = () => {
-    // Moving slowly, the picture glides between two neighbouring frames (cross-fade), so it never steps.
-    // Moving fast, or on a device that struggles, a single picture is drawn: the steps are too quick to see and it costs half as much.
-    const slowMove = quality === 0 && Math.abs(target - shown) < 1.5;
-    let i0 = clamp(slowMove ? Math.floor(shown) : Math.round(shown), 0, N - 1);
-    let a = slowMove ? shown - i0 : 0;
-    if (a > 0.96) { i0 = Math.min(N - 1, i0 + 1); a = 0; } else if (a < 0.04) a = 0;
-    const i1 = Math.min(N - 1, i0 + 1);
-    const A = nearest(i0), B = a > 0 ? nearest(i1) : null;
-    const key = i0 + ":" + a.toFixed(2) + ":" + (A ? 1 : 0) + (B ? 1 : 0) + cw + ch;
-    if (key === lastKey) return;
-    lastKey = key;
+    // always ONE picture, the nearest frame: two frames blended while the bottle moves show a ghost (a doubled label)
+    const i0 = clamp(Math.round(shown), 0, N - 1);
+    const A = nearest(i0);
+    const key = i0 + ":" + (A ? 1 : 0) + ":" + cw + "x" + ch;
+    if (A && A === lastA && key === lastKey) return;
+    lastKey = key; lastA = A;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, cw, ch);
-    if (!A) return;
-    ctx.drawImage(A, dx, dy, FW * sc, FH * sc);
-    if (B && B !== A) { ctx.globalAlpha = a; ctx.drawImage(B, dx, dy, FW * sc, FH * sc); ctx.globalAlpha = 1; }
+    if (A) ctx.drawImage(A, dx, dy, FW * sc, FH * sc);
   };
 
   // ---- mist. A real atomiser makes an almost invisible cone of tiny droplets that is dense on the axis, widens quickly,
@@ -258,7 +263,10 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
     lastTick = ts;
     // the picture follows the scroll position; the faster the page moves, the faster it follows
     const before = shown;
-    shown += (target - shown) * (reduce ? 1 : 1 - Math.exp(-dt * 11));
+    // follow the scroll position smoothly, but never faster than the frames can be decoded and drawn (a fling plays the film instead of skipping it)
+    let stepF = (target - shown) * (reduce ? 1 : 1 - Math.exp(-dt * 11));
+    if (!reduce) { const cap = 170 * dt; if (stepF > cap) stepF = cap; else if (stepF < -cap) stepF = -cap; }
+    shown += stepF;
     if (Math.abs(target - shown) < 0.004) shown = target;
     const c = Math.round(shown);
     if (c !== cur) { dirn = shown >= before ? 1 : -1; cur = c; manage(); }
