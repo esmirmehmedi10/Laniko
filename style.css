@@ -952,7 +952,7 @@ html[lang="zh"] .in-line { max-width: 15em; } html[lang="zh"] .in-soft { font-st
 @keyframes inName { to { opacity: 1; transform: none; } }
 .in-go { margin-top: 18px; padding: 15px 30px; border-radius: 99px; border: 0; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: #1c1405;
   background: linear-gradient(100deg, #b8924a, #f1d98f 50%, #c9a24d); box-shadow: 0 10px 30px rgba(0, 0, 0, .45), 0 0 26px rgba(217, 185, 106, .25); opacity: 0; transform: translateY(10px); }
-.in-s.on .in-go { animation: inName .9s ease 1.6s forwards; }
+.in-s.on .in-go { animation: inName .5s ease .25s forwards; }
 .in-skip { position: absolute; top: max(18px, env(safe-area-inset-top)); inset-inline-end: 18px; z-index: 3; padding: 9px 16px; border-radius: 99px; background: rgba(10, 8, 5, .35); border: 1px solid rgba(217, 185, 106, .45);
   color: #e8d7a9; font: inherit; font-size: .7rem; letter-spacing: .18em; text-transform: uppercase; cursor: pointer; backdrop-filter: blur(6px); transition: opacity .5s ease; }
 .intro.last .in-skip { opacity: 0; pointer-events: none; }
