@@ -788,7 +788,6 @@
   function playIntro() {
     if (introEl) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const names = (products || []).map((p) => p.name);
     const el = document.createElement("div");
     el.className = "intro"; el.id = "intro"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", "Laniko");
     el.innerHTML = `<div class="in-bg"></div><div class="in-vig"></div>
@@ -797,7 +796,7 @@
         <section class="in-s" data-i="0"><svg class="in-logo" viewBox="0 0 631 1595" fill="url(#wl-gold)" aria-hidden="true" focusable="false"><use href="#wl-logo-shape"/></svg><p class="in-kick">${esc(t("inKick"))}</p><h2 class="in-brand">LANIKO</h2></section>
         <section class="in-s" data-i="1"><p class="in-rule"></p><h2 class="in-big">${esc(t("abTag"))}</h2></section>
         <section class="in-s" data-i="2"><p class="in-line">${esc(t("inL1"))}</p><p class="in-line in-soft">${esc(t("inL2"))}</p></section>
-        <section class="in-s" data-i="3"><p class="in-line">${esc(t("inFive"))}</p><ul class="in-names">${names.map((n, k) => `<li style="--d:${(0.5 + k * 0.45).toFixed(2)}s">${esc(n)}</li>`).join("")}</ul></section>
+        <section class="in-s" data-i="3"><p class="in-rule"></p><p class="in-line">${esc(t("inL3"))}</p><p class="in-line in-soft">${esc(t("inL4"))}</p></section>
         <section class="in-s in-last" data-i="4"><p class="in-big">${esc(t("abEnd1"))}</p><p class="in-big in-gold">${esc(t("abEnd2"))}</p><button class="in-go" type="button">${esc(t("inGo"))}</button></section>
       </div>
       <div class="in-dots" aria-hidden="true">${[0, 1, 2, 3, 4].map((k) => `<i data-i="${k}"></i>`).join("")}</div>`;
