@@ -919,3 +919,51 @@ html[dir="rtl"] .nw-kick, html[dir="rtl"] .nw-go, html[dir="rtl"] .nw-story, htm
 main.sw-l { animation: sw-from-left .32s cubic-bezier(.2,.7,.2,1); }
 main.sw-r { animation: sw-from-right .32s cubic-bezier(.2,.7,.2,1); }
 @media (prefers-reduced-motion: reduce) { main.sw-l, main.sw-r { animation: none; } .nw-img img { transition: none; } }
+
+/* ---------- brand introduction (after the golden doors) ---------- */
+.intro { position: fixed; inset: 0; z-index: 78; overflow: hidden; background: #0a0805; color: #f1e6cc; display: grid; place-items: center; cursor: pointer; text-align: center;
+  -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; animation: inIn .7s ease both; }
+.intro.out { opacity: 0; transition: opacity .85s ease; pointer-events: none; }
+@keyframes inIn { from { opacity: 0; } to { opacity: 1; } }
+.in-bg { position: absolute; inset: -4%; background: #0a0805 url(/images/welcome-wide-2.webp) center / cover no-repeat; opacity: .85; animation: inDrift 22s ease-in-out infinite alternate; }
+@media (orientation: portrait) { .in-bg { background-image: url(/images/welcome-tall-2.webp); } }
+@keyframes inDrift { from { transform: scale(1.04); } to { transform: scale(1.16) translateY(-1.2%); } }
+.in-vig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 75% 65% at 50% 50%, rgba(8, 6, 4, .32), rgba(5, 4, 3, .82)); }
+.in-stage { position: relative; width: min(92vw, 760px); height: 100%; display: grid; place-items: center; }
+.in-s { grid-area: 1 / 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 0 6px; opacity: 0; visibility: hidden; transform: translateY(18px);
+  transition: opacity 1s ease, transform 1.2s cubic-bezier(.2, .7, .2, 1), visibility 0s linear 1s; }
+.in-s.on { opacity: 1; visibility: visible; transform: none; transition-delay: .35s, .35s, 0s; }
+.in-s.past { transform: translateY(-18px); }
+.in-logo { height: min(30svh, 250px); width: auto; aspect-ratio: 631 / 1595; overflow: visible; fill-opacity: 0; stroke: url(#wl-gold); stroke-width: 5; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1;
+  filter: drop-shadow(0 0 18px rgba(255, 214, 130, .28)); }
+.in-s.past .in-logo { fill-opacity: 1; stroke-width: 0; stroke-dashoffset: 0; }
+.in-s.on .in-logo { animation: wlDraw 1.3s cubic-bezier(.55, .1, .3, 1) .5s forwards, wlFill .7s ease 1.5s forwards; }
+.in-kick { margin: 6px 0 -8px; font-size: .74rem; letter-spacing: .5em; text-transform: uppercase; color: #cdb27a; padding-inline-start: .5em; }
+.in-brand { margin: 0; font-family: var(--serif); font-weight: 500; font-size: clamp(2.3rem, 11vw, 4rem); letter-spacing: .5em; padding-inline-start: .5em; color: #f6e8c2; text-shadow: 0 2px 24px rgba(0, 0, 0, .6); }
+.in-rule { width: 1px; height: 64px; margin: 0; background: linear-gradient(transparent, #d9b96a); transform-origin: top; transform: scaleY(0); }
+.in-s.on .in-rule { animation: inRule 1.2s ease .4s forwards; }
+@keyframes inRule { to { transform: scaleY(1); } }
+.in-big { margin: 0; font-family: var(--serif); font-weight: 500; font-size: clamp(1.7rem, 7.4vw, 3rem); line-height: 1.22; letter-spacing: .02em; color: #f6ecd2; text-shadow: 0 2px 22px rgba(0, 0, 0, .65); text-wrap: balance; }
+.in-gold { color: #e3c77d; font-style: italic; }
+.in-line { margin: 0; font-family: var(--serif); font-size: clamp(1.35rem, 5.6vw, 2.1rem); line-height: 1.4; color: #f1e6cc; text-wrap: balance; text-shadow: 0 2px 20px rgba(0, 0, 0, .7); }
+.in-soft { font-size: clamp(1.05rem, 4.2vw, 1.4rem); font-style: italic; color: #cdbf9d; max-width: 30ch; }
+.in-names { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.in-names li { font-family: var(--serif); font-size: clamp(1.15rem, 4.8vw, 1.55rem); letter-spacing: .22em; text-transform: uppercase; color: #e8d6a6; opacity: 0; transform: translateY(8px); }
+.in-names li + li::before { content: ""; display: block; width: 22px; height: 1px; margin: 0 auto 12px; background: rgba(217, 185, 106, .55); }
+.in-s.on .in-names li { animation: inName .9s ease var(--d) forwards; }
+@keyframes inName { to { opacity: 1; transform: none; } }
+.in-go { margin-top: 18px; padding: 15px 30px; border-radius: 99px; border: 0; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: #1c1405;
+  background: linear-gradient(100deg, #b8924a, #f1d98f 50%, #c9a24d); box-shadow: 0 10px 30px rgba(0, 0, 0, .45), 0 0 26px rgba(217, 185, 106, .25); opacity: 0; transform: translateY(10px); }
+.in-s.on .in-go { animation: inName .9s ease 1.6s forwards; }
+.in-skip { position: absolute; top: max(18px, env(safe-area-inset-top)); inset-inline-end: 18px; z-index: 3; padding: 9px 16px; border-radius: 99px; background: rgba(10, 8, 5, .35); border: 1px solid rgba(217, 185, 106, .45);
+  color: #e8d7a9; font: inherit; font-size: .7rem; letter-spacing: .18em; text-transform: uppercase; cursor: pointer; backdrop-filter: blur(6px); transition: opacity .5s ease; }
+.intro.last .in-skip { opacity: 0; pointer-events: none; }
+.in-dots { position: absolute; bottom: max(26px, calc(14px + env(safe-area-inset-bottom))); left: 0; right: 0; display: flex; justify-content: center; gap: 9px; pointer-events: none; }
+.in-dots i { width: 22px; height: 2px; border-radius: 2px; background: rgba(217, 185, 106, .28); transition: background .6s ease; }
+.in-dots i.on { background: #d9b96a; }
+.intro.last .in-dots { opacity: 0; transition: opacity .5s ease; }
+html[dir="rtl"] .in-kick, html[dir="rtl"] .in-brand, html[dir="rtl"] .in-big, html[dir="rtl"] .in-go, html[dir="rtl"] .in-skip, html[dir="rtl"] .in-names li { letter-spacing: 0; }
+html[dir="rtl"] .in-brand { padding: 0; }
+html[lang="zh"] .in-kick, html[lang="zh"] .in-go, html[lang="zh"] .in-skip { letter-spacing: .1em; }
+@media (prefers-reduced-motion: reduce) { .in-bg { animation: none; } .in-s { transform: none !important; } .in-s.on .in-logo { animation: none; fill-opacity: 1; stroke-width: 0; stroke-dashoffset: 0; }
+  .in-s.on .in-rule { animation: none; transform: none; } .in-names li, .in-go { opacity: 1 !important; transform: none !important; animation: none !important; } }

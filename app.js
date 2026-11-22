@@ -481,7 +481,7 @@
 
   // the page behind must not scroll while a window is open
   function updateLock() {
-    document.body.style.overflow = (detailId || !$("viewer").hidden || gate || welcomeEl) ? "hidden" : "";
+    document.body.style.overflow = (detailId || !$("viewer").hidden || gate || welcomeEl || introEl) ? "hidden" : "";
   }
 
   // ---- 3D viewer ----
@@ -670,7 +670,7 @@
   $("cart-country").addEventListener("click", (e) => { if (e.target.closest("[data-ctry-change]")) showGate(false); });
 
   // mode: true = very first visit (language, then country) · "country" = only the country · false = both, with a close button
-  let gate = null, welcomeEl = null;
+  let gate = null, welcomeEl = null, introEl = null, introAfterGate = false;
   function showGate(mode, promoAfter) {
     if (gate) return;
     const first = mode === true;
@@ -767,6 +767,53 @@
     g.classList.add("out");
     setTimeout(() => g.remove(), 450);
     updateLock();
+    if (introAfterGate) { introAfterGate = false; setTimeout(playIntro, 380); }       // first visit: the language and country window comes first, then the introduction in that language
+  }
+
+  // ---- the brand introduction: plays after the doors open (and after the language window on a first visit), before the homepage ----
+  function playIntro() {
+    if (introEl) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const names = (products || []).map((p) => p.name);
+    const el = document.createElement("div");
+    el.className = "intro"; el.id = "intro"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", "Laniko");
+    el.innerHTML = `<div class="in-bg"></div><div class="in-vig"></div>
+      <button class="in-skip" type="button">${esc(t("inSkip"))}</button>
+      <div class="in-stage">
+        <section class="in-s" data-i="0"><svg class="in-logo" viewBox="0 0 631 1595" fill="url(#wl-gold)" aria-hidden="true" focusable="false"><use href="#wl-logo-shape"/></svg><p class="in-kick">${esc(t("inKick"))}</p><h2 class="in-brand">LANIKO</h2></section>
+        <section class="in-s" data-i="1"><p class="in-rule"></p><h2 class="in-big">${esc(t("abTag"))}</h2></section>
+        <section class="in-s" data-i="2"><p class="in-line">${esc(t("inL1"))}</p><p class="in-line in-soft">${esc(t("inL2"))}</p></section>
+        <section class="in-s" data-i="3"><p class="in-line">${esc(t("inFive"))}</p><ul class="in-names">${names.map((n, k) => `<li style="--d:${(0.5 + k * 0.45).toFixed(2)}s">${esc(n)}</li>`).join("")}</ul></section>
+        <section class="in-s in-last" data-i="4"><p class="in-big">${esc(t("abEnd1"))}</p><p class="in-big in-gold">${esc(t("abEnd2"))}</p><button class="in-go" type="button">${esc(t("inGo"))}</button></section>
+      </div>
+      <div class="in-dots" aria-hidden="true">${[0, 1, 2, 3, 4].map((k) => `<i data-i="${k}"></i>`).join("")}</div>`;
+    document.body.appendChild(el);
+    introEl = el; updateLock();
+    const S = [...el.querySelectorAll(".in-s")], D = [...el.querySelectorAll(".in-dots i")];
+    const HOLD = reduced ? [2600, 3000, 4000, 4200] : [3400, 3600, 4600, 4800];            // how long each scene stays before the next
+    let at = -1, timer = 0, done = false;
+    const show = (i) => {
+      if (done) return;
+      clearTimeout(timer);
+      if (i >= S.length) return;
+      S.forEach((s, k) => { s.classList.toggle("on", k === i); s.classList.toggle("past", k < i); });
+      D.forEach((d, k) => d.classList.toggle("on", k <= i));
+      at = i;
+      el.classList.toggle("last", i === S.length - 1);
+      if (i < HOLD.length) timer = setTimeout(() => show(i + 1), HOLD[i]);
+    };
+    const finish = () => {
+      if (done) return; done = true; clearTimeout(timer);
+      document.removeEventListener("keydown", onKey);
+      el.classList.add("out");
+      setTimeout(() => { el.remove(); introEl = null; updateLock(); window.scrollTo(0, 0); }, reduced ? 300 : 900);
+    };
+    const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); finish(); } else if (e.key === "Enter") { e.preventDefault(); if (at >= S.length - 1) finish(); else show(at + 1); } };
+    document.addEventListener("keydown", onKey);
+    el.querySelector(".in-skip").addEventListener("click", (e) => { e.stopPropagation(); finish(); });
+    el.querySelector(".in-go").addEventListener("click", (e) => { e.stopPropagation(); finish(); });
+    el.addEventListener("click", () => { if (at < S.length - 1) show(at + 1); });                // a tap moves on to the next scene
+    show(0);
   }
 
   function applyLanguage() {
@@ -1088,8 +1135,10 @@
     // every visit starts with the welcome doors; language and country are asked only while they are not known yet
     const askChoices = () => {
       if (gl) return;
-      if (!I.hasChoice()) showGate(true, true);
-      else if (!country) showGate("country", true);
+      const intro = !location.hash || location.hash === "#/" || location.hash === "#/perfumes";         // deep links (a shared list, a gift, a perfume) go straight to their page
+      if (!I.hasChoice()) { if (intro) introAfterGate = true; showGate(true, true); }
+      else if (!country) { if (intro) introAfterGate = true; showGate("country", true); }
+      else if (intro) playIntro();
     };
     const welcomed = showWelcome(askChoices);
 
