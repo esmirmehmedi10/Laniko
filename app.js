@@ -819,6 +819,7 @@
       if (done) return; done = true; clearTimeout(timer);
       document.removeEventListener("keydown", onKey);
       el.classList.add("out");
+      setTimeout(openNewPopup, reduced ? 120 : 450);                                                      // the introduction ends on the "New" pop-up, which appears as the film fades out
       setTimeout(() => { el.remove(); introEl = null; updateLock(); window.scrollTo(0, 0); }, reduced ? 300 : 900);
     };
     const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); finish(); } else if (e.key === "Enter") { e.preventDefault(); if (at >= S.length - 1) finish(); else show(at + 1); } };
