@@ -70,7 +70,7 @@ export async function onRequestPost({ request, env }) {
     params.set(`${p}[price_data][unit_amount]`, String(Math.round(product.price * 100)));
     params.set(`${p}[price_data][product_data][name]`, product.name);
     if (product.description) {
-      const prefix = product.kind === "set" ? "" : "Extrait de Parfum, 50 ml. ";
+      const prefix = product.kind === "set" ? "" : "Eau de Parfum, 50 ml. ";
       params.set(`${p}[price_data][product_data][description]`, `${prefix}${product.description}`);
     }
     if (product.image) {
