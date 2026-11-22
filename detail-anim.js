@@ -113,9 +113,16 @@ export async function createScrollAnimation({ stage, canvas, mist, poster, scrol
     mdpr = Math.min(dpr, quality ? 1 : 1.1);                         // only the soft mist is drawn smaller                      // the mist is soft anyway: a smaller canvas is much cheaper
     canvas.width = Math.round(cw * dpr); canvas.height = Math.round(ch * dpr);
     mist.width = Math.round(cw * mdpr); mist.height = Math.round(ch * mdpr);
-    sc = Math.max(cw / FW, ch / FH);                  // the frame fills the stage (cover) ...
+    // the whole bottle must be in view from the start: it sits high in the stage, clear of the "scroll to discover" hint at the bottom
+    const TOP = 16, HINT = 86;                         // free space above the bottle / kept free below it for the hint (px)
+    const BT = 0.262, BB = 0.785;                      // the bottle's top (cap) and bottom as a fraction of the frame height
+    sc = Math.max(cw / FW, ch / FH);                   // the frame fills the stage (cover) ...
+    const fit = (ch - TOP - HINT) / ((BB - BT) * FH);  // ... unless the bottle would not fit: then a little smaller (never below 88% of cover)
+    if (sc > fit) sc = Math.max(fit, sc * 0.88);
     dx = (cw - FW * sc) / 2;
-    dy = (ch - FH * sc) * 0.12;                       // ... showing mostly the upper part (the action is up there)
+    const lo = Math.min(0, ch - FH * sc), hi = Math.max(0, ch - FH * sc);
+    dy = Math.min(hi, Math.max(lo, TOP - BT * FH * sc));
+    if (poster) { const s = poster.style; s.inset = "auto"; s.objectFit = "fill"; s.left = dx + "px"; s.top = dy + "px"; s.width = FW * sc + "px"; s.height = FH * sc + "px"; }   // the still picture sits exactly where the film starts
     k = cw / 390;
     range = Math.max(1, scroller.scrollHeight - scroller.clientHeight);
     animLen = Math.max(1, Math.min(range, ANIM_PX));
