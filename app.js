@@ -63,7 +63,6 @@
   // ---- pages: the home page is the plain address (/); the others are #/discover and #/wishlist ----
   const ROUTES = {
     "perfumes": { title: "collectionTitle", sub: "collectionSub", list: () => products, empty: "emptyPerfumes" },
-    "new": { title: "newTitle", sub: "newSub", newPage: true },
     "discover": { title: "disTitle", sub: "disSub", discover: true },
     "wishlist": { title: "wishTitle", sub: "wishSub", list: () => wish.map(byId).filter(Boolean), empty: "emptyWish" },
     "compare": { title: "cmpTitle", sub: "cmpSub", list: () => products, empty: "emptyPerfumes", custom: true },
@@ -144,29 +143,44 @@
       </button>`).join("")}</div>`;
   }
 
-  // the "New" page: the newest fragrance shown as one large, quiet feature
-  function newHTML() {
-    const list = products.filter((p) => p.featured);
-    if (!list.length) return `<p class="empty">${esc(t("emptyPerfumes"))}</p>`;
-    return `<div class="nw">${list.map((p) => {
-      const th = p.theme || {}, tagKey = "chT_" + p.id.replace(/-/g, "_"), tag = t(tagKey) === tagKey ? "" : t(tagKey);
-      return `<article class="nw-card" style="--bg:${th.bgDark || "#0c0a07"};--gl:${th.glow || "#c9a25a"}">
-        <a class="nw-img" href="#/perfume/${esc(p.id)}" aria-label="${esc(p.name)}"><img src="${esc(p.image)}" alt="${esc(p.name)}" loading="eager"></a>
+  // ---- the "New" pop-up: the newest fragrance in a quiet gold-framed window, opened from the gold tab ----
+  let newEl = null;
+  function openNewPopup() {
+    const p = products.find((x) => x.featured);
+    if (!p || newEl) return;
+    const th = p.theme || {}, tagKey = "chT_" + p.id.replace(/-/g, "_"), tag = t(tagKey) === tagKey ? "" : t(tagKey);
+    const el = document.createElement("div");
+    el.className = "nwp-back"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", t("newTab") + " · " + p.name);
+    el.innerHTML = `<div class="nwp"><button class="nwp-x" type="button" aria-label="${esc(t("closeLang"))}">✕</button>
+      <article class="nw-card" style="--bg:${th.bgDark || "#0c0a07"};--gl:${th.glow || "#c9a25a"}">
+        <a class="nw-img" href="#/perfume/${esc(p.id)}" aria-label="${esc(p.name)}"><img src="${esc(p.image)}" alt="${esc(p.name)}"></a>
         <div class="nw-body">
           <p class="nw-kick"><span>✦</span> ${esc(t("newTab"))}</p>
           <h3>${esc(p.name)}</h3>
           ${tag ? `<p class="nw-tag">${esc(tag)}</p>` : ""}
           <p class="nw-desc">${esc(descOf(p))}</p>
           <p class="nw-notes">${(p.notes || []).map((n) => `<span>${esc(I.noteName(n))}</span>`).join("")}</p>
-          <div class="nw-cta"><a class="nw-go" href="#/perfume/${esc(p.id)}">${esc(t("newGo"))}</a><button class="nw-story" type="button" data-story="${esc(p.id)}">${esc(t("chRead"))}</button></div>
+          <div class="nw-cta"><a class="nw-go" href="#/perfume/${esc(p.id)}">${esc(t("newGo"))}</a><button class="nw-story" type="button">${esc(t("chRead"))}</button></div>
         </div>
-      </article>`;
-    }).join("")}</div>`;
+      </article></div>`;
+    document.body.appendChild(el);
+    newEl = el; updateLock();
+    requestAnimationFrame(() => el.classList.add("in"));
+    const close = () => {
+      if (!newEl) return; newEl = null; el.classList.remove("in"); el.classList.add("out"); updateLock();
+      document.removeEventListener("keydown", onKey, true);
+      setTimeout(() => el.remove(), 380);
+    };
+    const onKey = (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } };
+    document.addEventListener("keydown", onKey, true);
+    el.addEventListener("click", (e) => {
+      if (e.target === el || e.target.closest(".nwp-x")) return close();
+      if (e.target.closest("a.nw-img, a.nw-go")) { close(); return; }                      // the link then opens the perfume page
+      if (e.target.closest(".nw-story")) { close(); import("/chapter.js").then((m) => m.openChapter(featureCtx(), p)); }
+    });
+    el.querySelector(".nwp-x").focus({ preventScroll: true });
   }
-  $("products").addEventListener("click", (e) => {
-    const b = e.target.closest("[data-story]"); if (!b) return;
-    const p = byId(b.dataset.story); if (p) import("/chapter.js").then((m) => m.openChapter(featureCtx(), p));
-  });
+  $("tab-new").addEventListener("click", (e) => { e.preventDefault(); openNewPopup(); });
 
   function renderPage() {
     const route = currentRoute();
@@ -193,7 +207,6 @@
     if (!products.length) return;
     pageActions(route);
     if (cfg.discover) { $("products").innerHTML = discoverHTML(); return; }
-    if (cfg.newPage) { $("products").innerHTML = newHTML(); return; }
     if (cfg.custom) { loadFeatures().then((m) => { if (currentRoute() === route) m.renderCompare(featureCtx(), $("products")); }); return; }
     const list = cfg.list();
     if (!list.length) {
@@ -289,6 +302,7 @@
       const to = tabs[at + (dx > 0 ? -1 : 1) * (rtl ? -1 : 1)];                                        // swipe right = the page on the left
       if (!to) return;
       to.click();
+      if (to.id === "tab-new") return;                                                                   // the New tab opens a pop-up window: nothing to slide
       const m = document.querySelector("main");
       m.classList.remove("sw-l", "sw-r"); void m.offsetWidth; m.classList.add(dx > 0 ? "sw-l" : "sw-r");
       setTimeout(() => m.classList.remove("sw-l", "sw-r"), 450);
@@ -481,7 +495,7 @@
 
   // the page behind must not scroll while a window is open
   function updateLock() {
-    document.body.style.overflow = (detailId || !$("viewer").hidden || gate || welcomeEl || introEl) ? "hidden" : "";
+    document.body.style.overflow = (detailId || !$("viewer").hidden || gate || welcomeEl || introEl || newEl) ? "hidden" : "";
   }
 
   // ---- 3D viewer ----
@@ -828,7 +842,7 @@
   }
   I.onChange(applyLanguage);
 
-  // ---- the new fragrance has its own gold tab, left of "Perfumes" (there is no pop-up any more) ----
+  // ---- the new fragrance has its own gold tab, left of "Perfumes"; it opens the pop-up ----
   function updateNewTab() {
     const tab = $("tab-new"), p = products.find((x) => x.featured);
     if (!tab) return;
@@ -862,7 +876,7 @@
     return new Promise((resolve) => {
       window.__lanikoReady = true;
       const el = $("welcome");
-      if (!el || !document.documentElement.classList.contains("has-welcome")) { onEnter(); return resolve(); }
+      if (!el || !document.documentElement.classList.contains("has-welcome")) { onEnter(false); return resolve(); }
       welcomeEl = el;
       updateLock();
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -910,7 +924,7 @@
         el.querySelector(".wl-l").style.clipPath = `polygon(0px 0px, ${pts}, 0px ${Hd}px)`;
         el.querySelector(".wl-r").style.clipPath = `polygon(${pts}, ${Wd}px ${Hd}px, ${Wd}px 0px)`;
         el.classList.add("open");
-        onEnter();                                             // the first-visit window appears right behind the opening doors
+        onEnter(true);                                         // the first-visit window appears right behind the opening doors
         setTimeout(() => {
           document.removeEventListener("keydown", onKey);
           if (tiltOn) window.removeEventListener("deviceorientation", onTilt);
@@ -1133,9 +1147,9 @@
       } catch {}
     }
     // every visit starts with the welcome doors; language and country are asked only while they are not known yet
-    const askChoices = () => {
+    const askChoices = (afterDoors) => {
       if (gl) return;
-      const intro = !location.hash || location.hash === "#/" || location.hash === "#/perfumes";         // deep links (a shared list, a gift, a perfume) go straight to their page
+      const intro = afterDoors && (!location.hash || location.hash === "#/" || location.hash === "#/perfumes");   // the introduction follows the opening doors only; deep links (a shared list, a gift, a perfume) go straight to their page
       if (!I.hasChoice()) { if (intro) introAfterGate = true; showGate(true, true); }
       else if (!country) { if (intro) introAfterGate = true; showGate("country", true); }
       else if (intro) playIntro();
