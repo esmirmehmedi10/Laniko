@@ -99,7 +99,7 @@ export function drawLabel(product, mode, scale = 1) {
     line(t, 600, capH, nat + track * (t.length - 1), (0.505 + 0.092 * i) * H);
   });
   divider(0.745 * H, 0.34 * W);
-  line("EAU DE PARFUM", 600, 0.027 * H, 0.58 * W, 0.805 * H);
+  line("EAU DE PARFUM", 600, 0.027 * H, 0.46 * W, 0.805 * H);
   line("50 ML  \u2022  45 %", 600, 0.028 * H, 0.36 * W, 0.885 * H);
   return c;
 }

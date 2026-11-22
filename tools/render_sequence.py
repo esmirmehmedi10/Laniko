@@ -56,7 +56,7 @@ with sync_playwright() as p:
         pr = P[i]; tmp = f"/tmp/seq-{pr['id']}.png"
         pg = b.new_page(viewport={"width": 600, "height": 800}, device_scale_factor=DPR, reduced_motion="reduce")
         pg.on("pageerror", lambda e: print("PAGEERR", e))
-        pg.add_init_script("window.LANIKO_FRAME={bw:0.42,bottom:0.72}")
+        pg.add_init_script("window.LANIKO_FRAME={bw:0.42,bottom:0.72}; sessionStorage.setItem('laniko-welcome','1'); localStorage.setItem('laniko-country','LU'); localStorage.setItem('laniko-lang','en');")
         pg.route("https://cdn.jsdelivr.net/npm/three@0.160.0/**", lambda r: r.fulfill(body=open(T + r.request.url.split("three@0.160.0/")[1], "rb").read(), content_type="text/javascript"))
         pg.route("https://fonts.googleapis.com/**", lambda r: r.abort()); pg.route("https://fonts.gstatic.com/**", lambda r: r.abort())
         pg.goto(f"http://127.0.0.1:{PORT}/"); pg.wait_for_selector(".imgbtn")

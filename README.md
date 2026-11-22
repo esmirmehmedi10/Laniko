@@ -63,6 +63,11 @@ Test with card `4242 4242 4242 4242`, any future date and any CVC.
 
 - **Products:** edit `products.json` (`id` must be unique, `price` in euros). Commit and Cloudflare redeploys automatically.
 - **Product photos:** put images in an `images/` folder and use `"image": "/images/mug.jpg"`.
+- **Wording printed on the bottle label** (for example "EAU DE PARFUM"): it is drawn in `viewer.js` (`drawLabel`) and is baked into the 3D models, the product photos, the Discovery Set picture and the scroll-animation frames. After changing it, regenerate them with the scripts in `tools/`, in this order (they need playwright and a local three.js r160, see the head of each script):
+  1. `python3 tools/texgen.py` (label textures into `tex/`), then `python3 tools/patch_glb_labels.py tex models/*.glb` and `python3 tools/make_ar_models.py` (the light AR models),
+  2. `python3 tools/render_photos.py 0 1 2 3 4` (the product photos `images/<id>.jpg`),
+  3. `python3 tools/render_sequence.py 0 1 2 3 4` (about 10 minutes per perfume),
+  4. `images/discovery-set.jpg` is a composite of the five bottles; only the small text line was repainted in it.
 - **Shipping:** countries and flat rate are at the top of `functions/api/checkout.js`.
 - **Order notifications:** Stripe emails you for each payment by default (Settings → Email notifications). Orders and shipping addresses appear in the Stripe dashboard under Payments.
 

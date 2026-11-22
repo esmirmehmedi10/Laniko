@@ -4,7 +4,7 @@
     "name": "Blanc Royal",
     "description": "Creamy white rose and orchid resting on warm Bourbon vanilla and golden resin. Soft, luminous and quietly regal.",
     "price": 150,
-    "image": "/images/blanc-royal.jpg?v=13",
+    "image": "/images/blanc-royal.jpg?v=14",
     "labelColor": "#ae8570",
     "labelInk": "#8a5f14",
     "theme": {
@@ -14,7 +14,7 @@
     },
     "rank": 1,
     "bodyColor": "#ebe9e5",
-    "model": "/models/blanc-royal.glb?v=7",
+    "model": "/models/blanc-royal.glb?v=8",
     "labelGain": 0.5684,
     "notes": [
       "white rose",
@@ -37,14 +37,14 @@
       ],
       "intensity": 2
     },
-    "arModel": "/models/ar/blanc-royal-v1.glb"
+    "arModel": "/models/ar/blanc-royal-v2.glb"
   },
   {
     "id": "reve-paradoxe",
     "name": "Rêve Paradoxé",
     "description": "Sparkling red grapefruit meets velvety rose and a thread of saffron. Fresh and dark at once, a dream that contradicts itself.",
     "price": 150,
-    "image": "/images/reve-paradoxe.jpg?v=13",
+    "image": "/images/reve-paradoxe.jpg?v=14",
     "labelColor": "#042405",
     "labelInk": "#e8d08e",
     "theme": {
@@ -53,7 +53,7 @@
       "smoke": "#8fc7a8"
     },
     "bodyColor": "#ebe9e5",
-    "model": "/models/reve-paradoxe.glb?v=7",
+    "model": "/models/reve-paradoxe.glb?v=8",
     "labelGain": 1.0371,
     "featured": true,
     "notes": [
@@ -76,14 +76,14 @@
       ],
       "intensity": 3
     },
-    "arModel": "/models/ar/reve-paradoxe-v1.glb"
+    "arModel": "/models/ar/reve-paradoxe-v2.glb"
   },
   {
     "id": "noir-prestige",
     "name": "Noir Prestige",
     "description": "Smoked sandalwood, black pepper and dark vanilla over glowing amber. Deep, confident and made for the evening.",
     "price": 150,
-    "image": "/images/noir-prestige.jpg?v=13",
+    "image": "/images/noir-prestige.jpg?v=14",
     "labelColor": "#050506",
     "labelInk": "#e8d08e",
     "theme": {
@@ -93,7 +93,7 @@
     },
     "rank": 2,
     "bodyColor": "#ebe9e5",
-    "model": "/models/noir-prestige.glb?v=7",
+    "model": "/models/noir-prestige.glb?v=8",
     "labelGain": 0.7482,
     "notes": [
       "smoked sandalwood",
@@ -116,14 +116,14 @@
       ],
       "intensity": 5
     },
-    "arModel": "/models/ar/noir-prestige-v1.glb"
+    "arModel": "/models/ar/noir-prestige-v2.glb"
   },
   {
     "id": "rouge-absolu",
     "name": "Rouge Absolu",
     "description": "Crimson rose and ripe raspberry wrapped in precious woods and amber. Bold, velvety and unapologetically passionate.",
     "price": 150,
-    "image": "/images/rouge-absolu.jpg?v=13",
+    "image": "/images/rouge-absolu.jpg?v=14",
     "labelColor": "#3d0604",
     "labelInk": "#e8d08e",
     "theme": {
@@ -133,7 +133,7 @@
     },
     "rank": 3,
     "bodyColor": "#ebe9e5",
-    "model": "/models/rouge-absolu.glb?v=7",
+    "model": "/models/rouge-absolu.glb?v=8",
     "labelGain": 0.7919,
     "notes": [
       "crimson rose",
@@ -156,14 +156,14 @@
       ],
       "intensity": 4
     },
-    "arModel": "/models/ar/rouge-absolu-v1.glb"
+    "arModel": "/models/ar/rouge-absolu-v2.glb"
   },
   {
     "id": "bleu-eternel",
     "name": "Bleu Éternel",
     "description": "Lavender and white jasmine with a hint of dark berries, settling into smooth wood and amber. Calm, deep and timeless.",
     "price": 150,
-    "image": "/images/bleu-eternel.jpg?v=13",
+    "image": "/images/bleu-eternel.jpg?v=14",
     "labelColor": "#030d32",
     "labelInk": "#e8d08e",
     "theme": {
@@ -172,7 +172,7 @@
       "smoke": "#8fa8e0"
     },
     "bodyColor": "#ebe9e5",
-    "model": "/models/bleu-eternel.glb?v=7",
+    "model": "/models/bleu-eternel.glb?v=8",
     "labelGain": 1.3349,
     "notes": [
       "lavender",
@@ -196,7 +196,7 @@
       ],
       "intensity": 3
     },
-    "arModel": "/models/ar/bleu-eternel-v1.glb"
+    "arModel": "/models/ar/bleu-eternel-v2.glb"
   },
   {
     "id": "discovery-set",
@@ -204,7 +204,7 @@
     "name": "Discovery Set",
     "description": "All five Laniko eaux de parfum in 2 ml travel vials: Blanc Royal, Rêve Paradoxé, Noir Prestige, Rouge Absolu and Bleu Éternel. The price is credited on your first full bottle.",
     "price": 29,
-    "image": "/images/discovery-set.jpg?v=1",
+    "image": "/images/discovery-set.jpg?v=2",
     "credit": 29
   }
 ]

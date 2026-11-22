@@ -20,10 +20,10 @@ with sync_playwright() as p:
         pg.on("pageerror", lambda e: print("PAGEERR", e))
         pg.route("https://cdn.jsdelivr.net/npm/three@0.160.0/**", lambda r: r.fulfill(body=open(T + r.request.url.split("three@0.160.0/")[1], "rb").read(), content_type="text/javascript"))
         pg.route("https://fonts.googleapis.com/**", lambda r: r.abort()); pg.route("https://fonts.gstatic.com/**", lambda r: r.abort())
-        pg.goto("http://127.0.0.1:8841/"); pg.wait_for_selector(".imgbtn")
-        pg.add_init_script("window.LANIKO_FRAME={bw:0.50,bottom:0.70}")
-        pg.add_style_tag(content=".viewer-head,.viewer-foot,.viewer-hint,.viewer-desc{display:none!important}")
-        pg.locator(".imgbtn").nth(i).click()
+        pg.add_init_script("sessionStorage.setItem('laniko-welcome','1'); localStorage.setItem('laniko-country','LU'); localStorage.setItem('laniko-lang','en');")   # skip the welcome doors and the language window
+        pg.goto("http://127.0.0.1:8841/#/perfume/" + pr["id"]); pg.wait_for_selector("#pd-pic")
+        pg.add_style_tag(content=".viewer-head,.viewer-foot,.viewer-hint,.viewer-desc,#viewer-spray{display:none!important}")
+        pg.wait_for_timeout(1500); pg.click("#pd-pic")             # the product page opens first, a tap on its picture opens the 3D viewer
         pg.wait_for_timeout(12000)
         pg.screenshot(path=f"/tmp/ph-{i}.png")
         img = cv2.imread(f"/tmp/ph-{i}.png")

@@ -1,4 +1,4 @@
-"""Builds light AR versions of the bottle models: models/ar/<id>-v1.glb
+"""Builds light AR versions of the bottle models: models/ar/<id>-v2.glb
 Why: the display model carries a 3200x4654 label texture (about 59 MB on the phone's GPU) and a bottom logo nobody sees in AR.
 AR needs fast loading and fast start, so here the textures are scaled down, indices use 16 bits and the hidden base logo is dropped.
 Run from the repo root:  python3 tools/make_ar_models.py"""
@@ -95,6 +95,6 @@ if __name__ == "__main__":
     os.makedirs("models/ar", exist_ok=True)
     for f in sorted(os.listdir("models")):
         if f.endswith(".glb"):
-            dst = "models/ar/" + f[:-4] + "-v1.glb"
+            dst = "models/ar/" + f[:-4] + "-v2.glb"
             a = os.path.getsize("models/" + f); t = build("models/" + f, dst)
             print(f"{f}: {a//1024} KB -> {t//1024} KB")
